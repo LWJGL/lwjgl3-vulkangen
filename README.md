@@ -1,0 +1,15 @@
+LWJGL 3 - Vulkan Template Generator
+===================================
+
+The LWJGL 3 Vulkan template generator is a tool that parses the Vulkan API
+specification and generates LWJGL 3 Generator templates. The goal is to
+fully automate the process of updating the LWJGL bindings of Vulkan and all
+its extensions.
+
+Instructions
+------------
+
+- Clone [Vulkan-Docs](https://github.com/KhronosGroup/Vulkan-Docs.git) and build the specification and references pages. All extensions should be included (e.g. `manAllExts xhtml manhtml`).
+- Clone [LWJGL 3](https://github.com/LWJGL/lwjgl3.git).
+- Set `path.vulkan-docs` and `path.lwjgl3` in `pom.xml` to the root of the cloned Vulkan-Docs and LWJGL 3 repositories respectively.
+- Run `mvn exec:java`.
