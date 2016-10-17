@@ -4,453 +4,33 @@
  */
 package org.lwjgl.vulkangen
 
-import com.thoughtworks.xstream.XStream
-import com.thoughtworks.xstream.converters.Converter
-import com.thoughtworks.xstream.converters.MarshallingContext
-import com.thoughtworks.xstream.converters.UnmarshallingContext
-import com.thoughtworks.xstream.io.HierarchicalStreamReader
-import com.thoughtworks.xstream.io.HierarchicalStreamWriter
-import com.thoughtworks.xstream.io.xml.Xpp3Driver
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 
-internal class VendorID(
-	val name: String,
-	val id: String,
-	val comment: String
+val DISABLED_EXTENSIONS = setOf(
+	"VK_KHR_android_surface",
+	"VK_KHR_mir_surface",
+	"VK_KHR_wayland_surface",
+	"VK_KHR_xcb_surface",
+
+	"VK_ANDROID_native_buffer",
+
+	"VK_NV_external_memory",
+	"VK_NV_external_memory_capabilities",
+	"VK_NV_external_memory_win32",
+	"VK_NV_win32_keyed_mutex"
 )
 
-internal class Tag(
-	val name: String,
-	val author: String,
-	val contact: String
+val ABBREVIATIONS = setOf(
+	"gcn",
+	"glsl",
+	"gpu",
+	"pvrtc"
 )
-
-internal abstract class Type(val name: String)
-
-internal object TypeIgnored : Type("<IGNORED>")
-
-internal class TypeSystem(
-	val requires: String,
-	name: String
-) : Type(name)
-
-internal class TypeBase(
-	val type: String,
-	name: String
-) : Type(name)
-
-internal class TypePlatform(name: String) : Type(name)
-
-internal class TypeBitmask(
-	val requires: String?,
-	name: String
-) : Type(name)
-
-internal class TypeHandle(
-	val parent: String?,
-	val type: String,
-	name: String
-) : Type(name)
-
-internal class TypeEnum(name: String) : Type(name)
-
-internal class TypeFuncpointer(
-	val proto: Field,
-	val params: List<Field>
-) : Type(proto.name)
-
-internal class TypeStruct(
-	val type: String, // struct or union
-	name: String,
-	val returnedonly: Boolean,
-	val members: List<Field>
-) : Type(name)
-
-internal class Enum(
-	val name: String,
-	val bitpos: String?,
-	val value: String?,
-	val comment: String?
-)
-
-internal class Unused(val start: String)
-
-internal class Enums(
-	val name: String,
-	val type: String?,
-	val comment: String?,
-	val enums: List<Enum>,
-	val unused: Unused?
-)
-
-internal class Field(
-	val modifier: String,
-	val type: String,
-	val indirection: String,
-	val name: String,
-	val array: String?,
-	val attribs: Map<String, String>
-) {
-	val len = attribs["len"].let {
-		if (it == null)
-			emptySequence<String>()
-		else
-			it.splitToSequence(",")
-	}
-
-	val optional: String? = attribs["optional"]
-	val externsync: String? = attribs["externsync"]
-	val noautovalidity: String? = attribs["noautovalidity"]
-	val validextensionstructs: String? = attribs["validextensionstructs"]
-}
-
-internal class Validity
-
-internal class ImplicitExternSyncParams(
-	val params: List<Field>
-)
-
-internal class Command(
-	val successcodes: String,
-	val errorcodes: String,
-	val proto: Field,
-	val params: List<Field>,
-	val validity: Validity?,
-	val implicitexternsyncparams: ImplicitExternSyncParams?
-)
-
-internal class TypeRef(val name: String)
-internal class EnumRef(
-	val name: String,
-	val value: String?,
-	val offset: String?,
-	val dir: String?,
-	val extends: String?
-)
-
-internal class CommandRef(val name: String)
-
-internal class Require(
-	val comment: String,
-	val types: List<TypeRef>?,
-	val enums: List<EnumRef>?,
-	val commands: List<CommandRef>?
-)
-
-internal class Feature(
-	val api: String,
-	val name: String,
-	val number: String,
-	val requires: List<Require>
-)
-
-internal class Extension(
-	val name: String,
-	val number: Int,
-	val type: String,
-	val supported: String,
-	val require: Require
-)
-
-internal class Registry(
-	val comment: String,
-	val vendorids: List<VendorID>,
-	val tags: List<Tag>,
-	val types: List<Type>,
-	val enums: List<Enums>,
-	val commands: List<Command>,
-	val features: List<Feature>,
-	val extensions: List<Extension>
-)
-
-private val INDIRECTION_REGEX = Regex("""([*]+)(?:\s+const\s*([*]+))?""")
-
-private val String.indirection: String get() = if (this.isEmpty())
-	this
-else {
-	val (p, const_p) = INDIRECTION_REGEX.matchEntire(this)!!.destructured
-	"${p.indirection("_")}${if (const_p.isEmpty()) "" else const_p.indirection("_const_")}"
-}
-
-private fun String.indirection(prefix: String) = this.length
-	.downTo(1)
-	.asSequence(
-
-	).map { "p" }
-	.joinToString("", prefix = prefix)
-
-internal class FieldConverter : Converter {
-	override fun marshal(source: Any, writer: HierarchicalStreamWriter, context: MarshallingContext) {
-		TODO()
-	}
-
-	override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any {
-		val attribs = reader.attributeNames.asSequence()
-			.map(Any?::toString)
-			.associate { it to reader.getAttribute(it) }
-
-		val modifier = reader.value.trim()
-
-		if (!reader.hasMoreChildren())
-			return Field("", "N/A", "", modifier, null, attribs)
-
-		val type = StringBuilder()
-		reader.moveDown()
-		type.append(reader.value)
-		reader.moveUp()
-		val indirection = reader.value.trim().indirection
-		reader.moveDown()
-		val name = reader.value
-		reader.moveUp()
-		val array = reader.value.trim().let {
-			if (it.isEmpty())
-				null
-			else if (it.startsWith('[')) {
-				if (reader.hasMoreChildren()) {
-					try {
-						reader.moveDown()
-						"\"${reader.value}\""
-					} finally {
-						reader.moveUp()
-						if (reader.hasMoreChildren() || reader.value != "]")
-							throw IllegalStateException()
-					}
-				} else if (it.endsWith(']'))
-					it.substring(1, it.length - 1)
-				else
-					throw IllegalStateException()
-			} else
-				throw IllegalStateException(it)
-		}
-
-		return Field(modifier, type.toString(), indirection, name, array, attribs)
-	}
-
-	override fun canConvert(type: Class<*>?): Boolean = type === Field::class.java
-}
-
-internal class TypeConverter : Converter {
-	companion object {
-		private val FIELD_CONVERTED = FieldConverter()
-
-		private val FUNC_POINTER_RETURN_TYPE_REGEX = Regex("""typedef\s+(?:(const|enum|struct)\s+)?(\w+)\s*([*]*)\s*[(]""")
-		private val FUNC_POINTER_PARAM_MOD_REGEX = Regex("""[(,]\s*(\w+)?""")
-		private val FUNC_POINTER_PARAM_NAME_REGEX = Regex("""\s*([*]*)\s*(\w+)\s*[,)]""")
-	}
-
-	override fun marshal(source: Any, writer: HierarchicalStreamWriter, context: MarshallingContext) {
-		TODO()
-	}
-
-	override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any? {
-		val category = reader.getAttribute("category")
-		if (category == null) {
-			val name = reader.getAttribute("name")
-			val requires = reader.getAttribute("requires")
-			return if (name != null && requires != null) {
-				if ("vk_platform" == requires)
-					TypePlatform(name)
-				else
-					TypeSystem(requires, name)
-			} else
-				TypeIgnored
-		}
-
-		return when (category) {
-			"basetype"    -> {
-				reader.moveDown()
-				val type = reader.value
-				reader.moveUp()
-
-				reader.moveDown()
-				val name = reader.value
-				reader.moveUp()
-
-				TypeBase(type, name)
-			}
-			"bitmask"     -> {
-				val requires = reader.getAttribute("requires")
-
-				reader.moveDown()
-				// VkFlags
-				reader.moveUp()
-
-				reader.moveDown()
-				val name = reader.value
-				reader.moveUp()
-
-				TypeBitmask(requires, name)
-			}
-			"handle"      -> {
-				val parent = reader.getAttribute("parent")
-
-				reader.moveDown()
-				val type = reader.value
-				reader.moveUp()
-
-				reader.moveDown()
-				val name = reader.value
-				reader.moveUp()
-
-				TypeHandle(parent, type, name)
-			}
-			"enum"        -> {
-				TypeEnum(reader.getAttribute("name"))
-			}
-			"funcpointer" -> {
-				val proto = reader.let {
-					val (modifier, type, indirection) = FUNC_POINTER_RETURN_TYPE_REGEX.find(it.value)!!.destructured
-					it.moveDown()
-					val name = it.value
-					it.moveUp()
-
-					Field(modifier, type, indirection.indirection, name, null, emptyMap())
-				}
-
-				val params = ArrayList<Field>()
-				while (reader.hasMoreChildren()) {
-					val (modifier) = FUNC_POINTER_PARAM_MOD_REGEX.find(reader.value)!!.destructured
-
-					val type = StringBuilder()
-					reader.moveDown()
-					type.append(reader.value)
-					reader.moveUp()
-
-					val (indirection, paramName) = FUNC_POINTER_PARAM_NAME_REGEX.find(reader.value)!!.destructured
-
-					params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, emptyMap()))
-				}
-
-				TypeFuncpointer(proto, params)
-			}
-			"union",
-			"struct"      -> {
-				val name = reader.getAttribute("name")
-				val returnedonly = reader.getAttribute("returnedonly") != null
-
-				val members = ArrayList<Field>()
-				while (reader.hasMoreChildren()) {
-					reader.moveDown()
-					if (reader.nodeName == "member")
-						members.add(FIELD_CONVERTED.unmarshal(reader, context) as Field)
-					reader.moveUp()
-				}
-
-				TypeStruct(category, name, returnedonly, members)
-			}
-			else          -> TypeIgnored
-		}
-	}
-
-	override fun canConvert(type: Class<*>?): Boolean = type == Type::class.java
-}
-
-private fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
-	xs.alias("registry", Registry::class.java)
-
-	VendorID::class.java.let {
-		xs.alias("vendorid", it)
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "id")
-		xs.useAttributeFor(it, "comment")
-	}
-
-	Tag::class.java.let {
-		xs.alias("tag", it)
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "author")
-		xs.useAttributeFor(it, "contact")
-	}
-
-	Type::class.java.let {
-		xs.registerConverter(TypeConverter())
-
-		xs.alias("type", it)
-	}
-
-	Enums::class.java.let {
-		xs.addImplicitCollection(Registry::class.java, "enums", "enums", it)
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "type")
-		xs.useAttributeFor(it, "comment")
-	}
-
-	Enum::class.java.let {
-		xs.addImplicitCollection(Enums::class.java, "enums", "enum", it)
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "bitpos")
-		xs.useAttributeFor(it, "value")
-		xs.useAttributeFor(it, "comment")
-	}
-
-	Command::class.java.let {
-		xs.alias("command", it)
-		xs.useAttributeFor(it, "successcodes")
-		xs.useAttributeFor(it, "errorcodes")
-	}
-
-	Field::class.java.let {
-		xs.registerConverter(FieldConverter())
-
-		xs.alias("proto", it)
-		xs.addImplicitCollection(Command::class.java, "params", "param", it)
-
-		xs.useAttributeFor(it, "optional")
-		xs.useAttributeFor(it, "len")
-		xs.useAttributeFor(it, "noautovalidity")
-		xs.useAttributeFor(it, "externsync")
-	}
-
-	xs.alias("validity", Validity::class.java)
-	xs.addImplicitCollection(ImplicitExternSyncParams::class.java, "params", "param", Field::class.java)
-
-	Feature::class.java.let {
-		xs.addImplicitCollection(Registry::class.java, "features", "feature", it)
-		xs.useAttributeFor(it, "api")
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "number")
-	}
-
-	Require::class.java.let {
-		xs.addImplicitCollection(Feature::class.java, "requires", "require", it)
-		xs.useAttributeFor(it, "comment")
-	}
-
-	TypeRef::class.java.let {
-		xs.addImplicitCollection(Require::class.java, "types", "type", it)
-		xs.useAttributeFor(it, "name")
-	}
-
-	EnumRef::class.java.let {
-		xs.addImplicitCollection(Require::class.java, "enums", "enum", it)
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "value")
-		xs.useAttributeFor(it, "offset")
-		xs.useAttributeFor(it, "dir")
-		xs.useAttributeFor(it, "extends")
-	}
-
-	CommandRef::class.java.let {
-		xs.addImplicitCollection(Require::class.java, "commands", "command", it)
-		xs.useAttributeFor(it, "name")
-	}
-
-	Extension::class.java.let {
-		xs.alias("extension", it)
-		xs.useAttributeFor(it, "name")
-		xs.useAttributeFor(it, "number")
-		xs.useAttributeFor(it, "type")
-		xs.useAttributeFor(it, "supported")
-	}
-
-	xs
-}.fromXML(registry.toFile()) as Registry
 
 val HEADER = """/*
  * Copyright LWJGL. All rights reserved.
@@ -509,23 +89,27 @@ fun main(args: Array<String>) {
 	val commands = registry.commands.asSequence()
 		.associateBy { it.proto.name }
 
-	val extensionTypes = registry.extensions.asSequence()
-		.mapNotNull { it.require.types }
-		.flatMap { it.asSequence().map { it.name } }
-		.toSet()
+	val vulkanPackage = vulkanPath.replace('/', '.')
 
 	// TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
 	val featureTypes = getDistinctTypes(registry.features[0].requires.asSequence(), commands, types)
 
-	val vulkanPackage = vulkanPath.replace('/', '.')
-
-	generateTypes(root, vulkanPackage, types, structs, featureTypes)
-
+	generateTypes(root, vulkanPackage, "VKTypes", types, structs, featureTypes)
 	registry.features.forEach { feature ->
 		generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, featureTypes)
 	}
 
-	//registry.
+	val extensions = registry.extensions.asSequence()
+		.filter { it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
+
+	val extensionTypes = getDistinctTypes(extensions.map { it.require }, commands, types)
+		.filter { !featureTypes.contains(it) }
+		.toSet()
+
+	generateTypes(root, vulkanPackage, "ExtensionTypes", types, structs, extensionTypes)
+	extensions.forEach { extension ->
+		generateExtension(root, vulkanPackage, types, enums, structs, commands, extension)
+	}
 }
 
 /*
@@ -656,39 +240,40 @@ else
 private fun generateTypes(
 	root: Path,
 	vulkanPackage: String,
+	template: String,
 	types: Map<String, Type>,
 	structs: Map<String, TypeStruct>,
-	featureTypes: Set<Type>
+	templateTypes: Set<Type>
 ) {
-	val template = "VKTypes"
 	val file = root.resolve("$template.kt")
 
 	LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
 		writer.print(HEADER)
 		writer.print("""package $vulkanPackage
 
-import org.lwjgl.generator.*
+import org.lwjgl.generator.*${if (templateTypes.any { it is TypeSystem }) """
+import org.lwjgl.system.linux.*
+import org.lwjgl.system.windows.*""" else ""}
 
 // Handle types
-${featureTypes
+${templateTypes
 			.filterIsInstance(TypeHandle::class.java)
 			.map { "val ${it.name} = ${it.type}(\"${it.name}\")" }
 			.joinToString("\n")}
 
 // Enum types
-${featureTypes
+${templateTypes
 			.filterIsInstance(TypeEnum::class.java)
 			.map { "val ${it.name} = \"${it.name}\".enumType" }
 			.joinToString("\n")}
 
 // Bitmask types
-${featureTypes
+${templateTypes
 			.filterIsInstance(TypeBitmask::class.java)
 			.map { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }
 			.joinToString("\n")}
 
-// Function pointer types
-${featureTypes
+${templateTypes
 			.filterIsInstance(TypeFuncpointer::class.java)
 			.map {
 				"""val ${it.name} = "${it.name}".callback(
@@ -701,10 +286,14 @@ ${featureTypes
 	useSystemCallConvention()
 }"""
 			}
-			.joinToString("\n\n")}
+			.joinToString("\n\n").let {
+			if (it.isNotEmpty())
+				"""// Function pointer types
+$it
 
-// Struct types
-${featureTypes
+""" else ""
+		}}// Struct types
+${templateTypes
 			.filterIsInstance(TypeStruct::class.java)
 			.map {
 				"""val ${it.name} = struct(VULKAN_PACKAGE, "${it.name}"${if (it.returnedonly) ", mutable = false" else ""}) {
@@ -768,6 +357,15 @@ import org.lwjgl.generator.*
 import $vulkanPackage.*
 
 val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING) {
+	javaImport(
+		"org.lwjgl.vulkan.VK",
+		"org.lwjgl.vulkan.VkInstance",
+		"org.lwjgl.vulkan.VkPhysicalDevice",
+		"org.lwjgl.vulkan.VkDevice",
+		"org.lwjgl.vulkan.VkQueue",
+		"org.lwjgl.vulkan.VkCommandBuffer"
+	)
+
 	documentation =
 		$QUOTES3
 		The core Vulkan ${feature.number} functionality.
@@ -808,50 +406,139 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
 	)"""
 		)
 
-		// Enums
-
-		(
-			featureTypes.asSequence()
-				.filter { it is TypeEnum || it is TypeBitmask }
-				.mapNotNull { enums[it.name] } +
-			featureTypes.asSequence()
-				.mapNotNull { if (it is TypeBitmask && it.requires != null) enums[it.requires] else null }
-		)
-			.forEach { block ->
-				writer.println("""
-	EnumConstant(
-		"${block.name}",
-
-		${block.enums.map {
-					if (it.bitpos != null)
-						"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-							"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-						}, 0x${Integer.toHexString(1 shl it.bitpos.toInt()).padStart(8, '0')})"
-					else
-						"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-							"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-						}, \"${it.value}\")"
-				}.joinToString(",\n\t\t")}
-	)""")
-			}
+		writer.printEnums(featureTypes.asSequence(), enums)
 
 		feature.requires.asSequence()
 			.filter { it.commands != null }
 			.forEach {
 				writer.println("\n\t// ${it.comment}")
-				it.commands!!.forEach {
-					val cmd = commands[it.name]!!
-					writer.print("\n\t")
-					// If we don't have a dispatchable handle, mark ICD-global
-					if (cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
-						writer.print("GlobalCommand..")
-					writer.println("""${getReturnType(cmd.proto)}(
-		"${cmd.proto.name.substring(2)}",
-		""${getParams(cmd.proto, cmd.params, types, structs)}
-	)""")
-				}
+				writer.printCommands(it.commands!!.asSequence(), types, structs, commands)
 			}
 
 		writer.println("\n}")
+	}
+}
+
+private fun generateExtension(
+	root: Path,
+	vulkanPackage: String,
+	types: Map<String, Type>,
+	enums: Map<String, Enums>,
+	structs: Map<String, TypeStruct>,
+	commands: Map<String, Command>,
+	extension: Extension
+) {
+	val name = extension.name.substring(3)
+	val template = name
+		.splitToSequence('_')
+		.map {
+			if (ABBREVIATIONS.contains(it))
+				it.toUpperCase()
+			else
+				"${it[0].toUpperCase()}${it.substring(1)}"
+		}
+		.joinToString("")
+
+	val file = root.resolve("templates/$name.kt")
+
+	LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
+		writer.print(HEADER)
+		writer.print("""package $vulkanPackage.templates
+
+import org.lwjgl.generator.*
+import $vulkanPackage.*
+
+val $name = "$template".nativeClassVK("${extension.name}", postfix = ${name.substringBefore('_')}) {
+	javaImport(
+		"org.lwjgl.vulkan.VK",
+		"org.lwjgl.vulkan.VkInstance",
+		"org.lwjgl.vulkan.VkPhysicalDevice",
+		"org.lwjgl.vulkan.VkDevice",
+		"org.lwjgl.vulkan.VkQueue",
+		"org.lwjgl.vulkan.VkCommandBuffer"
+	)
+
+	documentation =
+		$QUOTES3
+		$QUOTES3
+""")
+		extension.require.enums?.forEach {
+			if ( it.value != null) {
+				if ( it.value.startsWith('\"')) {
+					val description = if (it.name.endsWith("_EXTENSION_NAME")) "The extension name." else ""
+					writer.println("""
+		StringConstant(
+			"$description",
+
+			"${it.name}"..${it.value}
+		)""")
+				} else {
+					val description = if (it.name.endsWith("_SPEC_VERSION")) "The extension specification version." else ""
+					writer.println("""
+		IntConstant(
+			"$description",
+
+			"${it.name}".."${it.value}"
+		)""")
+				}
+			}
+		}
+
+		if (extension.require.types != null)
+			writer.printEnums(extension.require.types.asSequence().map { types[it.name]!! }, enums)
+
+		if (extension.require.commands != null)
+			writer.printCommands(extension.require.commands.asSequence(), types, structs, commands)
+
+		writer.println("\n}")
+	}
+}
+
+private fun PrintWriter.printEnums(types: Sequence<Type>, enums: Map<String, Enums>) {
+	types
+		.filter { it is TypeEnum || it is TypeBitmask }
+		.flatMap {
+			if (it is TypeBitmask && it.requires != null)
+				sequenceOf(it.name, it.requires)
+			else
+				sequenceOf(it.name)
+		}
+		.distinct()
+		.mapNotNull { enums[it] }
+		.forEach { block ->
+			println("""
+	EnumConstant(
+		"${block.name}",
+
+		${block.enums.map {
+				if (it.bitpos != null)
+					"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
+						"$QUOTES3${it.comment}$QUOTES3" else "\"\""
+					}, 0x${Integer.toHexString(1 shl it.bitpos.toInt()).padStart(8, '0')})"
+				else
+					"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
+						"$QUOTES3${it.comment}$QUOTES3" else "\"\""
+					}, \"${it.value}\")"
+			}.joinToString(",\n\t\t")}
+	)""")
+		}
+}
+
+private fun PrintWriter.printCommands(
+	commandRefs: Sequence<CommandRef>,
+	types: Map<String, Type>,
+	structs: Map<String, TypeStruct>,
+	commands: Map<String, Command>
+) {
+	commandRefs.forEach {
+		val cmd = commands[it.name]!!
+		print("\n\t")
+		// If we don't have a dispatchable handle, mark ICD-global
+		if (cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
+			print("GlobalCommand..")
+		println("""${getReturnType(cmd.proto)}(
+		"${cmd.proto.name.substring(2)}",
+		""${getParams(cmd.proto, cmd.params, types, structs)}
+	)""")
 	}
 }
