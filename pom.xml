@@ -13,8 +13,8 @@
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<kotlin.version>1.0.4</kotlin.version>
 		<main.class>org.lwjgl.vulkangen.RegistryKt</main.class>
-		<path.vulkan-docs>D:/PROJECTS/DEPENDENCIES/KHRONOS/Vulkan-Docs</path.vulkan-docs>
-		<path.lwjgl3>C:/PROJECTS/LWJGL Project/LWJGL 3.0/</path.lwjgl3>
+		<path.vulkan-docs>../../DEPENDENCIES/KHRONOS/Vulkan-Docs</path.vulkan-docs>
+		<path.lwjgl3>../lwjgl3</path.lwjgl3>
 	</properties>
 	<dependencies>
 		<dependency>
