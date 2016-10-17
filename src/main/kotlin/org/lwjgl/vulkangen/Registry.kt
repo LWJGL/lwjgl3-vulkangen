@@ -211,7 +211,7 @@ internal class FieldConverter : Converter {
 		val array = reader.value.trim().let {
 			if (it.isEmpty())
 				null
-			else if (it.startsWith('[') ) {
+			else if (it.startsWith('[')) {
 				if (reader.hasMoreChildren()) {
 					try {
 						reader.moveDown()
@@ -263,7 +263,7 @@ internal class TypeConverter : Converter {
 		}
 
 		return when (category) {
-			"basetype" -> {
+			"basetype"    -> {
 				reader.moveDown()
 				val type = reader.value
 				reader.moveUp()
@@ -274,7 +274,7 @@ internal class TypeConverter : Converter {
 
 				TypeBase(type, name)
 			}
-			"bitmask" -> {
+			"bitmask"     -> {
 				val requires = reader.getAttribute("requires")
 
 				reader.moveDown()
@@ -287,7 +287,7 @@ internal class TypeConverter : Converter {
 
 				TypeBitmask(requires, name)
 			}
-			"handle" -> {
+			"handle"      -> {
 				val parent = reader.getAttribute("parent")
 
 				reader.moveDown()
@@ -300,7 +300,9 @@ internal class TypeConverter : Converter {
 
 				TypeHandle(parent, type, name)
 			}
-			"enum" -> { TypeEnum(reader.getAttribute("name")) }
+			"enum"        -> {
+				TypeEnum(reader.getAttribute("name"))
+			}
 			"funcpointer" -> {
 				val proto = reader.let {
 					val (modifier, type, indirection) = FUNC_POINTER_RETURN_TYPE_REGEX.find(it.value)!!.destructured
@@ -328,7 +330,7 @@ internal class TypeConverter : Converter {
 				TypeFuncpointer(proto, params)
 			}
 			"union",
-			"struct" -> {
+			"struct"      -> {
 				val name = reader.getAttribute("name")
 				val returnedonly = reader.getAttribute("returnedonly") != null
 
@@ -342,7 +344,7 @@ internal class TypeConverter : Converter {
 
 				TypeStruct(category, name, returnedonly, members)
 			}
-			else -> TypeIgnored
+			else          -> TypeIgnored
 		}
 	}
 
@@ -502,8 +504,7 @@ fun main(args: Array<String>) {
 		.associateBy(Type::name)
 
 	val enums = registry.enums.asSequence()
-		.withIndex()
-		.associateBy { it.value.name }
+		.associateBy { it.name }
 
 	val commands = registry.commands.asSequence()
 		.associateBy { it.proto.name }
@@ -517,172 +518,14 @@ fun main(args: Array<String>) {
 	val featureTypes = getDistinctTypes(registry.features[0].requires.asSequence(), commands, types)
 
 	val vulkanPackage = vulkanPath.replace('/', '.')
-	run {
-		val template = "VKTypes"
-		val file = root.resolve("$template.kt")
 
-		LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
-			writer.print(HEADER)
-			writer.print("""package $vulkanPackage
-
-import org.lwjgl.generator.*
-
-// Handle types
-${featureTypes
-				.filterIsInstance(TypeHandle::class.java)
-				.map { "val ${it.name} = ${it.type}(\"${it.name}\")" }
-				.joinToString("\n")}
-
-// Enum types
-${featureTypes
-				.filterIsInstance(TypeEnum::class.java)
-				.map { "val ${it.name} = \"${it.name}\".enumType" }
-				.joinToString("\n")}
-
-// Bitmask types
-${featureTypes
-				.filterIsInstance(TypeBitmask::class.java)
-				.map { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }
-				.joinToString("\n")}
-
-// Function pointer types
-${featureTypes
-				.filterIsInstance(TypeFuncpointer::class.java)
-				.map {
-					"""val ${it.name} = "${it.name}".callback(
-	VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-	""${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
-) {
-	documentation =
-		$QUOTES3
-		$QUOTES3
-	useSystemCallConvention()
-}"""
-				}
-				.joinToString("\n\n")}
-
-// Struct types
-${featureTypes
-				.filterIsInstance(TypeStruct::class.java)
-				.map {
-					"""val ${it.name} = struct(VULKAN_PACKAGE, "${it.name}"${if (it.returnedonly) ", mutable = false" else ""}) {
-	documentation =
-		$QUOTES3
-		$QUOTES3
-
-	${it.members.asSequence()
-						.map {
-							if (it.name == "sType" && it.type == "VkStructureType" && it.indirection.isEmpty())
-								"sType(this)"
-							else if (it.name == "pNext" && it.type == "void" && it.indirection == "_p")
-								"pNext()"
-							else {
-								val nullable = if (it.indirection.isNotEmpty() && it.optional != null) "nullable.." else ""
-
-								val const = if (it.modifier == "const") "const.." else ""
-
-								val encoding = if (it.len.contains("null-terminated") || (it.array != null && it.type == "char")) "UTF8" else ""
-								val type = if (it.type == "void" && it.indirection == "_p" && it.len.none())
-									"voidptr"
-								else
-									"${it.type}$encoding${if (it.indirection.isNotEmpty() && types[it.type].let { it !is TypePlatform })
-										it.indirection.replace('_', '.')
-									else
-										it.indirection
-									}"
-
-								if (it.array == null)
-									"$nullable$const$type.member(\"${it.name}\", \"\")"
-								else
-									"$nullable$const$type.array(\"${it.name}\", \"\", size = ${it.array})"
-							}
-						}
-						.joinToString("\n\t")}
-}.nativeType"""
-				}
-				.joinToString("\n\n")}
-""")
-		}
-	}
+	generateTypes(root, vulkanPackage, types, structs, featureTypes)
 
 	registry.features.forEach { feature ->
-		val template = "VK${feature.number.substringBefore('.')}${feature.number.substringAfter('.')}"
-		val file = root.resolve("templates/$template.kt")
-
-		LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
-			writer.print(HEADER)
-			// TODO:
-			writer.print("""package $vulkanPackage.templates
-
-import org.lwjgl.generator.*
-import $vulkanPackage.*
-
-val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING) {
-	documentation =
-		$QUOTES3
-		The core Vulkan ${feature.number} functionality.
-		$QUOTES3
-""")
-			// Enums
-
-			(
-				featureTypes.asSequence()
-					.filter { it is TypeEnum || it is TypeBitmask }
-					.mapNotNull { enums[it.name] } +
-					featureTypes.asSequence()
-						.mapNotNull { if (it is TypeBitmask && it.requires != null) enums[it.requires] else null }
-				)
-				.forEach {
-					val block = it.value
-
-					writer.println("""
-	EnumConstant(
-		"${block.name} (${it.javaClass})",
-
-		${block.enums.map {
-						if (it.bitpos != null)
-							"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-								"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-							}, 0x${Integer.toHexString(1 shl it.bitpos.toInt()).padStart(8, '0')})"
-						else
-							"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-								"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-							}, \"${it.value}\")"
-					}.joinToString(",\n\t\t")}
-	)""")
-				}
-
-			feature.requires.asSequence()
-				.filter { it.commands != null }
-				.forEach {
-					writer.println("\n\t// ${it.comment}")
-					it.commands!!.forEach {
-						val cmd = commands[it.name]!!
-						writer.print("\n\t")
-						// If we don't have a dispatchable handle, mark ICD-global
-						if (cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
-							writer.print("GlobalCommand..")
-						writer.println("""${getReturnType(cmd.proto)}(
-		"${cmd.proto.name.substring(2)}",
-		""${getParams(cmd.proto, cmd.params, types, structs)}
-	)""")
-					}
-				}
-
-			writer.println("\n}")
-		}
+		generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, featureTypes)
 	}
 
-}
-
-private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> {
-	val type = types[name]!!
-	return if (type is TypeStruct)
-		sequenceOf(type) + type.members.asSequence().flatMap { getDistinctTypes(it.type, types) }
-	else if (type is TypeFuncpointer)
-		getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
-	else
-		sequenceOf(type)
+	//registry.
 }
 
 /*
@@ -722,15 +565,26 @@ private fun getDistinctTypes(
 	}
 	.toSet()
 
+private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> {
+	val type = types[name]!!
+	return if (type is TypeStruct)
+		type.members.asSequence().flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
+	else if (type is TypeFuncpointer)
+		getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
+	else
+		sequenceOf(type)
+}
+
+
 private fun getReturnType(proto: Field): String = proto.let { "${if (it.modifier == "const") "const.." else ""}${it.type}${it.indirection}" }
 
-private fun getCheck(param: Field, structs: Map<String, TypeStruct>, forceIN: Boolean): String {
-	if (param.indirection.isNotEmpty()) { // pointer
-		if (param.len.none()) { // not auto-sized
+private fun getCheck(param: Field, indirection: String, structs: Map<String, TypeStruct>, forceIN: Boolean): String {
+	if (indirection.isNotEmpty()) { // pointer
+		if (param.array != null) {
+			return "Check(${param.array}).."
+		} else if (param.len.none()) { // not auto-sized
 			if (!forceIN && param.modifier != "const" && !structs.containsKey(param.type)) // output, non-struct
 				return "Check(1).."
-		} else if (param.array != null) {
-			return "Check($param.array).."
 		} else {
 			// TODO: support more? this currently only supports "struct.member"
 			val customExpression = param.len.firstOrNull { it.contains("::") }
@@ -745,24 +599,34 @@ private fun getParams(returns: Field, params: List<Field>, types: Map<String, Ty
 	""
 else
 	params.asSequence().map { param ->
+		val indirection = param.indirection.let {
+			if (param.array != null) {
+				if (it.isEmpty())
+					"_p"
+				else
+					"${it}p"
+			} else
+				it
+		}
+
 		val autoSize = params.asSequence()
 			.filter { it.len.contains(param.name) }
-			.map { it.name }
+			.map { "\"${it.name}\"" }
 			.joinToString(",")
 			.let {
 				if (it.isEmpty())
 					""
 				else
-					"AutoSize(\"$it\").."
+					"AutoSize($it).."
 			}
 
-		val check = getCheck(param, structs, forceIN)
+		val check = getCheck(param, indirection, structs, forceIN)
 
-		val nullable = if (param.indirection.isNotEmpty() && (
+		val nullable = if (indirection.isNotEmpty() && (
 			// the parameter is optional
 			"true" == param.optional ||
-				// the AutoSize param is optional
-				param.len.any() && params.any { param.len.contains(it.name) && "true" == it.optional })
+			// the AutoSize param is optional
+			param.len.any() && params.any { param.len.contains(it.name) && "true" == it.optional })
 		) "nullable.." else ""
 
 		val const = if (param.modifier == "const") "const.." else ""
@@ -770,16 +634,16 @@ else
 		val encoding = if (param.len.contains("null-terminated") || (param.array != null && param.type == "char")) {
 			if (returns.type == "PFN_vkVoidFunction") "ASCII" else "UTF8"
 		} else ""
-		val type = if (param.type == "void" && param.indirection == "_p" && param.len.none() && check.isEmpty())
+		val type = if (param.type == "void" && indirection == "_p" && param.len.none() && check.isEmpty())
 			"voidptr"
 		else
-			"${param.type}$encoding${if (param.indirection.isNotEmpty() && types[param.type].let { it !is TypePlatform })
-				param.indirection.replace('_', '.')
+			"${param.type}$encoding${if (indirection.isNotEmpty() && types[param.type].let { it !is TypePlatform })
+				indirection.replace('_', '.')
 			else
-				param.indirection
+				indirection
 			}"
 
-		val paramType = if (forceIN || param.indirection.isEmpty() || param.modifier == "const")
+		val paramType = if (forceIN || indirection.isEmpty() || param.modifier == "const")
 			"IN"
 		else if ("false,true" == param.optional)
 			"INOUT"
@@ -788,3 +652,206 @@ else
 
 		"$autoSize$check$nullable$const$type.$paramType(\"${param.name}\", \"\")"
 	}.joinToString(",\n$indent", prefix = ",\n\n$indent")
+
+private fun generateTypes(
+	root: Path,
+	vulkanPackage: String,
+	types: Map<String, Type>,
+	structs: Map<String, TypeStruct>,
+	featureTypes: Set<Type>
+) {
+	val template = "VKTypes"
+	val file = root.resolve("$template.kt")
+
+	LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
+		writer.print(HEADER)
+		writer.print("""package $vulkanPackage
+
+import org.lwjgl.generator.*
+
+// Handle types
+${featureTypes
+			.filterIsInstance(TypeHandle::class.java)
+			.map { "val ${it.name} = ${it.type}(\"${it.name}\")" }
+			.joinToString("\n")}
+
+// Enum types
+${featureTypes
+			.filterIsInstance(TypeEnum::class.java)
+			.map { "val ${it.name} = \"${it.name}\".enumType" }
+			.joinToString("\n")}
+
+// Bitmask types
+${featureTypes
+			.filterIsInstance(TypeBitmask::class.java)
+			.map { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }
+			.joinToString("\n")}
+
+// Function pointer types
+${featureTypes
+			.filterIsInstance(TypeFuncpointer::class.java)
+			.map {
+				"""val ${it.name} = "${it.name}".callback(
+	VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
+	""${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
+) {
+	documentation =
+		$QUOTES3
+		$QUOTES3
+	useSystemCallConvention()
+}"""
+			}
+			.joinToString("\n\n")}
+
+// Struct types
+${featureTypes
+			.filterIsInstance(TypeStruct::class.java)
+			.map {
+				"""val ${it.name} = struct(VULKAN_PACKAGE, "${it.name}"${if (it.returnedonly) ", mutable = false" else ""}) {
+	documentation =
+		$QUOTES3
+		$QUOTES3
+
+	${it.members.asSequence()
+					.map {
+						if (it.name == "sType" && it.type == "VkStructureType" && it.indirection.isEmpty())
+							"sType(this)"
+						else if (it.name == "pNext" && it.type == "void" && it.indirection == "_p")
+							"pNext()"
+						else {
+							val nullable = if (it.indirection.isNotEmpty() && it.optional != null) "nullable.." else ""
+
+							val const = if (it.modifier == "const") "const.." else ""
+
+							val encoding = if (it.len.contains("null-terminated") || (it.array != null && it.type == "char")) "UTF8" else ""
+							val type = if (it.type == "void" && it.indirection == "_p" && it.len.none())
+								"voidptr"
+							else
+								"${it.type}$encoding${if (it.indirection.isNotEmpty() && types[it.type].let { it !is TypePlatform })
+									it.indirection.replace('_', '.')
+								else
+									it.indirection
+								}"
+
+							if (it.array == null)
+								"$nullable$const$type.member(\"${it.name}\", \"\")"
+							else
+								"$nullable$const$type.array(\"${it.name}\", \"\", size = ${it.array})"
+						}
+					}
+					.joinToString("\n\t")}
+}"""
+			}
+			.joinToString("\n\n")}
+""")
+	}
+}
+
+private fun generateFeature(
+	root: Path,
+	vulkanPackage: String,
+	types: Map<String, Type>,
+	enums: Map<String, Enums>,
+	structs: Map<String, TypeStruct>,
+	commands: Map<String, Command>,
+	feature: Feature,
+	featureTypes: Set<Type>
+) {
+	val template = "VK${feature.number.substringBefore('.')}${feature.number.substringAfter('.')}"
+	val file = root.resolve("templates/$template.kt")
+
+	LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
+		writer.print(HEADER)
+		writer.print("""package $vulkanPackage.templates
+
+import org.lwjgl.generator.*
+import $vulkanPackage.*
+
+val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING) {
+	documentation =
+		$QUOTES3
+		The core Vulkan ${feature.number} functionality.
+		$QUOTES3
+""")
+		// API Constants
+
+		writer.println("""
+	IntConstant(
+		"API Constants",
+
+		${enums["API Constants"]!!.enums.asSequence()
+			.filter { !it.value!!.contains('L') && !it.value.contains('f') }
+			.map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace("U", "")}\"" }
+			.joinToString(",\n\t\t")}
+	)"""
+		)
+
+		writer.println("""
+	FloatConstant(
+		"API Constants",
+
+		${enums["API Constants"]!!.enums.asSequence()
+			.filter { it.value!!.contains('f') }
+			.map { "\"${it.name.substring(3)}\"..\"${it.value}\"" }
+			.joinToString(",\n\t\t")}
+	)"""
+		)
+
+		writer.println("""
+	LongConstant(
+		"API Constants",
+
+		${enums["API Constants"]!!.enums.asSequence()
+			.filter { it.value!!.contains('L') }
+			.map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace("U?L+".toRegex(), "L")}\"" }
+			.joinToString(",\n\t\t")}
+	)"""
+		)
+
+		// Enums
+
+		(
+			featureTypes.asSequence()
+				.filter { it is TypeEnum || it is TypeBitmask }
+				.mapNotNull { enums[it.name] } +
+			featureTypes.asSequence()
+				.mapNotNull { if (it is TypeBitmask && it.requires != null) enums[it.requires] else null }
+		)
+			.forEach { block ->
+				writer.println("""
+	EnumConstant(
+		"${block.name}",
+
+		${block.enums.map {
+					if (it.bitpos != null)
+						"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
+							"$QUOTES3${it.comment}$QUOTES3" else "\"\""
+						}, 0x${Integer.toHexString(1 shl it.bitpos.toInt()).padStart(8, '0')})"
+					else
+						"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
+							"$QUOTES3${it.comment}$QUOTES3" else "\"\""
+						}, \"${it.value}\")"
+				}.joinToString(",\n\t\t")}
+	)""")
+			}
+
+		feature.requires.asSequence()
+			.filter { it.commands != null }
+			.forEach {
+				writer.println("\n\t// ${it.comment}")
+				it.commands!!.forEach {
+					val cmd = commands[it.name]!!
+					writer.print("\n\t")
+					// If we don't have a dispatchable handle, mark ICD-global
+					if (cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
+						writer.print("GlobalCommand..")
+					writer.println("""${getReturnType(cmd.proto)}(
+		"${cmd.proto.name.substring(2)}",
+		""${getParams(cmd.proto, cmd.params, types, structs)}
+	)""")
+				}
+			}
+
+		writer.println("\n}")
+	}
+}
