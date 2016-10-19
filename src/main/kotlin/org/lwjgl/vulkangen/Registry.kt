@@ -32,6 +32,11 @@ val ABBREVIATIONS = setOf(
 	"pvrtc"
 )
 
+val IMPORTS = mapOf(
+	"X11/Xlib.h" to "org.lwjgl.system.linux.*",
+	"windows.h" to "org.lwjgl.system.windows.*"
+)
+
 val HEADER = """/*
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
@@ -93,10 +98,11 @@ fun main(args: Array<String>) {
 
 	// TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
 	val featureTypes = getDistinctTypes(registry.features[0].requires.asSequence(), commands, types)
-
 	generateTypes(root, vulkanPackage, "VKTypes", types, structs, featureTypes)
+
+	var enumsSeen = featureTypes.filterEnums(enums)
 	registry.features.forEach { feature ->
-		generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, featureTypes)
+		generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, enumsSeen)
 	}
 
 	val extensions = registry.extensions.asSequence()
@@ -108,7 +114,9 @@ fun main(args: Array<String>) {
 
 	generateTypes(root, vulkanPackage, "ExtensionTypes", types, structs, extensionTypes)
 	extensions.forEach { extension ->
-		generateExtension(root, vulkanPackage, types, enums, structs, commands, extension)
+		// Type declarations for enums are missing in some extensions.
+		// We generate <enums> the first time we encounter them.
+		enumsSeen = generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
 	}
 }
 
@@ -137,12 +145,11 @@ private fun getDistinctTypes(
 		)
 			.flatten()
 			.distinct()
-			// recurse into struct types
 			.flatMap {
 				if (!types.containsKey(it)) {
-					println("Ignoring feature type: $it")
 					emptySequence<Type>()
 				} else {
+					// recurse into struct types
 					getDistinctTypes(it, types)
 				}
 			}
@@ -183,16 +190,6 @@ private fun getParams(returns: Field, params: List<Field>, types: Map<String, Ty
 	""
 else
 	params.asSequence().map { param ->
-		val indirection = param.indirection.let {
-			if (param.array != null) {
-				if (it.isEmpty())
-					"_p"
-				else
-					"${it}p"
-			} else
-				it
-		}
-
 		val autoSize = params.asSequence()
 			.filter { it.len.contains(param.name) }
 			.map { "\"${it.name}\"" }
@@ -204,9 +201,20 @@ else
 					"AutoSize($it).."
 			}
 
-		val check = getCheck(param, indirection, structs, forceIN)
+		val indirection = param.indirection.let {
+			if (param.array != null) {
+				if (it.isEmpty())
+					"_p"
+				else
+					"${it}p"
+			} else
+				it
+		}
 
-		val nullable = if (indirection.isNotEmpty() && (
+		val forceINParam = forceIN || types[param.type] is TypeSystem || /* TODO: validate this */ param.externsync != null
+		val check = getCheck(param, indirection, structs, forceINParam)
+
+		val nullable = if ((indirection.isNotEmpty() || types[param.type] is TypeFuncpointer) && (
 			// the parameter is optional
 			"true" == param.optional ||
 			// the AutoSize param is optional
@@ -227,7 +235,7 @@ else
 				indirection
 			}"
 
-		val paramType = if (forceIN || indirection.isEmpty() || param.modifier == "const")
+		val paramType = if (forceINParam || indirection.isEmpty() || param.modifier == "const")
 			"IN"
 		else if ("false,true" == param.optional)
 			"INOUT"
@@ -295,37 +303,63 @@ $it
 		}}// Struct types
 ${templateTypes
 			.filterIsInstance(TypeStruct::class.java)
-			.map {
-				"""val ${it.name} = struct(VULKAN_PACKAGE, "${it.name}"${if (it.returnedonly) ", mutable = false" else ""}) {
-	documentation =
+			.map { struct ->
+				"""val ${struct.name} = ${struct.type}(VULKAN_PACKAGE, "${struct.name}"${if (struct.returnedonly) ", mutable = false" else ""}) {
+	${if (struct.members.any {
+					// TODO: This is too simple
+					it.array?.startsWith("\"VK_MAX_") ?: false
+				}) "javaImport(\"static org.lwjgl.vulkan.VK10.*\")\n\t" else ""}documentation =
 		$QUOTES3
 		$QUOTES3
 
-	${it.members.asSequence()
-					.map {
-						if (it.name == "sType" && it.type == "VkStructureType" && it.indirection.isEmpty())
+	${struct.members.asSequence()
+					.map { member ->
+						if (member.name == "sType" && member.type == "VkStructureType" && member.indirection.isEmpty())
 							"sType(this)"
-						else if (it.name == "pNext" && it.type == "void" && it.indirection == "_p")
+						else if (member.name == "pNext" && member.type == "void" && member.indirection == "_p")
 							"pNext()"
 						else {
-							val nullable = if (it.indirection.isNotEmpty() && it.optional != null) "nullable.." else ""
+							val autoSize = struct.members.asSequence()
+								.filter { it.len.contains(member.name) }
+								.map { "\"${it.name}\"" }
+								.joinToString(",")
+								.let {
+									if (it.isEmpty())
+										""
+									else if (member.optional != null)
+										"AutoSize($it, optional = true).."
+									else if (struct.members.asSequence()
+										         .filter { it.len.contains(member.name) && it.noautovalidity != null }
+										         .count() > 1
+									)
+										"AutoSize($it, atLeastOne = true).."
+									else
+										"AutoSize($it).."
+								}
 
-							val const = if (it.modifier == "const") "const.." else ""
+							val nullable = if ((member.optional != null || (member.noautovalidity != null && member.len.any() && member.len.first().let { len ->
+								struct.members.asSequence()
+									.filter { it.len.contains(len) }
+									.count() > 1
+							})) && (member.indirection.isNotEmpty() || types[member.type] is TypeFuncpointer)) "nullable.." else ""
 
-							val encoding = if (it.len.contains("null-terminated") || (it.array != null && it.type == "char")) "UTF8" else ""
-							val type = if (it.type == "void" && it.indirection == "_p" && it.len.none())
+							val const = if (member.modifier == "const") "const.." else ""
+
+							val encoding = if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
+							val type = if (member.type == "void" && member.indirection == "_p" && member.len.none())
 								"voidptr"
 							else
-								"${it.type}$encoding${if (it.indirection.isNotEmpty() && types[it.type].let { it !is TypePlatform })
-									it.indirection.replace('_', '.')
+								"${member.type}$encoding${if (member.indirection.isNotEmpty() && types[member.type].let { it !is TypePlatform })
+									member.indirection.replace('_', '.')
 								else
-									it.indirection
+									member.indirection
 								}"
 
-							if (it.array == null)
-								"$nullable$const$type.member(\"${it.name}\", \"\")"
-							else
-								"$nullable$const$type.array(\"${it.name}\", \"\", size = ${it.array})"
+							if (member.array == null) {
+								val memberType = if (member.len.any() && types[member.type] is TypeStruct) "buffer" else "member"
+								"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"\")"
+							} else
+								"$autoSize$nullable$const$type.array(\"${member.name}\", \"\", size = ${member.array})"
 						}
 					}
 					.joinToString("\n\t")}
@@ -344,7 +378,7 @@ private fun generateFeature(
 	structs: Map<String, TypeStruct>,
 	commands: Map<String, Command>,
 	feature: Feature,
-	featureTypes: Set<Type>
+	featureEnums: Sequence<Enums>
 ) {
 	val template = "VK${feature.number.substringBefore('.')}${feature.number.substringAfter('.')}"
 	val file = root.resolve("templates/$template.kt")
@@ -406,7 +440,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
 	)"""
 		)
 
-		writer.printEnums(featureTypes.asSequence(), enums)
+		writer.printEnums(featureEnums)
 
 		feature.requires.asSequence()
 			.filter { it.commands != null }
@@ -426,8 +460,14 @@ private fun generateExtension(
 	enums: Map<String, Enums>,
 	structs: Map<String, TypeStruct>,
 	commands: Map<String, Command>,
-	extension: Extension
-) {
+	extension: Extension,
+	enumsSeen: Sequence<Enums>
+): Sequence<Enums> {
+	val distinctTypes = getDistinctTypes(sequenceOf(extension.require), commands, types)
+	val extensionEnums = distinctTypes
+		.filterEnums(enums)
+		.filter { extEnum -> enumsSeen.none { extEnum.name == it.name } }
+
 	val name = extension.name.substring(3)
 	val template = name
 		.splitToSequence('_')
@@ -446,9 +486,15 @@ private fun generateExtension(
 		writer.print("""package $vulkanPackage.templates
 
 import org.lwjgl.generator.*
-import $vulkanPackage.*
+import $vulkanPackage.*${distinctTypes
+			.filterIsInstance(TypeSystem::class.java)
+			.map { it.requires }
+			.distinct()
+			.map { "\nimport ${IMPORTS[it]!!}" }
+			.joinToString()
+		}
 
-val $name = "$template".nativeClassVK("${extension.name}", postfix = ${name.substringBefore('_')}) {
+val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore('_')}) {
 	javaImport(
 		"org.lwjgl.vulkan.VK",
 		"org.lwjgl.vulkan.VkInstance",
@@ -459,69 +505,106 @@ val $name = "$template".nativeClassVK("${extension.name}", postfix = ${name.subs
 	)
 
 	documentation =
-		$QUOTES3
-		$QUOTES3
+		"The ${S}templateName extension."
 """)
-		extension.require.enums?.forEach {
-			if ( it.value != null) {
-				if ( it.value.startsWith('\"')) {
-					val description = if (it.name.endsWith("_EXTENSION_NAME")) "The extension name." else ""
-					writer.println("""
-		StringConstant(
-			"$description",
+		if (extension.require.enums != null) {
+			extension.require.enums
+				.groupBy { it.extends ?: it.name }
+				.forEach {
+					if (it.value.singleOrNull()?.value != null) {
+						it.value.first().let {
+							if (it.value != null) {
+								if (it.value.startsWith('\"')) {
+									val description = if (it.name.endsWith("_EXTENSION_NAME")) "The extension name." else ""
+									writer.println("""
+	StringConstant(
+		"$description",
 
-			"${it.name}"..${it.value}
-		)""")
-				} else {
-					val description = if (it.name.endsWith("_SPEC_VERSION")) "The extension specification version." else ""
-					writer.println("""
-		IntConstant(
-			"$description",
+		"${it.name.substring(3)}"..${it.value}
+	)""")
+								} else if (!it.value.startsWith("VK_")) { // skip aliases
+									val description = if (it.name.endsWith("_SPEC_VERSION")) "The extension specification version." else ""
+									writer.println("""
+	${if (it.name.endsWith("_SPEC_VERSION")) "Int" else "Enum"}Constant(
+		"$description",
 
-			"${it.name}".."${it.value}"
-		)""")
+		"${it.name.substring(3)}".."${it.value}"
+	)""")
+								}
+							}
+						}
+					} else {
+						writer.println("""
+	EnumConstant(
+		"${it.key}",
+
+		${it.value.asSequence()
+							.map {
+								"\"${it.name.substring(3)}\".${if (it.value != null)
+									".\"${it.value}\""
+								else if (it.offset != null)
+									".\"${offsetAsEnum(extension.number, it.offset, it.dir)}\""
+								else if (it.bitpos != null)
+									"enum(\"\", ${bitposAsHex(it.bitpos)})"
+								else
+									throw IllegalStateException()
+								}"
+							}
+							.joinToString(",\n\t\t")}
+	)""")
+					}
 				}
-			}
 		}
 
-		if (extension.require.types != null)
-			writer.printEnums(extension.require.types.asSequence().map { types[it.name]!! }, enums)
+		if (extensionEnums.any())
+			writer.printEnums(extensionEnums)
 
 		if (extension.require.commands != null)
 			writer.printCommands(extension.require.commands.asSequence(), types, structs, commands)
 
-		writer.println("\n}")
+		writer.println("}")
 	}
+
+	return enumsSeen + extensionEnums
 }
 
-private fun PrintWriter.printEnums(types: Sequence<Type>, enums: Map<String, Enums>) {
-	types
-		.filter { it is TypeEnum || it is TypeBitmask }
-		.flatMap {
-			if (it is TypeBitmask && it.requires != null)
-				sequenceOf(it.name, it.requires)
-			else
-				sequenceOf(it.name)
-		}
-		.distinct()
-		.mapNotNull { enums[it] }
-		.forEach { block ->
-			println("""
+private fun offsetAsEnum(extension_number: Int, offset: String, dir: String?) =
+	(1000000000 + (extension_number - 1) * 1000 + offset.toInt()).let {
+		if (dir != null)
+			-it
+		else
+			it
+	}
+
+private fun bitposAsHex(bitpos: String) = "0x${Integer.toHexString(1 shl bitpos.toInt()).padStart(8, '0')}"
+
+private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
+	.filter { it is TypeEnum || it is TypeBitmask }
+	.flatMap {
+		if (it is TypeBitmask && it.requires != null) {
+			sequenceOf(it.name, it.requires)
+		} else
+			sequenceOf(it.name)
+	}
+	.distinct()
+	.mapNotNull { enums[it] }
+
+private fun PrintWriter.printEnums(enums: Sequence<Enums>) = enums.forEach { block ->
+	println("""
 	EnumConstant(
 		"${block.name}",
 
 		${block.enums.map {
-				if (it.bitpos != null)
-					"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-						"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-					}, 0x${Integer.toHexString(1 shl it.bitpos.toInt()).padStart(8, '0')})"
-				else
-					"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-						"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-					}, \"${it.value}\")"
-			}.joinToString(",\n\t\t")}
+		if (it.bitpos != null)
+			"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
+				"$QUOTES3${it.comment}$QUOTES3" else "\"\""
+			}, ${bitposAsHex(it.bitpos)})"
+		else
+			"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
+				"$QUOTES3${it.comment}$QUOTES3" else "\"\""
+			}, \"${it.value}\")"
+	}.joinToString(",\n\t\t")}
 	)""")
-		}
 }
 
 private fun PrintWriter.printCommands(
@@ -538,7 +621,11 @@ private fun PrintWriter.printCommands(
 			print("GlobalCommand..")
 		println("""${getReturnType(cmd.proto)}(
 		"${cmd.proto.name.substring(2)}",
-		""${getParams(cmd.proto, cmd.params, types, structs)}
+		""${getParams(
+			cmd.proto, cmd.params, types, structs,
+			// workaround: const missing from VK_EXT_debug_marker struct params
+			forceIN = cmd.cmdbufferlevel != null
+		)}
 	)""")
 	}
 }

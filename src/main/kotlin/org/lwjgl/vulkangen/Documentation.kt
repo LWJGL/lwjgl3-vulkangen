@@ -45,7 +45,7 @@ class Function(
 )
 
 internal val QUOTES3 = "\"\"\""
-private val S = "\$"
+internal val S = "\$"
 private val PARAM_DOC_REGEX = Regex("^pname:(\\w+) is\\s+(.+)", RegexOption.DOT_MATCHES_ALL)
 
 // Matches both [param type + param name] and [return type + function name]

@@ -86,19 +86,19 @@ internal class Field(
 	val indirection: String,
 	val name: String,
 	val array: String?,
-	val attribs: Map<String, String>
+	val attribs: MutableMap<String, String>
 ) {
-	val len = attribs["len"].let {
+	val len: Sequence<String> get() = attribs["len"].let {
 		if (it == null)
 			emptySequence<String>()
 		else
 			it.splitToSequence(",")
 	}
 
-	val optional: String? = attribs["optional"]
-	val externsync: String? = attribs["externsync"]
-	val noautovalidity: String? = attribs["noautovalidity"]
-	val validextensionstructs: String? = attribs["validextensionstructs"]
+	val optional: String? get() = attribs["optional"]
+	val externsync: String? get() = attribs["externsync"]
+	val noautovalidity: String? get() = attribs["noautovalidity"]
+	val validextensionstructs: String? get() = attribs["validextensionstructs"]
 }
 
 internal class Validity
@@ -108,8 +108,11 @@ internal class ImplicitExternSyncParams(
 )
 
 internal class Command(
-	val successcodes: String,
-	val errorcodes: String,
+	val successcodes: String?,
+	val errorcodes: String?,
+	val queues: String?,
+	val renderpass: String?,
+	val cmdbufferlevel: String?,
 	val proto: Field,
 	val params: List<Field>,
 	val validity: Validity?,
@@ -120,6 +123,7 @@ internal class TypeRef(val name: String)
 internal class EnumRef(
 	val name: String,
 	val value: String?,
+	val bitpos: String?,
 	val offset: String?,
 	val dir: String?,
 	val extends: String?
@@ -184,7 +188,7 @@ internal class FieldConverter : Converter {
 	override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any {
 		val attribs = reader.attributeNames.asSequence()
 			.map(Any?::toString)
-			.associate { it to reader.getAttribute(it) }
+			.associateTo(HashMap()) { it to reader.getAttribute(it) }
 
 		val modifier = reader.value.trim()
 
@@ -301,24 +305,28 @@ internal class TypeConverter : Converter {
 					val name = it.value
 					it.moveUp()
 
-					Field(modifier, type, indirection.indirection, name, null, emptyMap())
+					Field(modifier, type, indirection.indirection, name, null, HashMap())
 				}
 
-				val params = ArrayList<Field>()
-				while (reader.hasMoreChildren()) {
-					val (modifier) = FUNC_POINTER_PARAM_MOD_REGEX.find(reader.value)!!.destructured
+				if (proto.name == "PFN_vkVoidFunction")
+					TypeIgnored
+				else {
+					val params = ArrayList<Field>()
+					while (reader.hasMoreChildren()) {
+						val (modifier) = FUNC_POINTER_PARAM_MOD_REGEX.find(reader.value)!!.destructured
 
-					val type = StringBuilder()
-					reader.moveDown()
-					type.append(reader.value)
-					reader.moveUp()
+						val type = StringBuilder()
+						reader.moveDown()
+						type.append(reader.value)
+						reader.moveUp()
 
-					val (indirection, paramName) = FUNC_POINTER_PARAM_NAME_REGEX.find(reader.value)!!.destructured
+						val (indirection, paramName) = FUNC_POINTER_PARAM_NAME_REGEX.find(reader.value)!!.destructured
 
-					params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, emptyMap()))
+						params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, HashMap()))
+					}
+
+					TypeFuncpointer(proto, params)
 				}
-
-				TypeFuncpointer(proto, params)
 			}
 			"union",
 			"struct"      -> {
@@ -342,7 +350,7 @@ internal class TypeConverter : Converter {
 	override fun canConvert(type: Class<*>?): Boolean = type == Type::class.java
 }
 
-internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
+internal fun parse(registry: Path) = (XStream(Xpp3Driver()).let { xs ->
 	xs.alias("registry", Registry::class.java)
 
 	VendorID::class.java.let {
@@ -384,6 +392,9 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 		xs.alias("command", it)
 		xs.useAttributeFor(it, "successcodes")
 		xs.useAttributeFor(it, "errorcodes")
+		xs.useAttributeFor(it, "queues")
+		xs.useAttributeFor(it, "renderpass")
+		xs.useAttributeFor(it, "cmdbufferlevel")
 	}
 
 	Field::class.java.let {
@@ -391,11 +402,6 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 
 		xs.alias("proto", it)
 		xs.addImplicitCollection(Command::class.java, "params", "param", it)
-
-		xs.useAttributeFor(it, "optional")
-		xs.useAttributeFor(it, "len")
-		xs.useAttributeFor(it, "noautovalidity")
-		xs.useAttributeFor(it, "externsync")
 	}
 
 	xs.alias("validity", Validity::class.java)
@@ -422,6 +428,7 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 		xs.addImplicitCollection(Require::class.java, "enums", "enum", it)
 		xs.useAttributeFor(it, "name")
 		xs.useAttributeFor(it, "value")
+		xs.useAttributeFor(it, "bitpos")
 		xs.useAttributeFor(it, "offset")
 		xs.useAttributeFor(it, "dir")
 		xs.useAttributeFor(it, "extends")
@@ -441,4 +448,23 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 	}
 
 	xs
-}.fromXML(registry.toFile()) as Registry
+}.fromXML(registry.toFile()) as Registry).let {
+	// Apply registry fixes before returning
+
+	// VkPhysicalDeviceMemoryProperties missing auto-sizes lengths
+	it.types
+		.filterIsInstance(TypeStruct::class.java)
+		.find { it.name == "VkPhysicalDeviceMemoryProperties" }!!.members.let {
+		it.find { it.name == "memoryTypes" }!!.attribs["len"] = "memoryTypeCount"
+		it.find { it.name == "memoryHeaps" }!!.attribs["len"] = "memoryHeapCount"
+	}
+
+	// vkDebugReportMessageEXT missing null-terminated lengths
+	it.commands
+		.find { it.proto.name == "vkDebugReportMessageEXT" }!!.params.let {
+		it.find { it.name == "pLayerPrefix" }!!.attribs["len"] = "null-terminated"
+		it.find { it.name == "pMessage" }!!.attribs["len"] = "null-terminated"
+	}
+
+	it
+}
