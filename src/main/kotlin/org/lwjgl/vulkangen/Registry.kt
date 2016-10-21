@@ -79,8 +79,6 @@ fun main(args: Array<String>) {
 		root
 	}
 
-	//convert(vulkanDocs)
-
 	val types = registry.types.asSequence()
 		.associateBy(Type::name)
 
@@ -93,6 +91,8 @@ fun main(args: Array<String>) {
 
 	val commands = registry.commands.asSequence()
 		.associateBy { it.proto.name }
+
+	convert(vulkanDocs, structs)
 
 	val vulkanPackage = vulkanPath.replace('/', '.')
 
@@ -118,6 +118,8 @@ fun main(args: Array<String>) {
 		// We generate <enums> the first time we encounter them.
 		enumsSeen = generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
 	}
+
+	System.exit(0)
 }
 
 /*
@@ -188,7 +190,8 @@ private fun getCheck(param: Field, indirection: String, structs: Map<String, Typ
 
 private fun getParams(returns: Field, params: List<Field>, types: Map<String, Type>, structs: Map<String, TypeStruct>, forceIN: Boolean = false, indent: String = "\t\t"): String = if (params.isEmpty())
 	""
-else
+else {
+	val functionDoc = FUNCTION_DOC[returns.name.substring(2)]
 	params.asSequence().map { param ->
 		val autoSize = params.asSequence()
 			.filter { it.len.contains(param.name) }
@@ -242,8 +245,9 @@ else
 		else
 			"OUT"
 
-		"$autoSize$check$nullable$const$type.$paramType(\"${param.name}\", \"\")"
+		"$autoSize$check$nullable$const$type.$paramType(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
 	}.joinToString(",\n$indent", prefix = ",\n\n$indent")
+}
 
 private fun generateTypes(
 	root: Path,
@@ -615,13 +619,22 @@ private fun PrintWriter.printCommands(
 ) {
 	commandRefs.forEach {
 		val cmd = commands[it.name]!!
+		val name = it.name.substring(2)
+		val functionDoc = FUNCTION_DOC[name]
+
 		print("\n\t")
 		// If we don't have a dispatchable handle, mark ICD-global
 		if (cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
 			print("GlobalCommand..")
 		println("""${getReturnType(cmd.proto)}(
-		"${cmd.proto.name.substring(2)}",
-		""${getParams(
+		"$name",
+		${if (functionDoc == null) "\"\"" else """$QUOTES3
+		${functionDoc.shortDescription}
+
+		${functionDoc.cSpecification}
+
+		${functionDoc.description}
+		$QUOTES3"""}${getParams(
 			cmd.proto, cmd.params, types, structs,
 			// workaround: const missing from VK_EXT_debug_marker struct params
 			forceIN = cmd.cmdbufferlevel != null
