@@ -308,15 +308,20 @@ $it
 ${templateTypes
 			.filterIsInstance(TypeStruct::class.java)
 			.map { struct ->
+				val structDoc = STRUCT_DOC[struct.name]
+
 				"""val ${struct.name} = ${struct.type}(VULKAN_PACKAGE, "${struct.name}"${if (struct.returnedonly) ", mutable = false" else ""}) {
 	${if (struct.members.any {
 					// TODO: This is too simple
 					it.array?.startsWith("\"VK_MAX_") ?: false
-				}) "javaImport(\"static org.lwjgl.vulkan.VK10.*\")\n\t" else ""}documentation =
+				}) "javaImport(\"static org.lwjgl.vulkan.VK10.*\")\n\t" else ""}${if (structDoc == null) "" else """documentation =
 		$QUOTES3
+		${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
+
+		${structDoc.description}"""}
 		$QUOTES3
 
-	${struct.members.asSequence()
+	"""}${struct.members.asSequence()
 					.map { member ->
 						if (member.name == "sType" && member.type == "VkStructureType" && member.indirection.isEmpty())
 							"sType(this)"
@@ -359,11 +364,13 @@ ${templateTypes
 									member.indirection
 								}"
 
-							if (member.array == null) {
-								val memberType = if (member.len.any() && types[member.type] is TypeStruct) "buffer" else "member"
-								"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"\")"
-							} else
-								"$autoSize$nullable$const$type.array(\"${member.name}\", \"\", size = ${member.array})"
+							val memberType = when {
+								member.array != null                                 -> "array"
+								member.len.any() && types[member.type] is TypeStruct -> "buffer"
+								else                                                 -> "member"
+							}
+
+							"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name)}\"${if (member.array != null) ", size = ${member.array}" else ""})"
 						}
 					}
 					.joinToString("\n\t")}

@@ -11,10 +11,27 @@ import org.asciidoctor.ast.*
 import org.asciidoctor.converter.StringConverter
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.*
 import java.util.stream.Collectors
 
 internal val QUOTES3 = "\"\"\""
 internal val S = "\$"
+
+internal class FunctionDoc(
+	val shortDescription: String,
+	val cSpecification: String,
+	val description: String,
+	val parameters: Map<String, String>
+)
+
+internal class StructDoc(
+	val shortDescription: String,
+	val description: String,
+	val members: Map<String, String>
+)
+
+internal val FUNCTION_DOC = HashMap<String, FunctionDoc>(256)
+internal val STRUCT_DOC = HashMap<String, StructDoc>(128)
 
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 	val man = root.resolve("doc/specs/vulkan/man")
@@ -52,19 +69,83 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 				for (node in it.blocks)
 					addFunction(node, structs)
 			}
+			"structs" -> {
+				for (node in it.blocks)
+					addStruct(node, structs)
+			}
 		}
 	}
 
 	asciidoctor.shutdown()
 }
 
+private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) {
+	val function = node.title.substring(2).substringBefore('(')
+	//System.err.println(function)
+	try {
+		FUNCTION_DOC[function] = FunctionDoc(
+			nodeToShortDescription(node.blocks[0], structs),
+			nodeToJavaDoc(node.blocks[1], structs),
+			nodeToJavaDoc(node.blocks[3], structs),
+			nodeToParamJavaDoc(node.blocks[2], structs)
+		)
+	} catch(e: Exception) {
+		System.err.println("Failed while parsing: $function")
+		throw RuntimeException(e)
+	}
+}
+
+
+private fun addStruct(node: StructuralNode, structs: Map<String, TypeStruct>) {
+	val struct = node.title.substringBefore('(')
+	//System.err.println(struct)
+	try {
+		STRUCT_DOC[struct] = StructDoc(
+			nodeToShortDescription(node.blocks[0], structs),
+			nodeToJavaDoc(node.blocks[3], structs),
+			nodeToParamJavaDoc(node.blocks[2], structs)
+		)
+	} catch(e: Exception) {
+		System.err.println("Failed while parsing: $struct")
+		throw RuntimeException(e)
+	}
+}
+
 private val SECTION_XREFS = mapOf(
-	"clears-values" to "�Clear Values�",
-	"descriptorsets-compatibility" to "�Pipeline Layout Compatibility�",
-	"fxvertex-input" to "�Vertex Input Description�",
-	"renderpass-compatibility" to "�Render Pass Compatibility�",
-	"synchronization-pipeline-stage-flags" to "�Pipeline Stage Flags�",
-	"synchronization-memory-barriers" to "�Memory Barriers�"
+	"clears-values" to "the “Clear Values” section",
+	"descriptorsets-combinedimagesampler" to "the “Combined Image Sampler” section",
+	"descriptorsets-compatibility" to "the “Pipeline Layout Compatibility” section",
+	"descriptorsets-inputattachment" to "the “Input Attachment” section",
+	"descriptorsets-sampledimage" to "the “Sampled Image” section",
+	"descriptorsets-sampler" to "the “Sampler” section",
+	"descriptorsets-sets" to "the “Descriptor Sets” section",
+	"descriptorsets-storagebuffer" to "the “Storage Buffer” section",
+	"descriptorsets-storagebufferdynamic" to "the “Dynamic Storage Buffer” section",
+	"descriptorsets-storageimage" to "the “Storage Image” section",
+	"descriptorsets-storagetexelbuffer" to "the “Storage Texel Buffer” section",
+	"descriptorsets-uniformbuffer" to "the “Uniform Buffer” section",
+	"descriptorsets-uniformbufferdynamic" to "the “Dynamic Uniform Buffer” section",
+	"descriptorsets-uniformtexelbuffer" to "the “Uniform Texel Buffer” section",
+	"descriptorsets-updates-consecutive" to "consecutive binding updates",
+	"devsandqueues-priority" to "the “Queue Priority” section",
+	"devsandqueues-queueprops" to "the “Queue Family Properties” section",
+	"dispatch" to "the “Dispatching Commands” chapter",
+	"framebuffer-dsb" to "the “Dual-Source Blending” section",
+	"fxvertex-attrib" to "the “Vertex Attributes” section",
+	"fxvertex-input" to "the “Vertex Input Description” section",
+	"geometry" to "the “Geometry Shading” chapter",
+	"memory-device-hostaccess" to "the “Host Access to Device Memory Objects” section",
+	"primsrast" to "the “Rasterization” chapter",
+	"queries-pipestats" to "the “Pipeline Statistics Queries” section",
+	"renderpass-compatibility" to "the “Render Pass Compatibility” section",
+	"resources-association" to "the “Resource Memory Association” section",
+	"resources-image-views" to "the “Image Views” section",
+	"samplers-maxAnisotropy" to "samplers-maxAnisotropy",
+	"samplers-mipLodBias" to "samplers-mipLodBias",
+	"shaders-vertex" to "the “Vertex Shaders” section",
+	"synchronization-pipeline-stage-flags" to "the “Pipeline Stage Flags” section",
+	"synchronization-memory-barriers" to "the “Memory Barriers” section",
+	"tessellation" to "the “Tessellation” chapter"
 )
 
 internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringConverter(backend, opts) {
@@ -82,12 +163,18 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
 					if (node.text != null)
 						"<<$it,${node.text}>>"
 					else {
-						val title = SECTION_XREFS[it] ?: throw IllegalStateException("Missing section reference: $it")
-						"<<$it,the $title section>>"
+						val title = SECTION_XREFS[it]// ?: throw IllegalStateException("Missing section reference: $it")
+						if (title == null)
+							System.err.println("Missing section reference: $it")
+						"<<$it,$title>>"
 					}
 				}
+				"ref"         -> ""
 				"emphasis"    -> "_${node.text}_"
+				"latexmath"   -> "<code>${LATEX_REGISTRY[node.text] ?: throw IllegalStateException("Missing LaTeX equation:\n${node.text}")}</code>"
 				"line"        -> node.text
+				"link"        -> "${node.target}[${node.text}]"
+				"subscript"   -> "~${node.text}~"
 				"superscript" -> "^${node.text}^"
 				"double"      -> "``${node.text}''"
 				"single"      -> "`${node.text}'"
@@ -128,7 +215,14 @@ private val LATEX_REGISTRY = mapOf(
 		codeBlock("""
         m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor                     depthBiasClamp = 0 or NaN
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
-    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0""")
+    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
+
+	"""$\lceil{\mathit{rasterizationSamples} \over 32}\rceil$"""
+		to
+		"ceil(rasterizationSamples / 32)",
+
+	"""${S}codeSize \over 4$""" to
+		"codeSize / 4"
 )
 
 private val LINE_BREAK = """\n\s*""".toRegex()
@@ -147,11 +241,12 @@ private val CODE1 = """`([^`]+)`""".toRegex()
 private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
-private val CODE2 = """(?:pname|basetype|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
+private val CODE2 = """(?:pname|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
+private val LINK = """(http.*?/)\[([^\]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 
-internal fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
+private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
 	.replace(LINE_BREAK, " ")
 	.replace(LATEX_MATH) {
 		// These will likely be replaced to reduce HTML load times.
@@ -167,7 +262,7 @@ internal fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = th
 	.replace(SUPERSCRIPT, "<sup>$1</sup>")
 	.replace(SUBSCRIPT, "<sub>$1</sub>")
 	.replace(MATHJAX, "<code>$1</code>")
-	.replace(DOUBLE, "�$1�")
+	.replace(DOUBLE, "“$1”")
 	.replace(STRUCT_OR_HANDLE) {
 		val type = it.groups[1]!!.value
 		if (structs.containsKey(type))
@@ -188,10 +283,15 @@ internal fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = th
 	}
 	.replace(ENUM, "#$1")
 	.replace(CODE2, "{@code $1}")
-	.replace(SPEC_LINK, """<a href=\\"https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\\\#$1\\">$2</a>""")
+	.replace(LINK, """<a href="$1">$2</a>""")
+	.replace(SPEC_LINK, """<a href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
 	.replace(EXTENSION, "{@code $1}")
 
-internal fun nodeToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>): String {
+private fun nodeToShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) = (name.blocks[0] as Block).lines[0]
+	.let { it.substring(it.indexOf('-') + 2).replaceMarkup(structs) }
+	.let { if (it.endsWith('.')) it else "$it." }
+
+private fun nodeToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>): String {
 	return node.blocks.asSequence().map {
 		if (it is Block) {
 			if (it.lines.isEmpty())
@@ -199,7 +299,10 @@ internal fun nodeToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct
 			else {
 				if (it.blocks.isNotEmpty())
 					throw IllegalStateException()
-				it.lines.joinToString(" ").replaceMarkup(structs)
+				if (it.style == "source")
+					codeBlock(it.source)
+				else
+					it.lines.joinToString(" ").replaceMarkup(structs)
 			}
 		} else if (it is org.asciidoctor.ast.List) { // TODO: title?
 			"""<ul>
@@ -252,9 +355,81 @@ internal fun nodeToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct
 			throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
 		}
 	}.joinToString("\n\n\t\t").let {
-		if (node.title == null || node.title.isEmpty() || it.startsWith("<h5>"))
+		if (node.title == null || node.title.isEmpty() || it.isEmpty() || it.startsWith("<h5>"))
 			it
 		else
-			"<h5>${node.title}</h5>\n\t\t$it"
+			"<h5>${node.title}</h5>\n\t\t$it".let {
+				if (node.style == "NOTE") {
+					"""<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
+		</div>"""
+				} else
+					it
+			}
 	}
 }
+
+private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
+private val PARAM_REGEX = Regex("""pname:(\w+)""")
+private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?pname:(\w+)(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
+
+private val ESCAPE_REGEX = Regex(""""|\\#""")
+
+private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, TypeStruct>): Map<String, String> {
+	if (members.blocks.isEmpty())
+		return emptyMap()
+
+	return members.blocks[0].let {
+		if (it is org.asciidoctor.ast.List) it.items.asSequence()
+			.filterIsInstance(ListItem::class.java)
+			.filter { it.text != null }
+			.flatMap {
+				val multi = MULTI_PARAM_DOC_REGEX.find(it.text)
+				if (multi != null) {
+					val first = multi.groups[1]!!.value
+					PARAM_REGEX.findAll(multi.value)
+						.map { it.groups[1]!!.value }
+						.mapIndexed { i, member ->
+							member to if (i == 0)
+								getItemDescription(it, it.text.replaceMarkup(structs), structs)
+							else
+								"see {@code $first}"
+						}
+				} else {
+					try {
+						val (When, param, field, description) = PARAM_DOC_REGEX.matchEntire(it.text)!!.destructured
+						sequenceOf(param to getItemDescription(it, if (When.isEmpty() && field.isEmpty()) description else it.text, structs))
+					} catch(e: Exception) {
+						println("FAILED AT: ${it.text}")
+						throw RuntimeException(e)
+					}
+				}
+			}
+			.groupBy { it.first }
+			.map {
+				it.key to if (it.value.size == 1)
+					it.value[0].second.let {
+						if (!it.startsWith("\"\""))
+							it.replace(ESCAPE_REGEX, """\\$0""")
+						else
+							it
+					}
+				else
+					it.value.asSequence()
+						.map {
+							if (it.second.startsWith("\"\""))
+								it.second.substring(2, it.second.length - 2)
+							else
+								it.second
+						}.joinToString("\n\n\t\t", prefix = "\"\"", postfix = "\"\"")
+			}
+			.toMap()
+		else
+			emptyMap()
+	}
+}
+
+private fun getItemDescription(listItem: ListItem, description: String, structs: Map<String, TypeStruct>) =
+	if (listItem.blocks.isNotEmpty())
+		"\"\"${description.replaceMarkup(structs)}\n${nodeToJavaDoc(listItem, structs)}\"\""
+	else
+		description.replaceMarkup(structs)
