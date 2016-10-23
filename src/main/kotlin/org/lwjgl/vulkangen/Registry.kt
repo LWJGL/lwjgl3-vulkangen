@@ -375,7 +375,7 @@ ${templateTypes
 								else                                                 -> "member"
 							}
 
-							"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name)}\"${if (member.array != null) ", size = ${member.array}" else ""})"
+							"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
 						}
 					}
 					.joinToString("\n\t")}
