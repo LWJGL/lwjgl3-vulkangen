@@ -390,8 +390,7 @@ ${templateTypes
 					.joinToString("\n\t")}
 }"""
 			}
-			.joinToString("\n\n")}
-""")
+			.joinToString("\n\n")}""")
 	}
 }
 
@@ -465,7 +464,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
 				writer.printCommands(it.commands!!.asSequence(), types, structs, commands)
 			}
 
-		writer.println("\n}")
+		writer.print("\n}")
 	}
 }
 
@@ -577,7 +576,7 @@ val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore(
 		if (extension.require.commands != null)
 			writer.printCommands(extension.require.commands.asSequence(), types, structs, commands)
 
-		writer.println("}")
+		writer.print("}")
 	}
 
 	return enumsSeen + extensionEnums
