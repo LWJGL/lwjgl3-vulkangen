@@ -551,9 +551,15 @@ val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore(
 							}
 						}
 					} else {
+						val extends = it.value.firstOrNull { it.extends != null }?.extends
+						val enumDoc = ENUM_DOC[it.key]
 						writer.println("""
 	EnumConstant(
-		"${it.key}",
+		${if (extends != null) "\"Extends {@code ${it.key}}.\"" else if (enumDoc == null) "\"${it.key}\"" else """"$QUOTES3
+		${enumDoc.shortDescription}${
+	if (enumDoc.description.isEmpty()) "" else "\n\n\t\t${enumDoc.description}"}${
+	if (enumDoc.seeAlso.isEmpty()) "" else "\n\n\t\t${enumDoc.seeAlso}"}
+		$QUOTES3"""},
 
 		${it.value.asSequence()
 							.map {
@@ -562,7 +568,7 @@ val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore(
 								else if (it.offset != null)
 									".\"${offsetAsEnum(extension.number, it.offset, it.dir)}\""
 								else if (it.bitpos != null)
-									"enum(\"\", ${bitposAsHex(it.bitpos)})"
+									"enum(${bitposAsHex(it.bitpos)})"
 								else
 									throw IllegalStateException()
 								}"
@@ -607,19 +613,20 @@ private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
 	.mapNotNull { enums[it] }
 
 private fun PrintWriter.printEnums(enums: Sequence<Enums>) = enums.forEach { block ->
+	val enumDoc = ENUM_DOC[block.name]
 	println("""
 	EnumConstant(
-		"${block.name}",
+		${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3
+		${enumDoc.shortDescription}${
+	if (enumDoc.description.isEmpty()) "" else "\n\n\t\t${enumDoc.description}"}${
+	if (enumDoc.seeAlso.isEmpty()) "" else "\n\n\t\t${enumDoc.seeAlso}"}
+		$QUOTES3"""},
 
 		${block.enums.map {
 		if (it.bitpos != null)
-			"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-				"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-			}, ${bitposAsHex(it.bitpos)})"
+			"\"${it.name.substring(3)}\".enum(${bitposAsHex(it.bitpos)})"
 		else
-			"\"${it.name.substring(3)}\".enum(${if (it.comment != null)
-				"$QUOTES3${it.comment}$QUOTES3" else "\"\""
-			}, \"${it.value}\")"
+			"\"${it.name.substring(3)}\"..\"${it.value}\""
 	}.joinToString(",\n\t\t")}
 	)""")
 }

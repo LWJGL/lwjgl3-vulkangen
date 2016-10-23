@@ -32,9 +32,17 @@ internal class StructDoc(
 	val members: Map<String, String>
 )
 
+internal class EnumDoc(
+	val shortDescription: String,
+	val description: String,
+	val seeAlso: String
+)
+
 internal val FUNCTION_DOC = HashMap<String, FunctionDoc>(256)
-internal val STRUCT_DOC = HashMap<String, StructDoc>(128)
-internal val EXTENSION_DOC = HashMap<String, String>(32)
+internal val STRUCT_DOC = HashMap<String, StructDoc>(256)
+internal val ENUM_DOC = HashMap<String, EnumDoc>(256)
+
+internal val EXTENSION_DOC = HashMap<String, String>(64)
 
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 	val asciidoctor = Asciidoctor.Factory.create()
@@ -179,6 +187,21 @@ private fun addStruct(node: StructuralNode, structs: Map<String, TypeStruct>) {
 	}
 }
 
+private fun addEnum(node: StructuralNode, structs: Map<String, TypeStruct>) {
+	val enum = node.title.substringBefore('(')
+	//System.err.println(enum)
+	try {
+		ENUM_DOC[enum] = EnumDoc(
+			(node.blocks[0].blocks[0] as Block).source.replaceMarkup(structs),
+			containerToJavaDoc(node.blocks[2], structs),
+			containerToJavaDoc(node.blocks[3], structs)
+		)
+	} catch(e: Exception) {
+		System.err.println("Failed while parsing: $enum")
+		throw RuntimeException(e)
+	}
+}
+
 private val SECTION_XREFS = mapOf(
 	"clears-values" to "the “Clear Values” section",
 	"descriptorsets-combinedimagesampler" to "the “Combined Image Sampler” section",
@@ -199,9 +222,12 @@ private val SECTION_XREFS = mapOf(
 	"devsandqueues-queueprops" to "the “Queue Family Properties” section",
 	"dispatch" to "the “Dispatching Commands” chapter",
 	"framebuffer-dsb" to "the “Dual-Source Blending” section",
+	"fundamentals-fp10" to "the “Unsigned 10-Bit Floating-Point Numbers” section",
+	"fundamentals-fp11" to "the “Unsigned 11-Bit Floating-Point Numbers” section",
 	"fxvertex-attrib" to "the “Vertex Attributes” section",
 	"fxvertex-input" to "the “Vertex Input Description” section",
 	"geometry" to "the “Geometry Shading” chapter",
+	"memory" to "the “Memory Allocation” chapter",
 	"memory-device-hostaccess" to "the “Host Access to Device Memory Objects” section",
 	"primsrast" to "the “Rasterization” chapter",
 	"queries-pipestats" to "the “Pipeline Statistics Queries” section",
