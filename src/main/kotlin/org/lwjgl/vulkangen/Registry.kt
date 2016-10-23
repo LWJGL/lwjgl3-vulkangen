@@ -103,7 +103,11 @@ fun main(args: Array<String>) {
 
 	// TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
 	val featureTypes = getDistinctTypes(registry.features[0].requires.asSequence(), commands, types)
-	generateTypes(root, vulkanPackage, "VKTypes", types, structs, featureTypes)
+	generateTypes(root, vulkanPackage, "VKTypes", types, structs, featureTypes) {
+		registry.tags.asSequence()
+			.map { "val ${it.name} = \"${it.name}\"" }
+			.joinToString("\n", postfix = "\n\n")
+	}
 
 	var enumsSeen = featureTypes.filterEnums(enums)
 	registry.features.forEach { feature ->
@@ -260,7 +264,8 @@ private fun generateTypes(
 	template: String,
 	types: Map<String, Type>,
 	structs: Map<String, TypeStruct>,
-	templateTypes: Set<Type>
+	templateTypes: Set<Type>,
+	custom: (() -> String)? = null
 ) {
 	val file = root.resolve("$template.kt")
 
@@ -272,7 +277,7 @@ import org.lwjgl.generator.*${if (templateTypes.any { it is TypeSystem }) """
 import org.lwjgl.system.linux.*
 import org.lwjgl.system.windows.*""" else ""}
 
-// Handle types
+${if (custom != null) custom() else ""}// Handle types
 ${templateTypes
 			.filterIsInstance<TypeHandle>()
 			.map { "val ${it.name} = ${it.type}(\"${it.name}\")" }
