@@ -138,16 +138,17 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
 	document.blocks.asSequence().forEach {
 		when (it.id) {
-			"protos"  -> {
+			"protos",
+			"funcpointers" -> {
 				for (node in it.blocks)
 					addFunction(node, structs)
 			}
-			"structs" -> {
+			"structs"      -> {
 				for (node in it.blocks)
 					addStruct(node, structs)
 			}
 			"enums",
-			"flags"   -> {
+			"flags"        -> {
 				for (node in it.blocks)
 					addEnum(node, structs)
 			}
@@ -158,7 +159,9 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 }
 
 private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) {
-	val function = node.title.substring(2).substringBefore('(')
+	val function = node.title
+		.let { if (it.startsWith("PFN_vk")) it else it.substring(2) }
+		.substringBefore('(')
 	//System.err.println(function)
 	try {
 		FUNCTION_DOC[function] = FunctionDoc(

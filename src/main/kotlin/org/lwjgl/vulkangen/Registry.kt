@@ -200,7 +200,7 @@ private fun getCheck(param: Field, indirection: String, structs: Map<String, Typ
 private fun getParams(returns: Field, params: List<Field>, types: Map<String, Type>, structs: Map<String, TypeStruct>, forceIN: Boolean = false, indent: String = "\t\t"): String = if (params.isEmpty())
 	""
 else {
-	val functionDoc = FUNCTION_DOC[returns.name.substring(2)]
+	val functionDoc = FUNCTION_DOC[returns.name.let { if (it.startsWith("PFN_vk")) it else it.substring(2) }]
 	params.asSequence().map { param ->
 		val autoSize = params.asSequence()
 			.filter { it.len.contains(param.name) }
@@ -298,14 +298,22 @@ ${templateTypes
 ${templateTypes
 			.filterIsInstance<TypeFuncpointer>()
 			.map {
+				val functionDoc = FUNCTION_DOC[it.name]
 				"""val ${it.name} = "${it.name}".callback(
 	VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-	""${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
+	"${if (functionDoc == null) "" else functionDoc.shortDescription}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
 ) {
-	documentation =
+	${if (functionDoc == null) "" else """documentation =
 		$QUOTES3
+		${functionDoc.shortDescription}
+
+		${functionDoc.cSpecification}
+
+		${functionDoc.description}${if (functionDoc.seeAlso == null) "" else """
+
+		${functionDoc.seeAlso}"""}
 		$QUOTES3
-	useSystemCallConvention()
+	"""}useSystemCallConvention()
 }"""
 			}
 			.joinToString("\n\n").let {
@@ -559,8 +567,8 @@ val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore(
 	EnumConstant(
 		${if (extends != null) "\"Extends {@code ${it.key}}.\"" else if (enumDoc == null) "\"${it.key}\"" else """"$QUOTES3
 		${enumDoc.shortDescription}${
-	if (enumDoc.description.isEmpty()) "" else "\n\n\t\t${enumDoc.description}"}${
-	if (enumDoc.seeAlso.isEmpty()) "" else "\n\n\t\t${enumDoc.seeAlso}"}
+						if (enumDoc.description.isEmpty()) "" else "\n\n\t\t${enumDoc.description}"}${
+						if (enumDoc.seeAlso.isEmpty()) "" else "\n\n\t\t${enumDoc.seeAlso}"}
 		$QUOTES3"""},
 
 		${it.value.asSequence()
