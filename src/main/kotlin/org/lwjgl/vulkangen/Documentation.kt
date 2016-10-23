@@ -23,12 +23,14 @@ internal class FunctionDoc(
 	val shortDescription: String,
 	val cSpecification: String,
 	val description: String,
+	val seeAlso: String?,
 	val parameters: Map<String, String>
 )
 
 internal class StructDoc(
 	val shortDescription: String,
 	val description: String,
+	val seeAlso: String?,
 	val members: Map<String, String>
 )
 
@@ -163,6 +165,7 @@ private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) 
 			getShortDescription(node.blocks[0], structs),
 			containerToJavaDoc(node.blocks[1], structs),
 			containerToJavaDoc(node.blocks[3], structs),
+			seeAlsoToJavaDoc(node.blocks[4], structs),
 			nodeToParamJavaDoc(node.blocks[2], structs)
 		)
 	} catch(e: Exception) {
@@ -179,6 +182,7 @@ private fun addStruct(node: StructuralNode, structs: Map<String, TypeStruct>) {
 		STRUCT_DOC[struct] = StructDoc(
 			getShortDescription(node.blocks[0], structs),
 			containerToJavaDoc(node.blocks[3], structs),
+			seeAlsoToJavaDoc(node.blocks[4], structs),
 			nodeToParamJavaDoc(node.blocks[2], structs)
 		)
 	} catch(e: Exception) {
@@ -478,6 +482,27 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
 	} else {
 		throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
 	}
+
+private val SEE_ALSO_LINKS_REGEX = """([fst])link:(\w+)""".toRegex()
+
+private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>): String? {
+	// Keep function, struct, callback links only
+	val links = SEE_ALSO_LINKS_REGEX
+		.findAll((node.blocks[0] as Block).source)
+		.mapNotNull {
+			val (type, link) = it.destructured
+			if (type != "s" || structs.containsKey(link))
+				it.value
+			else
+				null
+		}
+		.joinToString()
+
+	return if (links.isEmpty())
+		null
+	else
+		"<h5>${node.title}</h5>\n\t\t${links.replaceMarkup(structs)}"
+}
 
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
 private val PARAM_REGEX = Regex("""pname:(\w+)""")

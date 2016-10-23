@@ -328,7 +328,9 @@ ${templateTypes
 		$QUOTES3
 		${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
 
-		${structDoc.description}"""}
+		${structDoc.description}${if (structDoc.seeAlso == null) "" else """
+
+		${structDoc.seeAlso}"""}"""}
 		$QUOTES3
 
 	"""}${struct.members.asSequence()
@@ -653,7 +655,9 @@ private fun PrintWriter.printCommands(
 
 		${functionDoc.cSpecification}
 
-		${functionDoc.description}
+		${functionDoc.description}${if (functionDoc.seeAlso == null) "" else """
+
+		${functionDoc.seeAlso}"""}
 		$QUOTES3"""}${getParams(
 			cmd.proto, cmd.params, types, structs,
 			// workaround: const missing from VK_EXT_debug_marker struct params
