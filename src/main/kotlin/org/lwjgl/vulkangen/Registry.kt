@@ -361,7 +361,7 @@ ${templateTypes
 									"AutoSize($it).."
 							}
 
-						val nullable = if ((member.optional != null || (member.noautovalidity != null && member.len.any() && member.len.first().let { len ->
+						val nullable = if ((member.name == "pNext" || member.optional != null || (member.noautovalidity != null && member.len.any() && member.len.first().let { len ->
 							struct.members.asSequence()
 								.filter { it.len.contains(len) }
 								.count() > 1
