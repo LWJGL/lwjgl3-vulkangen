@@ -1,0 +1,84 @@
+From c83ea5a5c14898a31cbbc48e6eb2edc0ed443e85 Mon Sep 17 00:00:00 2001
+From: Ioannis Tsakpinis <iotsakp@gmail.com>
+Date: Mon, 24 Oct 2016 00:26:46 +0300
+Subject: [PATCH] LWJGL fixes
+
+---
+ doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt | 2 ++
+ doc/specs/vulkan/chapters/VK_EXT_debug_report.txt               | 6 +++---
+ src/spec/vk.xml                                                 | 8 ++++----
+ 3 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
+index f80eb71..6811c2e 100755
+--- a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
++++ b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
+@@ -27,5 +27,7 @@
+ This extension allows an application to specify a negative viewport height.
+ The result is that the viewport transformation will flip along the y-axis.
+ 
++=== Version History
++
+  * Revision 1, 2016-09-02 (Matthaeus Chajdas)
+    - Initial draft
+diff --git a/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt b/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
+index e9e364e..7ac55ad 100644
+--- a/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
++++ b/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
+@@ -95,7 +95,7 @@ include::../api/funcpointers/PFN_vkDebugReportCallbackEXT.txt[]
+ 
+   * pname:flags indicates the ename:VkDebugReportFlagBitsEXT that triggered
+     this callback.
+-  * pname:objType is a elink:VkDebugReportObjectTypeEXT specifying the type
++  * pname:objectType is a elink:VkDebugReportObjectTypeEXT specifying the type
+     of object being used or created at the time the event was triggered.
+   * pname:object gives the object where the issue was detected.
+     pname:object may be ename:VK_NULL_OBJECT if there is no object
+@@ -141,7 +141,7 @@ include::../api/protos/vkDebugReportMessageEXT.txt[]
+   * pname:instance the instance the callback will be logged on.
+   * pname:flags indicates the ename:VkDebugReportFlagBitsEXT that triggered
+     this callback.
+-  * pname:objType is a elink:VkDebugReportObjectTypeEXT specifying the type
++  * pname:objectType is a elink:VkDebugReportObjectTypeEXT specifying the type
+     of object being used or created at the time the event was triggered.
+   * pname:object is object where the issue was detected.
+     pname:object may be ename:VK_NULL_OBJECT if there is no object
+@@ -167,7 +167,7 @@ registered.
+   * pname:instance must: be a valid sname:VkInstance handle
+   * pname:flags must: be a combination of one or more of
+     sname:VkDebugReportFlagBitsEXT
+-  * pname:objType must: be one of sname:VkDebugReportObjectTypeEXT,
++  * pname:objectType must: be one of sname:VkDebugReportObjectTypeEXT,
+     ename:VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if pname:object is `NULL`
+   * pname:object may: be a Vulkan object
+   * pname:pLayerPrefix must: be a `NULL` terminated string
+diff --git a/src/spec/vk.xml b/src/spec/vk.xml
+index 7fcb2eb..b98238d 100644
+--- a/src/spec/vk.xml
++++ b/src/spec/vk.xml
+@@ -522,9 +522,9 @@ maintained in the master branch of the Khronos Vulkan GitHub project.
+         </type>
+         <type category="struct" name="VkPhysicalDeviceMemoryProperties" returnedonly="true">
+             <member><type>uint32_t</type>               <name>memoryTypeCount</name></member>
+-            <member><type>VkMemoryType</type>           <name>memoryTypes</name>[<enum>VK_MAX_MEMORY_TYPES</enum>]</member>
++            <member len="memoryTypeCount"><type>VkMemoryType</type>           <name>memoryTypes</name>[<enum>VK_MAX_MEMORY_TYPES</enum>]</member>
+             <member><type>uint32_t</type>               <name>memoryHeapCount</name></member>
+-            <member><type>VkMemoryHeap</type>           <name>memoryHeaps</name>[<enum>VK_MAX_MEMORY_HEAPS</enum>]</member>
++            <member len="memoryHeapCount"><type>VkMemoryHeap</type>           <name>memoryHeaps</name>[<enum>VK_MAX_MEMORY_HEAPS</enum>]</member>
+         </type>
+         <type category="struct" name="VkMemoryAllocateInfo">
+             <member values="VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO"><type>VkStructureType</type> <name>sType</name></member>
+@@ -3958,8 +3958,8 @@ maintained in the master branch of the Khronos Vulkan GitHub project.
+             <param><type>uint64_t</type> <name>object</name></param>
+             <param><type>size_t</type> <name>location</name></param>
+             <param><type>int32_t</type> <name>messageCode</name></param>
+-            <param>const <type>char</type>* <name>pLayerPrefix</name></param>
+-            <param>const <type>char</type>* <name>pMessage</name></param>
++            <param len="null-terminated">const <type>char</type>* <name>pLayerPrefix</name></param>
++            <param len="null-terminated">const <type>char</type>* <name>pMessage</name></param>
+             <validity>
+             </validity>
+         </command>
+-- 
+1.9.1
+
