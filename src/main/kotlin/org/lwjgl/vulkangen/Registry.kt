@@ -64,7 +64,7 @@ fun main(args: Array<String>) {
 		parse(registryPath)
 	}
 
-	val vulkanPath = "org/lwjgl/vulkan2"
+	val vulkanPath = "org/lwjgl/vulkan"
 	val root = args[1].let {
 		val lwjgl3 = Paths.get(it)
 		if (!Files.isDirectory(lwjgl3))
@@ -332,7 +332,7 @@ ${templateTypes
 	${if (struct.members.any {
 					// TODO: This is too simple
 					it.array?.startsWith("\"VK_MAX_") ?: false
-				}) "javaImport(\"static org.lwjgl.vulkan.VK10.*\")\n\t" else ""}${if (structDoc == null) "" else """documentation =
+				}) "javaImport(\"static $vulkanPackage.VK10.*\")\n\t" else ""}${if (structDoc == null) "" else """documentation =
 		$QUOTES3
 		${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
 
@@ -416,15 +416,6 @@ import org.lwjgl.generator.*
 import $vulkanPackage.*
 
 val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING) {
-	javaImport(
-		"org.lwjgl.vulkan.VK",
-		"org.lwjgl.vulkan.VkInstance",
-		"org.lwjgl.vulkan.VkPhysicalDevice",
-		"org.lwjgl.vulkan.VkDevice",
-		"org.lwjgl.vulkan.VkQueue",
-		"org.lwjgl.vulkan.VkCommandBuffer"
-	)
-
 	documentation =
 		$QUOTES3
 		The core Vulkan ${feature.number} functionality.
@@ -520,15 +511,6 @@ import $vulkanPackage.*${distinctTypes
 		}
 
 val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore('_')}) {
-	javaImport(
-		"org.lwjgl.vulkan.VK",
-		"org.lwjgl.vulkan.VkInstance",
-		"org.lwjgl.vulkan.VkPhysicalDevice",
-		"org.lwjgl.vulkan.VkDevice",
-		"org.lwjgl.vulkan.VkQueue",
-		"org.lwjgl.vulkan.VkCommandBuffer"
-	)
-
 	documentation =
 		$QUOTES3
 		${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}
