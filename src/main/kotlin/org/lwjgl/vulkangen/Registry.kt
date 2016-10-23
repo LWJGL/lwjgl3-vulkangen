@@ -83,7 +83,7 @@ fun main(args: Array<String>) {
 		.associateBy(Type::name)
 
 	val structs = registry.types.asSequence()
-		.filterIsInstance(TypeStruct::class.java)
+		.filterIsInstance<TypeStruct>()
 		.associateBy(Type::name)
 
 	val enums = registry.enums.asSequence()
@@ -92,7 +92,12 @@ fun main(args: Array<String>) {
 	val commands = registry.commands.asSequence()
 		.associateBy { it.proto.name }
 
-	convert(vulkanDocs, structs)
+	try {
+		convert(vulkanDocs, structs)
+	} catch(e: Exception) {
+		e.printStackTrace()
+		System.exit(-1)
+	}
 
 	val vulkanPackage = vulkanPath.replace('/', '.')
 
@@ -269,24 +274,24 @@ import org.lwjgl.system.windows.*""" else ""}
 
 // Handle types
 ${templateTypes
-			.filterIsInstance(TypeHandle::class.java)
+			.filterIsInstance<TypeHandle>()
 			.map { "val ${it.name} = ${it.type}(\"${it.name}\")" }
 			.joinToString("\n")}
 
 // Enum types
 ${templateTypes
-			.filterIsInstance(TypeEnum::class.java)
+			.filterIsInstance<TypeEnum>()
 			.map { "val ${it.name} = \"${it.name}\".enumType" }
 			.joinToString("\n")}
 
 // Bitmask types
 ${templateTypes
-			.filterIsInstance(TypeBitmask::class.java)
+			.filterIsInstance<TypeBitmask>()
 			.map { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }
 			.joinToString("\n")}
 
 ${templateTypes
-			.filterIsInstance(TypeFuncpointer::class.java)
+			.filterIsInstance<TypeFuncpointer>()
 			.map {
 				"""val ${it.name} = "${it.name}".callback(
 	VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
@@ -306,7 +311,7 @@ $it
 """ else ""
 		}}// Struct types
 ${templateTypes
-			.filterIsInstance(TypeStruct::class.java)
+			.filterIsInstance<TypeStruct>()
 			.map { struct ->
 				val structDoc = STRUCT_DOC[struct.name]
 
@@ -498,7 +503,7 @@ private fun generateExtension(
 
 import org.lwjgl.generator.*
 import $vulkanPackage.*${distinctTypes
-			.filterIsInstance(TypeSystem::class.java)
+			.filterIsInstance<TypeSystem>()
 			.map { it.requires }
 			.distinct()
 			.map { "\nimport ${IMPORTS[it]!!}" }
@@ -516,7 +521,9 @@ val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore(
 	)
 
 	documentation =
-		"The ${S}templateName extension."
+		$QUOTES3
+		${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}
+		$QUOTES3
 """)
 		if (extension.require.enums != null) {
 			extension.require.enums

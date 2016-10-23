@@ -12,6 +12,8 @@ import org.asciidoctor.converter.StringConverter
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
+import java.util.function.Function
+import java.util.function.Function.identity
 import java.util.stream.Collectors
 
 internal val QUOTES3 = "\"\"\""
@@ -32,10 +34,9 @@ internal class StructDoc(
 
 internal val FUNCTION_DOC = HashMap<String, FunctionDoc>(256)
 internal val STRUCT_DOC = HashMap<String, StructDoc>(128)
+internal val EXTENSION_DOC = HashMap<String, String>(32)
 
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
-	val man = root.resolve("doc/specs/vulkan/man")
-
 	val asciidoctor = Asciidoctor.Factory.create()
 
 	// Register a converter that defeats conversions performed by asciidoctor inside lists.
@@ -44,24 +45,28 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 		.javaConverterRegistry()
 		.register(PlainConverter::class.java, "plain")
 
-	val document = asciidoctor.load(
-		Files.lines(man.resolve("apispec_work.txt"))
-			.map {
-				// Enable all extensions
-				val match = "// not including (\\w+)".toRegex().matchEntire(it)
-				if (match == null)
-					it
-				else
-					"include::${match.groups[1]!!.value}.txt[]"
-			}
-			.collect(Collectors.joining("\n")),
-		OptionsBuilder.options()
-			.backend("plain")
-			.docType("manpage")
-			.safe(SafeMode.UNSAFE)
-			.baseDir(man.toFile())
-			.asMap()
-	)
+	// Enums, functions & structs
+
+	val document = root.resolve("doc/specs/vulkan/man").let { man ->
+		asciidoctor.load(
+			Files.lines(man.resolve("apispec.txt"))
+				.map {
+					// Enable all extensions
+					val match = "// not including (\\w+)".toRegex().matchEntire(it)
+					if (match == null)
+						it
+					else
+						"include::${match.groups[1]!!.value}.txt[]"
+				}
+				.collect(Collectors.joining("\n")),
+			OptionsBuilder.options()
+				.backend("plain")
+				.docType("manpage")
+				.safe(SafeMode.UNSAFE)
+				.baseDir(man.toFile())
+				.asMap()
+		)
+	}
 
 	document.blocks.asSequence().forEach {
 		when (it.id) {
@@ -76,6 +81,61 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 		}
 	}
 
+	// Extension class documentation
+
+	val appendices = root.resolve("doc/specs/vulkan/appendices")
+	// We parse extensions.txt to create a map of attributes to pass to asciidoctor.
+	// The attributes are used in ifdef preprocessor directives in extensions.txt
+	// to enable extensions.
+	fun parseExtensionsIDs(path: Path, regex: Regex) = Files
+		.lines(path)
+		.map { regex.find(it) }
+		.filter { it != null }
+		.map { it!!.groups[1]!!.value }
+		.collect(Collectors.toMap<String, String, Any>(identity(), Function { "" }))
+
+	val extensionIDs = parseExtensionsIDs(
+		appendices.resolve("extensions.txt"),
+		"""^include::(VK_\w+)\.txt\[]""".toRegex()
+	)
+	extensionIDs.putAll(parseExtensionsIDs(
+		appendices.resolve("VK_KHR_surface/wsi.txt"),
+		"""^include::\.\./(VK_\w+)/\w+\.txt\[]""".toRegex()
+	))
+
+	val extensions = asciidoctor.loadFile(
+		appendices.resolve("extensions.txt").toFile(),
+		OptionsBuilder.options()
+			.backend("plain")
+			.docType("manpage")
+			.safe(SafeMode.UNSAFE)
+			.baseDir(appendices.toFile())
+			.attributes(extensionIDs)
+			.asMap()
+	)
+
+	findNodes(extensions) {
+		it.nodeName == "section" && extensionIDs.containsKey(it.id)
+	}.forEach {
+		val buffer = StringBuilder()
+		var state = 0
+		for (i in it.blocks.indices) {
+			if (state == 0 && it.blocks[i] is Block)
+				state = 1
+
+			if (state == 1) {
+				if (it.blocks[i] is Section)
+					break
+
+				if (buffer.isNotEmpty())
+					buffer.append("\n\n\t\t")
+				buffer.append(nodeToJavaDoc(it.blocks[i], structs))
+			}
+		}
+
+		EXTENSION_DOC[it.id.substring(3)] = buffer.toString()
+	}
+
 	asciidoctor.shutdown()
 }
 
@@ -84,9 +144,9 @@ private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) 
 	//System.err.println(function)
 	try {
 		FUNCTION_DOC[function] = FunctionDoc(
-			nodeToShortDescription(node.blocks[0], structs),
-			nodeToJavaDoc(node.blocks[1], structs),
-			nodeToJavaDoc(node.blocks[3], structs),
+			getShortDescription(node.blocks[0], structs),
+			containerToJavaDoc(node.blocks[1], structs),
+			containerToJavaDoc(node.blocks[3], structs),
 			nodeToParamJavaDoc(node.blocks[2], structs)
 		)
 	} catch(e: Exception) {
@@ -101,8 +161,8 @@ private fun addStruct(node: StructuralNode, structs: Map<String, TypeStruct>) {
 	//System.err.println(struct)
 	try {
 		STRUCT_DOC[struct] = StructDoc(
-			nodeToShortDescription(node.blocks[0], structs),
-			nodeToJavaDoc(node.blocks[3], structs),
+			getShortDescription(node.blocks[0], structs),
+			containerToJavaDoc(node.blocks[3], structs),
 			nodeToParamJavaDoc(node.blocks[2], structs)
 		)
 	} catch(e: Exception) {
@@ -287,86 +347,90 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 	.replace(SPEC_LINK, """<a href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
 	.replace(EXTENSION, "{@code $1}")
 
-private fun nodeToShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) = (name.blocks[0] as Block).lines[0]
-	.let { it.substring(it.indexOf('-') + 2).replaceMarkup(structs) }
-	.let { if (it.endsWith('.')) it else "$it." }
+private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) =
+	(name.blocks[0] as Block).lines[0]
+		.let { it.substring(it.indexOf('-') + 2).replaceMarkup(structs) }
+		.let { if (it.endsWith('.')) it else "$it." }
 
-private fun nodeToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>): String {
-	return node.blocks.asSequence().map {
-		if (it is Block) {
-			if (it.lines.isEmpty())
-				nodeToJavaDoc(it, structs)
-			else {
-				if (it.blocks.isNotEmpty())
-					throw IllegalStateException()
-				if (it.style == "source")
-					codeBlock(it.source)
-				else
-					it.lines.joinToString(" ").replaceMarkup(structs)
-			}
-		} else if (it is org.asciidoctor.ast.List) { // TODO: title?
-			"""<ul>
-			${it.items.asSequence().map {
-				if (it is ListItem) {
-					"<li>${it.text.replaceMarkup(structs)}</li>"
-				} else
-					throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
-			}.joinToString("\n\t\t\t")}
-		</ul>"""
-		} else if (it is Table) {
-			"""${if (it.title == null) "" else "<h6>${it.title}</h6>\n\t\t"}<table class="lwjgl">
-			${sequenceOf(
-				it.header to ("thead" to "th"),
-				it.footer to ("tfoot" to "td"),
-				it.body to ("tbody" to "td")
-			).map { section ->
-				if (section.first.isEmpty())
-					""
-				else {
-					val (group, cell) = section.second
-					"<$group>${section.first.asSequence()
-						.map {
-							"<tr>${it.cells.asSequence().map { "<$cell>${it.text.replaceMarkup(structs)}</$cell>" }.joinToString("")}</tr>"
-						}
-						.joinToString(
-							"\n\t\t\t\t",
-							prefix = if (section.first.size == 1) "" else "\n\t\t\t\t",
-							postfix = if (section.first.size == 1) "" else "\n\t\t\t")
-					}</$group>"
-				}
-			}.filter(String::isNotEmpty)
-				.joinToString("\n\t\t\t")
-			}
-		</table>"""
-		} else if (it is DescriptionList) {
-			"""<dl>
-			${it.items.asSequence().map {
-				if (it.terms.size != 1)
-					throw IllegalStateException("${it.terms}")
-
-				"""${it.terms[0].text.let { if (it.isNotEmpty()) "<dt>${it.replaceMarkup(structs)}</dt>\n\t\t\t" else "" }}<dd>${if (it.description.blocks.isEmpty())
-					it.description.text.replaceMarkup(structs)
-				else
-					nodeToJavaDoc(it.description, structs)
-				}</dd>"""
-			}.joinToString("\n\n\t\t")}
-		</dl>"""
-		} else {
-			throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
-		}
-	}.joinToString("\n\n\t\t").let {
+private fun containerToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>): String =
+	node.blocks.asSequence()
+		.map { nodeToJavaDoc(it, structs) }
+		.joinToString("\n\n\t\t").let {
 		if (node.title == null || node.title.isEmpty() || it.isEmpty() || it.startsWith("<h5>"))
 			it
 		else
 			"<h5>${node.title}</h5>\n\t\t$it".let {
 				if (node.style == "NOTE") {
 					"""<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
-		</div>"""
+	</div>"""
 				} else
 					it
 			}
 	}
-}
+
+private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>): String =
+	if (it is Block) {
+		if (it.lines.isEmpty())
+			containerToJavaDoc(it, structs)
+		else {
+			if (it.blocks.isNotEmpty())
+				throw IllegalStateException()
+			if (it.style == "source")
+				codeBlock(it.source)
+			else
+				it.lines.joinToString(" ").replaceMarkup(structs)
+		}
+	} else if (it is org.asciidoctor.ast.List) { // TODO: title?
+		"""<ul>
+			${it.items.asSequence()
+			.map {
+				if (it is ListItem) {
+					"<li>${it.text.replaceMarkup(structs)}</li>"
+				} else
+					throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
+			}
+			.joinToString("\n\t\t\t")}
+		</ul>"""
+	} else if (it is Table) {
+		"""${if (it.title == null) "" else "<h6>${it.title}</h6>\n\t\t"}<table class="lwjgl">
+			${sequenceOf(
+			it.header to ("thead" to "th"),
+			it.footer to ("tfoot" to "td"),
+			it.body to ("tbody" to "td")
+		)
+			.filter { it.first.isNotEmpty() }
+			.map { section ->
+				val (group, cell) = section.second
+				"<$group>${section.first.asSequence()
+					.map {
+						"<tr>${it.cells.asSequence().map { "<$cell>${it.text.replaceMarkup(structs)}</$cell>" }.joinToString("")}</tr>"
+					}
+					.joinToString(
+						"\n\t\t\t\t",
+						prefix = if (section.first.size == 1) "" else "\n\t\t\t\t",
+						postfix = if (section.first.size == 1) "" else "\n\t\t\t")
+				}</$group>"
+			}
+			.joinToString("\n\t\t\t")}
+		</table>"""
+	} else if (it is DescriptionList) {
+		"""<dl>
+			${it.items.asSequence()
+			.map {
+				if (it.terms.size != 1)
+					throw IllegalStateException("${it.terms}")
+
+				"""${it.terms[0].text.let { if (it.isNotEmpty()) "<dt>${it.replaceMarkup(structs)}</dt>\n\t\t\t" else "" }}<dd>${if (it.description.blocks.isEmpty())
+					it.description.text.replaceMarkup(structs)
+				else
+					containerToJavaDoc(it.description, structs)
+				}</dd>"""
+			}
+			.joinToString("\n\n\t\t\t")}
+		</dl>"""
+	} else {
+		throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
+	}
 
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
 private val PARAM_REGEX = Regex("""pname:(\w+)""")
@@ -380,7 +444,7 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
 
 	return members.blocks[0].let {
 		if (it is org.asciidoctor.ast.List) it.items.asSequence()
-			.filterIsInstance(ListItem::class.java)
+			.filterIsInstance<ListItem>()
 			.filter { it.text != null }
 			.flatMap {
 				val multi = MULTI_PARAM_DOC_REGEX.find(it.text)
@@ -420,7 +484,8 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
 								it.second.substring(2, it.second.length - 2)
 							else
 								it.second
-						}.joinToString("\n\n\t\t", prefix = "\"\"", postfix = "\"\"")
+						}
+						.joinToString("\n\n\t\t", prefix = "\"\"", postfix = "\"\"")
 			}
 			.toMap()
 		else
@@ -430,6 +495,30 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
 
 private fun getItemDescription(listItem: ListItem, description: String, structs: Map<String, TypeStruct>) =
 	if (listItem.blocks.isNotEmpty())
-		"\"\"${description.replaceMarkup(structs)}\n${nodeToJavaDoc(listItem, structs)}\"\""
+		"\"\"${description.replaceMarkup(structs)}\n${containerToJavaDoc(listItem, structs)}\"\""
 	else
 		description.replaceMarkup(structs)
+
+private fun findNodes(node: StructuralNode, predicate: (StructuralNode) -> Boolean): Sequence<StructuralNode> =
+	(
+		if (predicate(node))
+			sequenceOf(node)
+		else
+			emptySequence()
+	) +
+	(
+		if (node.blocks == null)
+			emptySequence()
+		else
+			node.blocks.asSequence()
+				.flatMap { findNodes(it, predicate) }
+	)
+
+private fun printStructure(node: StructuralNode, indent: String = "") {
+	System.err.println("$indent${node.nodeName} ${node.title} ${node.attributes} ${node.javaClass}")
+	if (node.blocks == null)
+		return
+	node.blocks.asSequence().forEach {
+		printStructure(it, "\t$indent")
+	}
+}

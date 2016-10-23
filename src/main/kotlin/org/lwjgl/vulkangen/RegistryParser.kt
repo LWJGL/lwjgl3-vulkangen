@@ -453,7 +453,7 @@ internal fun parse(registry: Path) = (XStream(Xpp3Driver()).let { xs ->
 
 	// VkPhysicalDeviceMemoryProperties missing auto-sizes lengths
 	it.types
-		.filterIsInstance(TypeStruct::class.java)
+		.filterIsInstance<TypeStruct>()
 		.find { it.name == "VkPhysicalDeviceMemoryProperties" }!!.members.let {
 		it.find { it.name == "memoryTypes" }!!.attribs["len"] = "memoryTypeCount"
 		it.find { it.name == "memoryHeaps" }!!.attribs["len"] = "memoryHeapCount"
