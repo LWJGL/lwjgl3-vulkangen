@@ -333,55 +333,49 @@ ${templateTypes
 
 	"""}${struct.members.asSequence()
 					.map { member ->
-						if (member.name == "sType" && member.type == "VkStructureType" && member.indirection.isEmpty())
-							"sType(this)"
-						else if (member.name == "pNext" && member.type == "void" && member.indirection == "_p")
-							"pNext()"
-						else {
-							val autoSize = struct.members.asSequence()
-								.filter { it.len.contains(member.name) }
-								.map { "\"${it.name}\"" }
-								.joinToString(",")
-								.let {
-									if (it.isEmpty())
-										""
-									else if (member.optional != null)
-										"AutoSize($it, optional = true).."
-									else if (struct.members.asSequence()
-										         .filter { it.len.contains(member.name) && it.noautovalidity != null }
-										         .count() > 1
-									)
-										"AutoSize($it, atLeastOne = true).."
-									else
-										"AutoSize($it).."
-								}
-
-							val nullable = if ((member.optional != null || (member.noautovalidity != null && member.len.any() && member.len.first().let { len ->
-								struct.members.asSequence()
-									.filter { it.len.contains(len) }
-									.count() > 1
-							})) && (member.indirection.isNotEmpty() || types[member.type] is TypeFuncpointer)) "nullable.." else ""
-
-							val const = if (member.modifier == "const") "const.." else ""
-
-							val encoding = if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
-							val type = if (member.type == "void" && member.indirection == "_p" && member.len.none())
-								"voidptr"
-							else
-								"${member.type}$encoding${if (member.indirection.isNotEmpty() && types[member.type].let { it !is TypePlatform })
-									member.indirection.replace('_', '.')
+						val autoSize = struct.members.asSequence()
+							.filter { it.len.contains(member.name) }
+							.map { "\"${it.name}\"" }
+							.joinToString(",")
+							.let {
+								if (it.isEmpty())
+									""
+								else if (member.optional != null)
+									"AutoSize($it, optional = true).."
+								else if (struct.members.asSequence()
+									         .filter { it.len.contains(member.name) && it.noautovalidity != null }
+									         .count() > 1
+								)
+									"AutoSize($it, atLeastOne = true).."
 								else
-									member.indirection
-								}"
-
-							val memberType = when {
-								member.array != null                                 -> "array"
-								member.len.any() && types[member.type] is TypeStruct -> "buffer"
-								else                                                 -> "member"
+									"AutoSize($it).."
 							}
 
-							"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
+						val nullable = if ((member.optional != null || (member.noautovalidity != null && member.len.any() && member.len.first().let { len ->
+							struct.members.asSequence()
+								.filter { it.len.contains(len) }
+								.count() > 1
+						})) && (member.indirection.isNotEmpty() || types[member.type] is TypeFuncpointer)) "nullable.." else ""
+
+						val const = if (member.modifier == "const") "const.." else ""
+
+						val encoding = if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
+						val type = if (member.type == "void" && member.indirection == "_p" && member.len.none())
+							"voidptr"
+						else
+							"${member.type}$encoding${if (member.indirection.isNotEmpty() && types[member.type].let { it !is TypePlatform })
+								member.indirection.replace('_', '.')
+							else
+								member.indirection
+							}"
+
+						val memberType = when {
+							member.array != null                                 -> "array"
+							member.len.any() && types[member.type] is TypeStruct -> "buffer"
+							else                                                 -> "member"
 						}
+
+						"$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
 					}
 					.joinToString("\n\t")}
 }"""
