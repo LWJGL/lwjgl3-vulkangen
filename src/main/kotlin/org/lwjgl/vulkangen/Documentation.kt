@@ -45,43 +45,6 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 		.javaConverterRegistry()
 		.register(PlainConverter::class.java, "plain")
 
-	// Enums, functions & structs
-
-	val document = root.resolve("doc/specs/vulkan/man").let { man ->
-		asciidoctor.load(
-			Files.lines(man.resolve("apispec.txt"))
-				.map {
-					// Enable all extensions
-					val match = "// not including (\\w+)".toRegex().matchEntire(it)
-					if (match == null)
-						it
-					else
-						"include::${match.groups[1]!!.value}.txt[]"
-				}
-				.collect(Collectors.joining("\n")),
-			OptionsBuilder.options()
-				.backend("plain")
-				.docType("manpage")
-				.safe(SafeMode.UNSAFE)
-				.baseDir(man.toFile())
-				.asMap()
-		)
-	}
-	fixNestedLists(document)
-
-	document.blocks.asSequence().forEach {
-		when (it.id) {
-			"protos"  -> {
-				for (node in it.blocks)
-					addFunction(node, structs)
-			}
-			"structs" -> {
-				for (node in it.blocks)
-					addStruct(node, structs)
-			}
-		}
-	}
-
 	// Extension class documentation
 
 	val appendices = root.resolve("doc/specs/vulkan/appendices")
@@ -136,6 +99,49 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 		}
 
 		EXTENSION_DOC[it.id.substring(3)] = buffer.toString()
+	}
+
+	// Enums, functions & structs
+
+	val document = root.resolve("doc/specs/vulkan/man").let { man ->
+		asciidoctor.load(
+			Files.lines(man.resolve("apispec.txt"))
+				.map {
+					// Enable all extensions
+					val match = "// not including (\\w+)".toRegex().matchEntire(it)
+					if (match == null)
+						it
+					else
+						"include::${match.groups[1]!!.value}.txt[]"
+				}
+				.collect(Collectors.joining("\n")),
+			OptionsBuilder.options()
+				.backend("plain")
+				.docType("manpage")
+				.safe(SafeMode.UNSAFE)
+				.baseDir(man.toFile())
+				.attributes(extensionIDs)
+				.asMap()
+		)
+	}
+	fixNestedLists(document)
+
+	document.blocks.asSequence().forEach {
+		when (it.id) {
+			"protos"  -> {
+				for (node in it.blocks)
+					addFunction(node, structs)
+			}
+			"structs" -> {
+				for (node in it.blocks)
+					addStruct(node, structs)
+			}
+			"enums",
+			"flags"   -> {
+				for (node in it.blocks)
+					addEnum(node, structs)
+			}
+		}
 	}
 
 	asciidoctor.shutdown()
