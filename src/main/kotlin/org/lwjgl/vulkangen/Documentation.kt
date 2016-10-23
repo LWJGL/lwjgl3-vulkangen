@@ -302,9 +302,9 @@ private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
 private val MATHJAX = """\$([^$]+)\$""".toRegex()
 private val DOUBLE = """``((?:(?!').)+)''""".toRegex()
+private val EQUATION = """\[eq]#((?:[^#]|(?<=&)#(?=x?[0-9a-fA-F]{1,4};))+)#""".toRegex()
 private val STRUCT_OR_HANDLE = """s(?:name|link):(\w+)""".toRegex()
 private val STRUCT_FIELD = """::pname:(\w+)""".toRegex()
-private val EQUATION = """\[eq]#([^#]+)#""".toRegex()
 private val CODE1 = """`([^`]+)`""".toRegex()
 private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
@@ -331,6 +331,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 	.replace(SUBSCRIPT, "<sub>$1</sub>")
 	.replace(MATHJAX, "<code>$1</code>")
 	.replace(DOUBLE, "“$1”")
+	.replace(EQUATION) { "<code>${it.groups[1]!!.value.replace(CODE2, "$1")}</code>" } // TODO: more?
 	.replace(STRUCT_OR_HANDLE) {
 		val type = it.groups[1]!!.value
 		if (structs.containsKey(type))
@@ -339,7 +340,6 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 			"{@code $type}" // handle
 	}
 	.replace(STRUCT_FIELD, "{@code ::$1}")
-	.replace(EQUATION) { "<code>${it.groups[1]!!.value.replace(CODE2, "$1")}</code>" } // TODO: more?
 	.replace(CODE1, "{@code $1}")
 	.replace(FUNCTION, "#$1()")
 	.replace(FUNCTION_TYPE) {
