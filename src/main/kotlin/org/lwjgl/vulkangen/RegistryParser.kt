@@ -350,7 +350,7 @@ internal class TypeConverter : Converter {
 	override fun canConvert(type: Class<*>?): Boolean = type == Type::class.java
 }
 
-internal fun parse(registry: Path) = (XStream(Xpp3Driver()).let { xs ->
+internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 	xs.alias("registry", Registry::class.java)
 
 	VendorID::class.java.let {
@@ -448,23 +448,4 @@ internal fun parse(registry: Path) = (XStream(Xpp3Driver()).let { xs ->
 	}
 
 	xs
-}.fromXML(registry.toFile()) as Registry).let {
-	// Apply registry fixes before returning
-
-	// VkPhysicalDeviceMemoryProperties missing auto-sizes lengths
-	it.types
-		.filterIsInstance<TypeStruct>()
-		.find { it.name == "VkPhysicalDeviceMemoryProperties" }!!.members.let {
-		it.find { it.name == "memoryTypes" }!!.attribs["len"] = "memoryTypeCount"
-		it.find { it.name == "memoryHeaps" }!!.attribs["len"] = "memoryHeapCount"
-	}
-
-	// vkDebugReportMessageEXT missing null-terminated lengths
-	it.commands
-		.find { it.proto.name == "vkDebugReportMessageEXT" }!!.params.let {
-		it.find { it.name == "pLayerPrefix" }!!.attribs["len"] = "null-terminated"
-		it.find { it.name == "pMessage" }!!.attribs["len"] = "null-terminated"
-	}
-
-	it
-}
+}.fromXML(registry.toFile()) as Registry
