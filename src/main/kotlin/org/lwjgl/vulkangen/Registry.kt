@@ -17,12 +17,7 @@ val DISABLED_EXTENSIONS = setOf(
 	"VK_KHR_wayland_surface",
 	"VK_KHR_xcb_surface",
 
-	"VK_ANDROID_native_buffer",
-
-	"VK_NV_external_memory",
-	"VK_NV_external_memory_capabilities",
-	"VK_NV_external_memory_win32",
-	"VK_NV_win32_keyed_mutex"
+	"VK_ANDROID_native_buffer"
 )
 
 val ABBREVIATIONS = setOf(
@@ -177,7 +172,6 @@ private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<T
 		sequenceOf(type)
 }
 
-
 private fun getReturnType(proto: Field): String = proto.let { "${if (it.modifier == "const") "const.." else ""}${it.type}${it.indirection}" }
 
 private fun getCheck(param: Field, indirection: String, structs: Map<String, TypeStruct>, forceIN: Boolean): String {
@@ -258,6 +252,23 @@ else {
 	}.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
+private fun getJavaImports(vulkanPackage: String, types: Map<String, Type>, fields: Sequence<Field>) = fields
+	.mapNotNull {
+		if (it.array != null && it.array.startsWith("\"VK_MAX_"))
+			"static $vulkanPackage.VK10.*"
+		else {
+			val type = types[it.type]
+			if (type is TypeSystem)
+				IMPORTS[type.requires]
+			else
+				null
+		}
+	}
+	.distinct()
+	.map { "javaImport(\"$it\")" }
+	.joinToString("\n\t")
+	.let { if (it.isEmpty()) "" else "$it\n\t" }
+
 private fun generateTypes(
 	root: Path,
 	vulkanPackage: String,
@@ -303,7 +314,7 @@ ${templateTypes
 	VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
 	"${if (functionDoc == null) "" else functionDoc.shortDescription}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
 ) {
-	${if (functionDoc == null) "" else """documentation =
+	${getJavaImports(vulkanPackage, types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
 		$QUOTES3
 		${functionDoc.shortDescription}
 
@@ -329,10 +340,7 @@ ${templateTypes
 				val structDoc = STRUCT_DOC[struct.name]
 
 				"""val ${struct.name} = ${struct.type}(VULKAN_PACKAGE, "${struct.name}"${if (struct.returnedonly) ", mutable = false" else ""}) {
-	${if (struct.members.any {
-					// TODO: This is too simple
-					it.array?.startsWith("\"VK_MAX_") ?: false
-				}) "javaImport(\"static $vulkanPackage.VK10.*\")\n\t" else ""}${if (structDoc == null) "" else """documentation =
+	${getJavaImports(vulkanPackage, types, struct.members.asSequence())}${if (structDoc == null) "" else """documentation =
 		$QUOTES3
 		${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
 
