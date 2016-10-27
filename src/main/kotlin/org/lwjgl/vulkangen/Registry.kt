@@ -110,7 +110,7 @@ fun main(args: Array<String>) {
 	}
 
 	val extensions = registry.extensions.asSequence()
-		.filter { it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
+		.filter { it.supported != "disable" && it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
 
 	val extensionTypes = getDistinctTypes(extensions.map { it.require }, commands, types)
 		.filter { !featureTypes.contains(it) }
