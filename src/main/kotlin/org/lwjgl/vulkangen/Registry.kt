@@ -10,6 +10,7 @@ import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.system.exitProcess
 
 val DISABLED_EXTENSIONS = setOf(
 	"VK_KHR_android_surface",
@@ -123,7 +124,7 @@ fun main(args: Array<String>) {
 		enumsSeen = generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
 	}
 
-	System.exit(0)
+	exitProcess(0)
 }
 
 /*
@@ -199,7 +200,7 @@ else {
 		val autoSize = params.asSequence()
 			.filter { it.len.contains(param.name) }
 			.map { "\"${it.name}\"" }
-			.joinToString(",")
+			.joinToString(", ")
 			.let {
 				if (it.isEmpty())
 					""
@@ -354,7 +355,7 @@ ${templateTypes
 						val autoSize = struct.members.asSequence()
 							.filter { it.len.contains(member.name) }
 							.map { "\"${it.name}\"" }
-							.joinToString(",")
+							.joinToString(", ")
 							.let {
 								if (it.isEmpty())
 									""
@@ -508,14 +509,14 @@ private fun generateExtension(
 		writer.print(HEADER)
 		writer.print("""package $vulkanPackage.templates
 
-import org.lwjgl.generator.*
-import $vulkanPackage.*${distinctTypes
+import org.lwjgl.generator.*${distinctTypes
 			.filterIsInstance<TypeSystem>()
 			.map { it.requires }
 			.distinct()
 			.map { "\nimport ${IMPORTS[it]!!}" }
 			.joinToString()
 		}
+import $vulkanPackage.*
 
 val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore('_')}) {
 	documentation =
