@@ -312,7 +312,7 @@ ${templateTypes
 				val functionDoc = FUNCTION_DOC[it.name]
 				"""val ${it.name} = "${it.name}".callback(
 	VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-	"${if (functionDoc == null) "" else functionDoc.shortDescription}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
+	"${functionDoc?.shortDescription ?: ""}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "\t")}
 ) {
 	${getJavaImports(vulkanPackage, types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
 		$QUOTES3

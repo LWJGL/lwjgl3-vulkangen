@@ -89,10 +89,7 @@ internal class Field(
 	val attribs: MutableMap<String, String>
 ) {
 	val len: Sequence<String> get() = attribs["len"].let {
-		if (it == null)
-			emptySequence<String>()
-		else
-			it.splitToSequence(",")
+		it?.splitToSequence(",") ?: emptySequence<String>()
 	}
 
 	val optional: String? get() = attribs["optional"]
