@@ -218,7 +218,7 @@ else {
 				it
 		}
 
-		val forceINParam = forceIN || types[param.type] is TypeSystem || /* TODO: validate this */ param.externsync != null
+		val forceINParam = forceIN || param.type == "Display" || /* TODO: validate this */ param.externsync != null
 		val check = getCheck(param, indirection, structs, forceINParam)
 
 		val nullable = if ((indirection.isNotEmpty() || types[param.type] is TypeFuncpointer) && (
