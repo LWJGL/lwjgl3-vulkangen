@@ -272,6 +272,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
 				}
 				"ref"         -> ""
 				"emphasis"    -> "_${node.text}_"
+				"strong"      -> "*${node.text}*"
 				"latexmath"   -> "<code>${LATEX_REGISTRY[node.text] ?: throw IllegalStateException("Missing LaTeX equation:\n${node.text}")}</code>"
 				"line"        -> node.text
 				"link"        -> "${node.target}[${node.text}]"
@@ -330,6 +331,7 @@ private val LINE_BREAK = """\n\s*""".toRegex()
 
 private val SIMPLE_NUMBER = """(?<=^|\s)`(\d+)`|code:(\d+)(?=\s|$)""".toRegex()
 private val KEYWORD = """(?<=^|\s)(must|should|may|can|cannot):(?=\s|$)""".toRegex()
+private val STRONG = """(?<=^|\W)\*([^*]+)\*(?=[\W]|$)""".toRegex()
 private val EMPHASIS = """(?<=^|\W)_([^_]+)_(?=[\W]|$)""".toRegex()
 private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
@@ -359,6 +361,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 	}
 	.replace(SIMPLE_NUMBER, "$1$2")
 	.replace(KEYWORD, "<b>$1</b>")
+	.replace(STRONG, "<b>$1</b>")
 	.replace(EMPHASIS, "<em>$1</em>")
 	.replace(SUPERSCRIPT, "<sup>$1</sup>")
 	.replace(SUBSCRIPT, "<sub>$1</sub>")
