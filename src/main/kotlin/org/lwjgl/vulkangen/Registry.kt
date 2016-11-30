@@ -374,7 +374,7 @@ ${templateTypes
 							struct.members.asSequence()
 								.filter { it.len.contains(len) }
 								.count() > 1
-						})) && (member.indirection.isNotEmpty() || types[member.type] is TypeFuncpointer)) "nullable.." else ""
+						})) && (member.indirection.isNotEmpty() || types[member.type]!!.let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })) "nullable.." else ""
 
 						val const = if (member.modifier == "const") "const.." else ""
 
