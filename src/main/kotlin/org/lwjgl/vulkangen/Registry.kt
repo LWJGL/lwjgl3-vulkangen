@@ -352,22 +352,23 @@ ${templateTypes
 
 	"""}${struct.members.asSequence()
 					.map { member ->
-						val autoSize = struct.members.asSequence()
+						val autoSize = struct.members
 							.filter { it.len.contains(member.name) }
-							.map { "\"${it.name}\"" }
-							.joinToString(", ")
-							.let {
-								if (it.isEmpty())
+							.let { members ->
+								if (members.isEmpty())
 									""
-								else if (member.optional != null)
-									"AutoSize($it, optional = true).."
-								else if (struct.members.asSequence()
-									         .filter { it.len.contains(member.name) && it.noautovalidity != null }
-									         .count() > 1
-								)
-									"AutoSize($it, atLeastOne = true).."
-								else
-									"AutoSize($it).."
+								else {
+									val references = members.asSequence()
+										.map { "\"${it.name}\"" }
+										.joinToString(", ")
+
+									if (member.optional != null || members.all { it.optional != null })
+										"AutoSize($references, optional = true).."
+									else if (members.asSequence().filter { it.noautovalidity != null }.count() > 1)
+										"AutoSize($references, atLeastOne = true).."
+									else
+										"AutoSize($references).."
+								}
 							}
 
 						val nullable = if ((member.name == "pNext" || member.optional != null || (member.noautovalidity != null && member.len.any() && member.len.first().let { len ->
