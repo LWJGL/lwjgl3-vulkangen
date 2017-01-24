@@ -234,7 +234,7 @@ else {
 			if (returns.type == "PFN_vkVoidFunction") "ASCII" else "UTF8"
 		} else ""
 		val type = if (param.type == "void" && indirection == "_p" && param.len.none() && check.isEmpty())
-			"voidptr"
+			"opaque_p"
 		else
 			"${param.type}$encoding${if (indirection.isNotEmpty() && types[param.type].let { it !is TypePlatform })
 				indirection.replace('_', '.')
@@ -381,7 +381,7 @@ ${templateTypes
 
 						val encoding = if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
 						val type = if (member.type == "void" && member.indirection == "_p" && member.len.none())
-							"voidptr"
+							"opaque_p"
 						else
 							"${member.type}$encoding${if (member.indirection.isNotEmpty() && types[member.type].let { it !is TypePlatform })
 								member.indirection.replace('_', '.')
