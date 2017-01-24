@@ -74,7 +74,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 	)
 	extensionIDs.putAll(parseExtensionsIDs(
 		appendices.resolve("VK_KHR_surface/wsi.txt"),
-		"""^include::\.\./(VK_\w+)/\w+\.txt\[]""".toRegex()
+		"""^include::\.\./(VK_\w+)(?:/\w+)?\.txt\[]""".toRegex()
 	))
 
 	val extensions = asciidoctor.loadFile(
@@ -92,23 +92,10 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 	findNodes(extensions) {
 		it.nodeName == "section" && extensionIDs.containsKey(it.id)
 	}.forEach {
-		val buffer = StringBuilder()
-		var state = 0
-		for (i in it.blocks.indices) {
-			if (state == 0 && it.blocks[i] is Block)
-				state = 1
-
-			if (state == 1) {
-				if (it.blocks[i] is Section)
-					break
-
-				if (buffer.isNotEmpty())
-					buffer.append("\n\n\t\t")
-				buffer.append(nodeToJavaDoc(it.blocks[i], structs))
-			}
-		}
-
-		EXTENSION_DOC[it.id.substring(3)] = buffer.toString()
+		EXTENSION_DOC[it.id.substring(3)] = it.blocks.asSequence()
+			.filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
+			.map { nodeToJavaDoc(it, structs) }
+			.joinToString("\n\n\t\t")
 	}
 
 	// Enums, functions & structs
@@ -413,7 +400,9 @@ private fun containerToJavaDoc(node: StructuralNode, structs: Map<String, TypeSt
 	}
 
 private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, indent: String = ""): String =
-	if (it is Block) {
+	if (it is Section) {
+		containerToJavaDoc(it, structs, indent)
+	} else if (it is Block) {
 		if (it.lines.isEmpty())
 			containerToJavaDoc(it, structs, indent)
 		else {
