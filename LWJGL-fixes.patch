@@ -1,62 +1,214 @@
-From c83ea5a5c14898a31cbbc48e6eb2edc0ed443e85 Mon Sep 17 00:00:00 2001
+From 44f7d3ca76f575973c7a9dc619879daa4775b131 Mon Sep 17 00:00:00 2001
 From: Ioannis Tsakpinis <iotsakp@gmail.com>
 Date: Mon, 24 Oct 2016 00:26:46 +0300
 Subject: [PATCH] LWJGL fixes
 
 ---
- doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt | 2 ++
- doc/specs/vulkan/chapters/VK_EXT_debug_report.txt               | 6 +++---
- src/spec/vk.xml                                                 | 8 ++++----
- 3 files changed, 9 insertions(+), 7 deletions(-)
+ .../appendices/VK_AMD_negative_viewport_height.txt     |  2 ++
+ .../appendices/VK_KHR_display/vk_khr_display.txt       |  1 +
+ doc/specs/vulkan/appendices/extensions.txt             |  4 ++--
+ doc/specs/vulkan/chapters/VK_EXT_debug_report.txt      |  3 +--
+ .../create_shared_swapchains.txt                       |  2 +-
+ .../VK_NVX_device_generated_commands/generation.txt    |  2 +-
+ doc/specs/vulkan/chapters/primsrast.txt                |  2 +-
+ doc/specs/vulkan/chapters/resources.txt                | 18 +++++++++---------
+ src/spec/vk.xml                                        |  4 ++--
+ 9 files changed, 20 insertions(+), 18 deletions(-)
 
 diff --git a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
-index f80eb71..6811c2e 100755
+index eeaa4e9..fd1eea0 100755
 --- a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
 +++ b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
 @@ -27,5 +27,7 @@
  This extension allows an application to specify a negative viewport height.
  The result is that the viewport transformation will flip along the y-axis.
- 
+
 +=== Version History
 +
   * Revision 1, 2016-09-02 (Matthaeus Chajdas)
     - Initial draft
+diff --git a/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt b/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt
+index 2057783..e90c0f0 100644
+--- a/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt
++++ b/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt
+@@ -186,6 +186,7 @@ They will dispatch based on their associated physical device.
+ *PROPOSED RESOLUTION*: Defer.
+ This could be a separate extension on top of the base WSI specs.
+
++ifdef::editing-notes[]
+ [NOTE]
+ .editing-note
+ ==================
+diff --git a/doc/specs/vulkan/appendices/extensions.txt b/doc/specs/vulkan/appendices/extensions.txt
+index 2a978fe..99650ef 100644
+--- a/doc/specs/vulkan/appendices/extensions.txt
++++ b/doc/specs/vulkan/appendices/extensions.txt
+@@ -61,13 +61,13 @@ endif::VK_KHR_shader_draw_parameters[]
+
+ // WSI extensions are all grouped below
+
+-:leveloffset: 2
++:leveloffset: 1
+
+ ifdef::VK_KHR_surface[]
+ include::VK_KHR_surface/wsi.txt[]
+ endif::VK_KHR_surface[]
+
+-:leveloffset: 1
++:leveloffset: 0
+
+
+ // == Multivendor +EXT+ Extensions
 diff --git a/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt b/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
-index e9e364e..7ac55ad 100644
+index 325d1e7..455d6f6 100644
 --- a/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
 +++ b/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
-@@ -95,7 +95,7 @@ include::../api/funcpointers/PFN_vkDebugReportCallbackEXT.txt[]
- 
-   * pname:flags indicates the ename:VkDebugReportFlagBitsEXT that triggered
-     this callback.
--  * pname:objType is a elink:VkDebugReportObjectTypeEXT specifying the type
-+  * pname:objectType is a elink:VkDebugReportObjectTypeEXT specifying the type
-     of object being used or created at the time the event was triggered.
-   * pname:object gives the object where the issue was detected.
-     pname:object may be ename:VK_NULL_OBJECT if there is no object
-@@ -141,7 +141,7 @@ include::../api/protos/vkDebugReportMessageEXT.txt[]
-   * pname:instance the instance the callback will be logged on.
-   * pname:flags indicates the ename:VkDebugReportFlagBitsEXT that triggered
-     this callback.
--  * pname:objType is a elink:VkDebugReportObjectTypeEXT specifying the type
-+  * pname:objectType is a elink:VkDebugReportObjectTypeEXT specifying the type
-     of object being used or created at the time the event was triggered.
+@@ -51,7 +51,6 @@ include::../api/structs/VkDebugReportCallbackCreateInfoEXT.txt[]
+ --
+ // refBegin VkDebugReportFlagBitsEXT Bitmask specifying events which cause a debug report callback
+ include::../api/enums/VkDebugReportFlagBitsEXT.txt[]
+-
+   * ename:VK_DEBUG_REPORT_ERROR_BIT_EXT indicates an error that may cause
+     undefined results, including an application crash.
+   * ename:VK_DEBUG_REPORT_WARNING_BIT_EXT indicates use of Vulkan that may
+@@ -150,7 +149,7 @@ include::../api/protos/vkDebugReportMessageEXT.txt[]
+     type of object being used or created at the time the event was
+     triggered.
    * pname:object is object where the issue was detected.
-     pname:object may be ename:VK_NULL_OBJECT if there is no object
-@@ -167,7 +167,7 @@ registered.
-   * pname:instance must: be a valid sname:VkInstance handle
-   * pname:flags must: be a combination of one or more of
-     sname:VkDebugReportFlagBitsEXT
--  * pname:objType must: be one of sname:VkDebugReportObjectTypeEXT,
-+  * pname:objectType must: be one of sname:VkDebugReportObjectTypeEXT,
-     ename:VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT if pname:object is `NULL`
-   * pname:object may: be a Vulkan object
-   * pname:pLayerPrefix must: be a `NULL` terminated string
+-    pname:object may be ename:VK_NULL_OBJECT if there is no object
++    pname:object may be ename:VK_NULL_HANDLE if there is no object
+     associated with the event.
+   * pname:location is a component (layer, driver, loader) defined value that
+     indicates the _location_ of the trigger.
+diff --git a/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt b/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
+index 310ea89..2fc2c60 100644
+--- a/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
++++ b/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
+@@ -21,7 +21,7 @@ include::../../api/protos/vkCreateSharedSwapchainsKHR.txt[]
+   * pname:pSwapchains is a pointer to an array of sname:VkSwapchainKHR
+     handles in which the created swapchain objects will be returned.
+
+-fname:vkCreateSharedSwapchains is similar to flink:vkCreateSwapchainKHR,
++fname:vkCreateSharedSwapchainsKHR is similar to flink:vkCreateSwapchainKHR,
+ except that it takes an array of sname:VkSwapchainCreateInfoKHR structures,
+ and returns an array of swapchain objects.
+
+diff --git a/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt b/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
+index c3d2609..fe5fa02 100644
+--- a/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
++++ b/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
+@@ -96,7 +96,7 @@ include::../../api/structs/VkCmdProcessCommandsInfoNVX.txt[]
+     pname:sequencesCountBuffer where the count value is stored.
+   * pname:sequencesIndexBuffer must: be set if
+     pname:indirectCommandsLayout's
+-    ename:VK_INDIRECT_COMMANDS_LAYOUT_USAGE_INDEXED_SEQUENCES_BIT is set and
++    ename:VK_INDIRECT_COMMANDS_LAYOUT_USAGE_INDEXED_SEQUENCES_BIT_NVX is set and
+     provides the used sequence indices as ftext:uint32_t array.
+     Otherwise it must: be `NULL`.
+   * pname:sequencesIndexOffset is the byte offset into
+diff --git a/doc/specs/vulkan/chapters/primsrast.txt b/doc/specs/vulkan/chapters/primsrast.txt
+index df69b8a..6913ac8 100644
+--- a/doc/specs/vulkan/chapters/primsrast.txt
++++ b/doc/specs/vulkan/chapters/primsrast.txt
+@@ -857,7 +857,7 @@ is guaranteed to remain distinct throughout polygon rasterization and in the
+ depth buffer.
+ All pairs of fragments generated by the rasterization of two polygons with
+ otherwise identical vertices, but [eq]#pname:z~f~# values that differ by
+-$r$, will have distinct depth values.
++[eq]#r#, will have distinct depth values.
+
+ For fixed-point depth buffer representations, [eq]#r# is constant throughout
+ the range of the entire depth buffer.
+diff --git a/doc/specs/vulkan/chapters/resources.txt b/doc/specs/vulkan/chapters/resources.txt
+index 6eb11eb..e021039 100644
+--- a/doc/specs/vulkan/chapters/resources.txt
++++ b/doc/specs/vulkan/chapters/resources.txt
+@@ -1296,7 +1296,7 @@ pname:height = 1 +
+ pname:depth = 1 +
+ pname:arrayLayers {geq} 1 +
+ pname:samples = 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_1D +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_1D +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount = 1
+ | 1D, 1, 0 |
+@@ -1306,7 +1306,7 @@ pname:height = 1 +
+ pname:depth = 1 +
+ pname:arrayLayers {geq} 1 +
+ pname:samples = 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_1D_ARRAY +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount {geq} 1
+ | 2D, 0, 0 |
+@@ -1316,7 +1316,7 @@ pname:height {geq} 1 +
+ pname:depth = 1 +
+ pname:arrayLayers {geq} 1 +
+ pname:samples = 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_2D +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount = 1
+ | 2D, 1, 0 |
+@@ -1326,7 +1326,7 @@ pname:height {geq} 1 +
+ pname:depth = 1 +
+ pname:arrayLayers {geq} 1 +
+ pname:samples = 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_2D_ARRAY +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount {geq} 1
+ | 2D, 0, 1 |
+@@ -1336,7 +1336,7 @@ pname:height {geq} 1 +
+ pname:depth = 1 +
+ pname:arrayLayers {geq} 1 +
+ pname:samples > 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_2D +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount = 1
+ | 2D, 1, 1 |
+@@ -1346,7 +1346,7 @@ pname:height {geq} 1 +
+ pname:depth = 1 +
+ pname:arrayLayers {geq} 1 +
+ pname:samples > 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_2D_ARRAY +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount {geq} 1
+ | CUBE, 0, 0 |
+@@ -1357,7 +1357,7 @@ pname:depth = 1 +
+ pname:arrayLayers {geq} 6 +
+ pname:samples = 1 +
+ pname:flags includes ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT |
+-pname:viewType = ename:VK_VIEW_TYPE_CUBE +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_CUBE +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount = 6
+ | CUBE, 1, 0 |
+@@ -1369,7 +1369,7 @@ _N_ {geq} 1 +
+ pname:arrayLayers {geq} 6 {times} _N_ +
+ pname:samples = 1 +
+ pname:flags includes ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT |
+-pname:viewType = ename:VK_VIEW_TYPE_CUBE_ARRAY +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY +
+ pname:baseArrayLayer {geq} 0 +
+ pname:layerCount = 6 {times} _N_, _N_ {geq} 1
+ | 3D, 0, 0 |
+@@ -1379,7 +1379,7 @@ pname:height {geq} 1 +
+ pname:depth {geq} 1 +
+ pname:arrayLayers = 1 +
+ pname:samples = 1 |
+-pname:viewType = ename:VK_VIEW_TYPE_3D +
++pname:viewType = ename:VK_IMAGE_VIEW_TYPE_3D +
+ pname:baseArrayLayer = 0 +
+ pname:layerCount = 1
+ ifdef::VK_KHR_maintenance1[]
 diff --git a/src/spec/vk.xml b/src/spec/vk.xml
-index 7fcb2eb..b98238d 100644
+index 779875b..90460c5 100644
 --- a/src/spec/vk.xml
 +++ b/src/spec/vk.xml
-@@ -522,9 +522,9 @@ maintained in the master branch of the Khronos Vulkan GitHub project.
+@@ -530,9 +530,9 @@ maintained in the master branch of the Khronos Vulkan GitHub project.
          </type>
          <type category="struct" name="VkPhysicalDeviceMemoryProperties" returnedonly="true">
              <member><type>uint32_t</type>               <name>memoryTypeCount</name></member>
@@ -68,17 +220,6 @@ index 7fcb2eb..b98238d 100644
          </type>
          <type category="struct" name="VkMemoryAllocateInfo">
              <member values="VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO"><type>VkStructureType</type> <name>sType</name></member>
-@@ -3958,8 +3958,8 @@ maintained in the master branch of the Khronos Vulkan GitHub project.
-             <param><type>uint64_t</type> <name>object</name></param>
-             <param><type>size_t</type> <name>location</name></param>
-             <param><type>int32_t</type> <name>messageCode</name></param>
--            <param>const <type>char</type>* <name>pLayerPrefix</name></param>
--            <param>const <type>char</type>* <name>pMessage</name></param>
-+            <param len="null-terminated">const <type>char</type>* <name>pLayerPrefix</name></param>
-+            <param len="null-terminated">const <type>char</type>* <name>pMessage</name></param>
-             <validity>
-             </validity>
-         </command>
 -- 
 1.9.1
 

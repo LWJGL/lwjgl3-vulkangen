@@ -17,6 +17,7 @@ val DISABLED_EXTENSIONS = setOf(
 	"VK_KHR_mir_surface",
 	"VK_KHR_wayland_surface",
 	"VK_KHR_xcb_surface",
+	"VK_NN_vi_surface",
 
 	"VK_ANDROID_native_buffer"
 )
@@ -30,6 +31,7 @@ val ABBREVIATIONS = setOf(
 
 val IMPORTS = mapOf(
 	"X11/Xlib.h" to "org.lwjgl.system.linux.*",
+	"X11/extensions/Xrandr.h" to "org.lwjgl.system.linux.*",
 	"windows.h" to "org.lwjgl.system.windows.*"
 )
 
@@ -515,6 +517,7 @@ import org.lwjgl.generator.*${distinctTypes
 			.map { it.requires }
 			.distinct()
 			.map { "\nimport ${IMPORTS[it]!!}" }
+			.distinct()
 			.joinToString()
 		}
 import $vulkanPackage.*

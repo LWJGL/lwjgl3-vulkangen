@@ -283,16 +283,20 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
 }
 
 private val CODE_BLOCK_TRIM_PATTERN = """^\s*\n|\n\s*$""".toRegex() // first and/or last empty lines...
+private val CODE_BLOCK_COMMENT_PATTERN = """/\*\s*(.+)\s*\*/""".toRegex() // first and/or last empty lines...
+private val CODE_BLOCK_HASH = "#".toRegex()
 private val CODE_BLOCK_ESCAPE_PATTERN = "^[ \t\n]".toRegex(RegexOption.MULTILINE) // leading space/tab in line, empty line
 private val CODE_BLOCK_TAB_PATTERN = "\t".toRegex() // tabs
 
 fun codeBlock(code: String) = """<pre><code>${code
 	.replace(CODE_BLOCK_TRIM_PATTERN, "") // ...trim
+	.replace(CODE_BLOCK_COMMENT_PATTERN, "// $1") // ...replace block comments with line comments
+	.replace(CODE_BLOCK_HASH, """\\#""") // ...escape hashes
 	.replace(CODE_BLOCK_ESCAPE_PATTERN, "\uFFFF$0") // ...escape
 	.replace(CODE_BLOCK_TAB_PATTERN, "    ") // ...replace with 4 spaces for consistent formatting.
 }</code></pre>"""
 
-private val LATEX_MATH = """\\begin\{equation}\s*(.+?)\s*\\end\{equation}""".toRegex(RegexOption.DOT_MATCHES_ALL)
+private val LATEX_MATH = """\\\[\s*(.+?)\s*\\]|latexmath:\[\$S(.+?)\$S]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
 	"""m = \sqrt{ \left({\partial z_f \over \partial x_f}\right)^2  +  \left({\partial z_f \over  \partial y_f}\right)^2}""" to
 		codeBlock("      m = sqrt((&part;z<sub>f</sub> / &part;x<sub>f</sub>)<sup>2</sup> + (&part;z<sub>f</sub> / &part;y<sub>f</sub>)<sup>2</sup>)"),
@@ -306,23 +310,39 @@ private val LATEX_REGISTRY = mapOf(
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
     max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
 
-	"""$\lceil{\mathit{rasterizationSamples} \over 32}\rceil$"""
-		to
-		"ceil(rasterizationSamples / 32)",
+	"""$\lceil{\mathit{rasterizationSamples} \over 32}\rceil$""" to "ceil(rasterizationSamples / 32)",
 
-	"""${S}codeSize \over 4$""" to
-		"codeSize / 4"
+	"""${S}codeSize \over 4$""" to "codeSize / 4",
+
+	"""\begin{aligned} E & =   \begin{cases}     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for } 0.0031308 \leq L \leq 1 \\     12.92 \times L                       & \text{for } 0 \leq L < 0.0031308   \end{cases} \end{aligned}""" to
+		codeBlock("""
+E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 1
+    12.92  &times; L for 0 &le; L &lt 0.0031308"""),
+
+	"""\begin{aligned} E & =   \begin{cases}     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for } 0.0031308 \leq L \leq 7.5913 \\     12.92 \times L                       & \text{for } 0 \leq L < 0.0031308 \\     -E \times -L                         & \text{for } L < 0   \end{cases} \end{aligned}""" to
+		codeBlock("""
+     1.055 &times;  L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 7.5913
+E = 12.92  &times;  L for 0 &le; L &lt 0.0031308
+    -E     &times; -L for L &lt; 0"""),
+
+	"""\begin{aligned} E & =   \begin{cases}     1.099 \times L^0.45 - 0.099          & \text{for } 0.018 \leq L \leq 1 \\     4.5 \times L                         & \text{for } 0 \leq L < 0.018   \end{cases} \end{aligned}""" to
+		codeBlock("""
+E = 1.099 &times; L<sup>0.45</sup> - 0.099 for 0.018 &le; L &le; 1
+    4.5   &times; L for 0 &le; L &lt; 0.018"""),
+
+	"""E = L^{1 \over 2.2}""" to "E = L<sup>1 / 2.2</sup>",
+	"""E = L^{1 \over 2.6}""" to "E = L<sup>1 / 2.6</sup>",
+	"""\frac{k}{2^m - 1}""" to "k / (2<sup>m</sup> - 1)"
 )
 
 private val LINE_BREAK = """\n\s*""".toRegex()
 
 private val SIMPLE_NUMBER = """(?<=^|\s)`(\d+)`|code:(\d+)(?=\s|$)""".toRegex()
 private val KEYWORD = """(?<=^|\s)(must|should|may|can|cannot):(?=\s|$)""".toRegex()
-private val STRONG = """(?<=^|\W)\*([^*]+)\*(?=[\W]|$)""".toRegex()
+private val STRONG = """(?<=^|\W)\*+([^*]+)\*+(?=[\W]|$)""".toRegex()
 private val EMPHASIS = """(?<=^|\W)_([^_]+)_(?=[\W]|$)""".toRegex()
 private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
-private val MATHJAX = """\$([^$]+)\$""".toRegex()
 private val DOUBLE = """``((?:(?!').)+)''""".toRegex()
 private val EQUATION = """\[eq]#((?:[^#]|(?<=&)#(?=x?[0-9a-fA-F]{1,4};))+)#""".toRegex()
 private val STRUCT_OR_HANDLE = """s(?:name|link):(\w+)""".toRegex()
@@ -332,7 +352,7 @@ private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:pname|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
-private val LINK = """(http.*?/)\[([^\]]+)]""".toRegex()
+private val LINK = """(http.*?/)\[([^]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 
@@ -343,7 +363,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 		// Instead of trying to be clever and parse, we're lazy and
 		// do a lookup  to prebaked HTML. There are not many LaTeX
 		// equations anyway.
-		val equation = it.groups[1]!!.value
+		val equation = (it.groups[1] ?: it.groups[2])!!.value
 		LATEX_REGISTRY[equation] ?: throw IllegalStateException("Missing LaTeX equation:\n$equation")
 	}
 	.replace(SIMPLE_NUMBER, "$1$2")
@@ -352,7 +372,6 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 	.replace(EMPHASIS, "<em>$1</em>")
 	.replace(SUPERSCRIPT, "<sup>$1</sup>")
 	.replace(SUBSCRIPT, "<sub>$1</sub>")
-	.replace(MATHJAX, "<code>$1</code>")
 	.replace(DOUBLE, "“$1”")
 	.replace(EQUATION) { "<code>${it.groups[1]!!.value.replace(CODE2, "$1")}</code>" } // TODO: more?
 	.replace(STRUCT_OR_HANDLE) {
