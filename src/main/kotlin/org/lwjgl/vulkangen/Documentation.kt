@@ -72,10 +72,6 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 		appendices.resolve("extensions.txt"),
 		"""^include::(VK_\w+)\.txt\[]""".toRegex()
 	)
-	extensionIDs.putAll(parseExtensionsIDs(
-		appendices.resolve("VK_KHR_surface/wsi.txt"),
-		"""^include::\.\./(VK_\w+)(?:/\w+)?\.txt\[]""".toRegex()
-	))
 
 	val extensions = asciidoctor.loadFile(
 		appendices.resolve("extensions.txt").toFile(),
@@ -296,36 +292,68 @@ fun codeBlock(code: String) = """<pre><code>${code
 	.replace(CODE_BLOCK_TAB_PATTERN, "    ") // ...replace with 4 spaces for consistent formatting.
 }</code></pre>"""
 
-private val LATEX_MATH = """\\\[\s*(.+?)\s*\\]|latexmath:\[\$S(.+?)\$S]""".toRegex(RegexOption.DOT_MATCHES_ALL)
+private val LATEX_MATH = """latexmath:\[\$S(.+?)\$S]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
-	"""m = \sqrt{ \left({\partial z_f \over \partial x_f}\right)^2  +  \left({\partial z_f \over  \partial y_f}\right)^2}""" to
+	"""m = \sqrt{ \left({{\partial z_f} \over {\partial x_f}}\right)^2
+        +  \left({{\partial z_f} \over {\partial y_f}}\right)^2}""" to
 		codeBlock("      m = sqrt((&part;z<sub>f</sub> / &part;x<sub>f</sub>)<sup>2</sup> + (&part;z<sub>f</sub> / &part;y<sub>f</sub>)<sup>2</sup>)"),
 
-	"""m = \max\left( \left| {\partial z_f \over \partial x_f} \right|, \left| {\partial z_f \over \partial y_f} \right| \right).""" to
+	"""m = \max\left( \left| { {\partial z_f} \over {\partial x_f} } \right|,
+               \left| { {\partial z_f} \over {\partial y_f} } \right|
+       \right).""" to
 		codeBlock("      m = max(abs(&part;z<sub>f</sub> / &part;x<sub>f</sub>), abs(&part;z<sub>f</sub> / &part;y<sub>f</sub>))"),
 
-	"""o = \begin{cases}     m \times depthBiasSlopeFactor +          r \times depthBiasConstantFactor  & depthBiasClamp = 0\ or\ NaN \\     \min(m \times depthBiasSlopeFactor +          r \times depthBiasConstantFactor,          depthBiasClamp)                   & depthBiasClamp > 0  \\     \max(m \times depthBiasSlopeFactor +          r \times depthBiasConstantFactor,          depthBiasClamp)                   & depthBiasClamp < 0  \\ \end{cases}""" to
+	"""o =
+\begin{cases}
+    m \times depthBiasSlopeFactor +
+         r \times depthBiasConstantFactor  & depthBiasClamp = 0\ or\ NaN \\
+    \min(m \times depthBiasSlopeFactor +
+         r \times depthBiasConstantFactor,
+         depthBiasClamp)                   & depthBiasClamp > 0  \\
+    \max(m \times depthBiasSlopeFactor +
+         r \times depthBiasConstantFactor,
+         depthBiasClamp)                   & depthBiasClamp < 0  \\
+\end{cases}""" to
 		codeBlock("""
         m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor                     depthBiasClamp = 0 or NaN
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
     max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
 
-	"""$\lceil{\mathit{rasterizationSamples} \over 32}\rceil$""" to "ceil(rasterizationSamples / 32)",
+	"""\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to "ceil(rasterizationSamples / 32)",
 
-	"""${S}codeSize \over 4$""" to "codeSize / 4",
+	"""codeSize \over 4""" to "codeSize / 4",
 
-	"""\begin{aligned} E & =   \begin{cases}     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for } 0.0031308 \leq L \leq 1 \\     12.92 \times L                       & \text{for } 0 \leq L < 0.0031308   \end{cases} \end{aligned}""" to
+	"""\begin{aligned}
+E & =
+  \begin{cases}
+    1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 1 \\
+    12.92 \times L                       & \text{for}\  0 \leq L < 0.0031308
+  \end{cases}
+\end{aligned}""" to
 		codeBlock("""
 E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 1
     12.92  &times; L for 0 &le; L &lt 0.0031308"""),
 
-	"""\begin{aligned} E & =   \begin{cases}     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for } 0.0031308 \leq L \leq 7.5913 \\     12.92 \times L                       & \text{for } 0 \leq L < 0.0031308 \\     -E \times -L                         & \text{for } L < 0   \end{cases} \end{aligned}""" to
+	"""\begin{aligned}
+E & =
+  \begin{cases}
+    1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 7.5913 \\
+    12.92 \times L                       & \text{for}\  0 \leq L < 0.0031308 \\
+    -E \times -L                         & \text{for}\  L < 0
+  \end{cases}
+\end{aligned}""" to
 		codeBlock("""
      1.055 &times;  L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 7.5913
 E = 12.92  &times;  L for 0 &le; L &lt 0.0031308
     -E     &times; -L for L &lt; 0"""),
 
-	"""\begin{aligned} E & =   \begin{cases}     1.099 \times L^0.45 - 0.099          & \text{for } 0.018 \leq L \leq 1 \\     4.5 \times L                         & \text{for } 0 \leq L < 0.018   \end{cases} \end{aligned}""" to
+	"""\begin{aligned}
+E & =
+  \begin{cases}
+    1.099 \times L^0.45 - 0.099          & \text{for}\  0.018 \leq L \leq 1 \\
+    4.5 \times L                         & \text{for}\  0 \leq L < 0.018
+  \end{cases}
+\end{aligned}""" to
 		codeBlock("""
 E = 1.099 &times; L<sup>0.45</sup> - 0.099 for 0.018 &le; L &le; 1
     4.5   &times; L for 0 &le; L &lt; 0.018"""),
@@ -363,7 +391,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 		// Instead of trying to be clever and parse, we're lazy and
 		// do a lookup  to prebaked HTML. There are not many LaTeX
 		// equations anyway.
-		val equation = (it.groups[1] ?: it.groups[2])!!.value
+		val equation = it.groups[1]!!.value
 		LATEX_REGISTRY[equation] ?: throw IllegalStateException("Missing LaTeX equation:\n$equation")
 	}
 	.replace(SIMPLE_NUMBER, "$1$2")
@@ -429,6 +457,8 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
 				throw IllegalStateException()
 			if (it.style == "source")
 				codeBlock(it.source)
+			else if (it.style == "latexmath")
+				LATEX_REGISTRY[it.source] ?: throw IllegalStateException("Missing LaTeX equation:\n${it.source}")
 			else
 				it.lines.joinToString(" ").replaceMarkup(structs)
 		}
