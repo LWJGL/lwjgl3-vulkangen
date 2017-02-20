@@ -30,6 +30,7 @@ val ABBREVIATIONS = setOf(
 )
 
 val IMPORTS = mapOf(
+	"android/native_window.h" to "org.lwjgl.system.android.*",
 	"X11/Xlib.h" to "org.lwjgl.system.linux.*",
 	"X11/extensions/Xrandr.h" to "org.lwjgl.system.linux.*",
 	"windows.h" to "org.lwjgl.system.windows.*"
@@ -426,7 +427,7 @@ private fun generateFeature(
 import org.lwjgl.generator.*
 import $vulkanPackage.*
 
-val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING) {
+val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING_INSTANCE) {
 	documentation =
 		$QUOTES3
 		The core Vulkan ${feature.number} functionality.
@@ -522,7 +523,7 @@ import org.lwjgl.generator.*${distinctTypes
 		}
 import $vulkanPackage.*
 
-val $name = "$template".nativeClassVK("$name", postfix = ${name.substringBefore('_')}) {
+val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postfix = ${name.substringBefore('_')}) {
 	documentation =
 		$QUOTES3
 		${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}
@@ -648,7 +649,7 @@ private fun PrintWriter.printCommands(
 
 		print("\n\t")
 		// If we don't have a dispatchable handle, mark ICD-global
-		if (cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
+		if (it.name == "vkGetInstanceProcAddr" || cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
 			print("GlobalCommand..")
 		println("""${getReturnType(cmd.proto)}(
 		"$name",
