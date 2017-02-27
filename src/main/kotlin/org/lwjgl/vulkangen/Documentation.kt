@@ -380,7 +380,7 @@ private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:pname|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
-private val LINK = """(http.*?/)\[([^]]+)]""".toRegex()
+private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 

@@ -108,9 +108,9 @@ fun main(args: Array<String>) {
 			.joinToString("\n", postfix = "\n\n")
 	}
 
-	var enumsSeen = featureTypes.filterEnums(enums)
+	val featureEnums = featureTypes.filterEnums(enums)
 	registry.features.forEach { feature ->
-		generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, enumsSeen)
+		generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, featureEnums)
 	}
 
 	val extensions = registry.extensions.asSequence()
@@ -121,10 +121,12 @@ fun main(args: Array<String>) {
 		.toSet()
 
 	generateTypes(root, vulkanPackage, "ExtensionTypes", types, structs, extensionTypes)
+
+	val enumsSeen = featureEnums.toMutableSet()
 	extensions.forEach { extension ->
 		// Type declarations for enums are missing in some extensions.
 		// We generate <enums> the first time we encounter them.
-		enumsSeen = generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
+		generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
 	}
 
 	exitProcess(0)
@@ -434,12 +436,14 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
 		$QUOTES3
 """)
 		// API Constants
+		val apiConstants = enums["API Constants"]!!.enums!!.asSequence()
+			.filter { !it.name.endsWith("_KHX") }
 
 		writer.println("""
 	IntConstant(
 		"API Constants",
 
-		${enums["API Constants"]!!.enums.asSequence()
+		${apiConstants
 			.filter { !it.value!!.contains('L') && !it.value.contains('f') }
 			.map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace("U", "")}\"" }
 			.joinToString(",\n\t\t")}
@@ -450,20 +454,21 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
 	FloatConstant(
 		"API Constants",
 
-		${enums["API Constants"]!!.enums.asSequence()
+		${apiConstants
 			.filter { it.value!!.contains('f') }
 			.map { "\"${it.name.substring(3)}\"..\"${it.value}\"" }
 			.joinToString(",\n\t\t")}
 	)"""
 		)
 
+		val longCleanup = "U?L+".toRegex()
 		writer.println("""
 	LongConstant(
 		"API Constants",
 
-		${enums["API Constants"]!!.enums.asSequence()
+		${apiConstants
 			.filter { it.value!!.contains('L') }
-			.map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace("U?L+".toRegex(), "L")}\"" }
+			.map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace(longCleanup, "L")}\"" }
 			.joinToString(",\n\t\t")}
 	)"""
 		)
@@ -489,12 +494,9 @@ private fun generateExtension(
 	structs: Map<String, TypeStruct>,
 	commands: Map<String, Command>,
 	extension: Extension,
-	enumsSeen: Sequence<Enums>
-): Sequence<Enums> {
+	enumsSeen: MutableSet<Enums>
+) {
 	val distinctTypes = getDistinctTypes(sequenceOf(extension.require), commands, types)
-	val extensionEnums = distinctTypes
-		.filterEnums(enums)
-		.filter { extEnum -> enumsSeen.none { extEnum.name == it.name } }
 
 	val name = extension.name.substring(3)
 	val template = name
@@ -567,33 +569,40 @@ val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postf
 		$QUOTES3"""},
 
 		${it.value.asSequence()
-							.map {
-								"\"${it.name.substring(3)}\".${if (it.value != null)
-									".\"${it.value}\""
-								else if (it.offset != null)
-									".\"${offsetAsEnum(extension.number, it.offset, it.dir)}\""
-								else if (it.bitpos != null)
-									"enum(${bitposAsHex(it.bitpos)})"
-								else
-									throw IllegalStateException()
-								}"
-							}
+							.map { "\"${it.name.substring(3)}\".${it.getEnumValue(extension, enums)}" }
 							.joinToString(",\n\t\t")}
 	)""")
 					}
 				}
 		}
 
-		if (extensionEnums.any())
-			writer.printEnums(extensionEnums)
+		val extensionEnums = distinctTypes
+			.filterEnums(enums)
+			.filter { extEnum -> !enumsSeen.contains(extEnum) }
+			.toList()
+
+		if (extensionEnums.isNotEmpty()) {
+			enumsSeen.addAll(extensionEnums)
+			writer.printEnums(extensionEnums.asSequence())
+		}
 
 		if (extension.require.commands != null)
 			writer.printCommands(extension.require.commands.asSequence(), types, structs, commands)
 
 		writer.print("}")
 	}
+}
 
-	return enumsSeen + extensionEnums
+private fun EnumRef.getEnumValue(extension: Extension, enums: Map<String, Enums>) = if (value != null)
+	".\"$value\""
+else if (offset != null)
+	".\"${offsetAsEnum(extension.number, offset, dir)}\""
+else if (bitpos != null)
+	"enum(${bitposAsHex(bitpos)})"
+else {
+	val hardcoded = enums["API Constants"]!!.enums!!
+		.firstOrNull { c -> c.name == name } ?: throw IllegalStateException("Illegal enum reference: $name")
+	".\"${hardcoded.value!!.replace("U", "")}\""
 }
 
 private fun offsetAsEnum(extension_number: Int, offset: String, dir: String?) =
@@ -617,23 +626,27 @@ private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
 	.distinct()
 	.mapNotNull { enums[it] }
 
-private fun PrintWriter.printEnums(enums: Sequence<Enums>) = enums.forEach { block ->
-	val enumDoc = ENUM_DOC[block.name]
-	println("""
+private fun PrintWriter.printEnums(enums: Sequence<Enums>) {
+	enums
+		.filter { block -> block.enums != null }
+		.forEach { block ->
+			val enumDoc = ENUM_DOC[block.name]
+			println("""
 	EnumConstant(
 		${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3
 		${enumDoc.shortDescription}${
-	if (enumDoc.description.isEmpty()) "" else "\n\n\t\t${enumDoc.description}"}${
-	if (enumDoc.seeAlso.isEmpty()) "" else "\n\n\t\t${enumDoc.seeAlso}"}
+			if (enumDoc.description.isEmpty()) "" else "\n\n\t\t${enumDoc.description}"}${
+			if (enumDoc.seeAlso.isEmpty()) "" else "\n\n\t\t${enumDoc.seeAlso}"}
 		$QUOTES3"""},
 
-		${block.enums.map {
-		if (it.bitpos != null)
-			"\"${it.name.substring(3)}\".enum(${bitposAsHex(it.bitpos)})"
-		else
-			"\"${it.name.substring(3)}\"..\"${it.value}\""
-	}.joinToString(",\n\t\t")}
+		${block.enums!!.map {
+				if (it.bitpos != null)
+					"\"${it.name.substring(3)}\".enum(${bitposAsHex(it.bitpos)})"
+				else
+					"\"${it.name.substring(3)}\"..\"${it.value}\""
+			}.joinToString(",\n\t\t")}
 	)""")
+		}
 }
 
 private fun PrintWriter.printCommands(

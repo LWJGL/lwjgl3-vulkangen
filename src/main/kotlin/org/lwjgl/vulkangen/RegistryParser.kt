@@ -76,7 +76,7 @@ internal class Enums(
 	val name: String,
 	val type: String?,
 	val comment: String?,
-	val enums: List<Enum>,
+	val enums: List<Enum>?,
 	val unused: Unused?
 )
 
