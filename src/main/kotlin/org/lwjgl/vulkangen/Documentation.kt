@@ -421,8 +421,8 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 	}
 	.replace(ENUM, "#$1")
 	.replace(CODE2, "{@code $1}")
-	.replace(LINK, """<a href="$1">$2</a>""")
-	.replace(SPEC_LINK, """<a href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
+	.replace(LINK, """<a target="_blank" href="$1">$2</a>""")
+	.replace(SPEC_LINK, """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
 	.replace(EXTENSION, "{@code $1}")
 
 private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) =
