@@ -5,6 +5,7 @@
 package org.lwjgl.vulkangen
 
 import org.asciidoctor.Asciidoctor
+import org.asciidoctor.AttributesBuilder
 import org.asciidoctor.OptionsBuilder
 import org.asciidoctor.SafeMode
 import org.asciidoctor.ast.*
@@ -73,6 +74,45 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 		"""^include::(VK_\w+)\.txt\[]""".toRegex()
 	)
 
+	// TODO: As of 1.0.42 the attribs.txt include doesn't work
+	val attribs = AttributesBuilder.attributes()
+			.ignoreUndefinedAttributes(false)
+			.attributes(extensionIDs)
+			.attribute("sym1", "✓")
+			.attribute("sym2", "†")
+			.attribute("times", "×")
+			.attribute("plus", "+")
+			.attribute("geq", "≥")
+			.attribute("leq", "≤")
+			.attribute("neq", "≠")
+			.attribute("leftarrow", "←")
+			.attribute("uparrow", "↑")
+			.attribute("rightarrow", "→")
+			.attribute("downarrow", "↓")
+			.attribute("elem", "∈")
+			.attribute("lnot", "¬")
+			.attribute("land", "∧")
+			.attribute("lor", "∨")
+			.attribute("oplus", "⊕")
+			.attribute("alpha", "α")
+			.attribute("beta", "β")
+			.attribute("gamma", "γ")
+			.attribute("DeltaUpper", "Δ")
+			.attribute("delta", "δ")
+			.attribute("epsilon", "ε")
+			.attribute("lambda", "λ")
+			.attribute("rho", "ρ")
+			.attribute("tau", "τ")
+			.attribute("lceil", "⌈")
+			.attribute("rceil", "⌉")
+			.attribute("lfloor", "⌊")
+			.attribute("rfloor", "⌋")
+			.attribute("vert", "|")
+			.attribute("partial", "∂")
+			.attribute("onehalf", "½")
+			.attribute("onequarter", "¼")
+			.asMap()
+
 	val extensions = asciidoctor.loadFile(
 		appendices.resolve("extensions.txt").toFile(),
 		OptionsBuilder.options()
@@ -80,7 +120,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 			.docType("manpage")
 			.safe(SafeMode.UNSAFE)
 			.baseDir(appendices.toFile())
-			.attributes(extensionIDs)
+			.attributes(attribs)
 			.asMap()
 	)
 	fixNestedLists(extensions)
@@ -113,7 +153,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 				.docType("manpage")
 				.safe(SafeMode.UNSAFE)
 				.baseDir(man.toFile())
-				.attributes(extensionIDs)
+				.attributes(attribs)
 				.asMap()
 		)
 	}
@@ -256,7 +296,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
 				"ref"         -> ""
 				"emphasis"    -> "_${node.text}_"
 				"strong"      -> "*${node.text}*"
-				"latexmath"   -> "<code>${LATEX_REGISTRY[node.text] ?: throw IllegalStateException("Missing LaTeX equation:\n${node.text}")}</code>"
+				"latexmath"   -> "<code>${getLatexCode(node.text)}</code>"
 				"line"        -> node.text
 				"link"        -> "${node.target}[${node.text}]"
 				"subscript"   -> "~${node.text}~"
@@ -292,8 +332,43 @@ fun codeBlock(code: String) = """<pre><code>${code
 	.replace(CODE_BLOCK_TAB_PATTERN, "    ") // ...replace with 4 spaces for consistent formatting.
 }</code></pre>"""
 
-private val LATEX_MATH = """latexmath:\[\$S(.+?)\$S]""".toRegex(RegexOption.DOT_MATCHES_ALL)
+private val LATEX_MATH = """latexmath:\[(.+?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
+	"""0 \leq L \leq 1""" to "0 &le L &le; 1",
+	"a = 0.948" to codeBlock("a = 0.948"),
+	"b = 0.052" to codeBlock("b = 0.052"),
+	"c = 0.077" to codeBlock("c = 0.077"),
+	"""\alpha = 1.099 \text{ and } \beta = 0.018 \text{ for 10-bits and less per sample system (the values given in Rec. 709)}""" to
+			codeBlock("""α = 1.099 and β = 0.018 for 10-bits and less per sample system (the values given in Rec.709)"""),
+	"""\alpha = 1.0993 \text{ and } \beta = 0.0181 \text{ for 12-bits per sample system}""" to
+			codeBlock("""α = 1.0993 and β = 0.0181 for 12-bits per sample system"""),
+	"""m_1 = 2610 / 4096 \times \frac{1}{4} = 0.1593017578125""" to
+			codeBlock("""m<sub>1</sub> = 2610 / 4096 &times; 1/4 = 0.1593017578125"""),
+	"""m_2 = 2523 / 4096 \times 128 = 78.84375""" to
+			codeBlock("""m<sub>2</sub> = 2523 / 4096 &times; 128 = 78.84375"""),
+	"""c_1 = 3424 / 4096 = 0.8359375 = c3 - c2 + 1""" to
+			codeBlock("""c<sub>1</sub> = 3424 / 4096 = 0.8359375 = c3 - c2 + 1"""),
+	"""c_2 = 2413 / 4096 \times 32 = 18.8515625""" to
+			codeBlock("""c<sub>2</sub> = 2413 / 4096 &times; 32 = 18.8515625"""),
+	"""c_3 = 2392 / 4096 \times 32 = 18.6875""" to
+			codeBlock("""c<sub>3</sub> = 2392 / 4096 &times; 32 = 18.6875"""),
+	"""L \text{ - is the signal normalized by the reference white level}""" to
+			codeBlock("""L - is the signal normalized by the reference white level"""),
+	"""r \text{ - is the reference white level and has a signal value of 0.5}""" to
+			codeBlock("""r - is the reference white level and has a signal value of 0.5"""),
+	"""a = 0.17883277 \text{ and } b = 0.28466892 \text{, and } c = 0.55991073""" to
+			codeBlock("""a = 0.17883277 and b = 0.28466892, and c = 0.55991073"""),
+	"""E = L^\frac{1}{2.19921875}""" to
+			codeBlock("""E = L^<sup>1 / 2.19921875</sup>"""),
+	"""E = L^\frac{1}{2.6}""" to
+			codeBlock("""E = L^<sup>1 / 2.6</sup>"""),
+	"""\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to
+			codeBlock("ceil(rasterizationSamples / 32)"),
+	"""codeSize \over 4""" to
+			codeBlock("codeSize / 4"),
+	"""\frac{k}{2^m - 1}""" to
+			codeBlock("k / (2<sup>m</sup> - 1)"),
+
 	"""m = \sqrt{ \left({{\partial z_f} \over {\partial x_f}}\right)^2
         +  \left({{\partial z_f} \over {\partial y_f}}\right)^2}""" to
 		codeBlock("      m = sqrt((&part;z<sub>f</sub> / &part;x<sub>f</sub>)<sup>2</sup> + (&part;z<sub>f</sub> / &part;y<sub>f</sub>)<sup>2</sup>)"),
@@ -319,10 +394,6 @@ private val LATEX_REGISTRY = mapOf(
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
     max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
 
-	"""\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to "ceil(rasterizationSamples / 32)",
-
-	"""codeSize \over 4""" to "codeSize / 4",
-
 	"""\begin{aligned}
 E & =
   \begin{cases}
@@ -337,31 +408,83 @@ E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 1
 	"""\begin{aligned}
 E & =
   \begin{cases}
+    1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0030186 \leq L \leq 1 \\
+    12.92 \times L                       & \text{for}\  0 \leq L < 0.0030186
+  \end{cases}
+\end{aligned}""" to
+				codeBlock("""
+E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0030186 &le; L &le; 1
+    12.92  &times; L for 0 &le; L &lt 0.0030186"""),
+
+	"""\begin{aligned}
+E & =
+  \begin{cases}
     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 7.5913 \\
     12.92 \times L                       & \text{for}\  0 \leq L < 0.0031308 \\
-    -E \times -L                         & \text{for}\  L < 0
+    -f(-L)                               & \text{for}\  L < 0
   \end{cases}
 \end{aligned}""" to
 		codeBlock("""
      1.055 &times;  L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 7.5913
 E = 12.92  &times;  L for 0 &le; L &lt 0.0031308
-    -E     &times; -L for L &lt; 0"""),
+    -f(-L) for L &lt; 0"""),
 
 	"""\begin{aligned}
 E & =
   \begin{cases}
-    1.099 \times L^0.45 - 0.099          & \text{for}\  0.018 \leq L \leq 1 \\
-    4.5 \times L                         & \text{for}\  0 \leq L < 0.018
+    (a \times L + b)^{2.4} & \text{for}\  0.039 \leq L \leq 1 \\
+    b \times L                    & \text{for}\  0 \leq L < 0.039
   \end{cases}
-\end{aligned}""" to
-		codeBlock("""
-E = 1.099 &times; L<sup>0.45</sup> - 0.099 for 0.018 &le; L &le; 1
-    4.5   &times; L for 0 &le; L &lt; 0.018"""),
+\end{aligned}""" to codeBlock("""
+E = (a &times; L + b)<sup>2.4</sup> for 0.039 &le; L &le; 1
+    b &times; L for 0 &le; L &lt; 0.039"""),
 
-	"""E = L^{1 \over 2.2}""" to "E = L<sup>1 / 2.2</sup>",
-	"""E = L^{1 \over 2.6}""" to "E = L<sup>1 / 2.6</sup>",
-	"""\frac{k}{2^m - 1}""" to "k / (2<sup>m</sup> - 1)"
+	"""\begin{aligned}
+E & =
+  \begin{cases}
+    \alpha \times L^{0.45} - (1 - \alpha) & \text{for}\  \beta \leq L \leq 1 \\
+    4.5 \times L                            & \text{for}\  0 \leq L < \beta
+  \end{cases}
+\end{aligned}""" to codeBlock("""
+E = α &times; L^<sup>0.45</sup> - (1 - α) for β &le; L &le; 1
+    4.5 &times; L for 0 &le; L &lt; β"""),
+
+		"""\[
+E = (\frac{c_1 + c_2 \times L^{m_1}}{1 + c_3 \times L^{m_1}})^{m_2}
+\]""" to codeBlock("""
+E = ((c_<sub>1</sub> + c_<sub>2</sub> &times; L^<sup>m_<sub>1</sub></sup>) / (1 + c_<sub>3</sub> &times; L^<sup>m_<sub>1</sub></sup>))^<sup>m_<sub>2</sub></sup>"""),
+
+	"""\begin{aligned}
+E & =
+  \begin{cases}
+    r \sqrt{L}                & \text{for}\  0 \leq L \leq 1 \\
+    a \times \ln(L - b) + c    & \text{for}\  1 < L
+  \end{cases}
+\end{aligned}""" to codeBlock("""
+E = r &times; sqrt(L) for 0 &le; L &le; 1
+    a &times; ln(L - b) + c for 1 &lt L""")
 )
+
+private val LATEX_REGISTRY_USED = HashSet<String>()
+
+private fun getLatexCode(source: String): String {
+	//val code = LATEX_REGISTRY[source] ?: throw IllegalStateException("Missing LaTeX equation:\n$source")
+	val code = LATEX_REGISTRY[source]
+	if ( code == null ){
+		System.err.println(source)
+		return source
+	}
+	LATEX_REGISTRY_USED.add(source)
+	return code
+}
+
+fun printUnusedLatexEquations() {
+	LATEX_REGISTRY.keys.asSequence()
+			.filter { !LATEX_REGISTRY_USED.contains(it) }
+			.forEach {
+				System.err.println("Unused LateX equation:\n$it")
+			}
+}
 
 private val LINE_BREAK = """\n\s*""".toRegex()
 
@@ -379,7 +502,7 @@ private val CODE1 = """`([^`]+)`""".toRegex()
 private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
-private val CODE2 = """(?:pname|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
+private val CODE2 = """(?:pname|ptext|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
@@ -391,8 +514,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
 		// Instead of trying to be clever and parse, we're lazy and
 		// do a lookup  to prebaked HTML. There are not many LaTeX
 		// equations anyway.
-		val equation = it.groups[1]!!.value
-		LATEX_REGISTRY[equation] ?: throw IllegalStateException("Missing LaTeX equation:\n$equation")
+		getLatexCode(it.groups[1]!!.value)
 	}
 	.replace(SIMPLE_NUMBER, "$1$2")
 	.replace(KEYWORD, "<b>$1</b>")
@@ -458,7 +580,7 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
 			if (it.style == "source")
 				codeBlock(it.source)
 			else if (it.style == "latexmath")
-				LATEX_REGISTRY[it.source] ?: throw IllegalStateException("Missing LaTeX equation:\n${it.source}")
+				getLatexCode(it.source)
 			else
 				it.lines.joinToString(" ").replaceMarkup(structs)
 		}
@@ -485,9 +607,9 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
 			it.body to ("tbody" to "td")
 		)
 			.filter { it.first.isNotEmpty() }
-			.map { section ->
-				val (group, cell) = section.second
-				"<$group>${section.first.asSequence()
+			.map { (groups, cells) ->
+				val (group, cell) = cells
+				"<$group>${groups.asSequence()
 					.map {
 						"<tr>${it.cells.asSequence()
 							.map {
@@ -502,8 +624,8 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
 					}
 					.joinToString(
 						"\n\t\t\t\t$indent",
-						prefix = if (section.first.size == 1) "" else "\n\t\t\t\t$indent",
-						postfix = if (section.first.size == 1) "" else "\n\t\t\t$indent")
+						prefix = if (groups.size == 1) "" else "\n\t\t\t\t$indent",
+						postfix = if (groups.size == 1) "" else "\n\t\t\t$indent")
 				}</$group>"
 			}
 			.joinToString("\n\t\t\t$indent")}
