@@ -26,9 +26,6 @@
       <sourceFolder url="file://$MODULE_DIR$/src/main/kotlin" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
-    <content url="file://D:/PROJECTS/DEPENDENCIES/KHRONOS/Vulkan-Docs">
-      <excludeFolder url="file://D:/PROJECTS/DEPENDENCIES/KHRONOS/Vulkan-Docs/out" />
-    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.1.2" level="project" />
