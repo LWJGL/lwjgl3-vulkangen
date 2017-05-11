@@ -39,7 +39,9 @@ private val HEADER = """/*
  */
 """
 
-internal val T = "    "
+// Character sequence used for alignment
+internal val t = "    "
+
 private val S = "\$"
 private val QUOTES3 = "\"\"\""
 
@@ -199,7 +201,7 @@ private fun getCheck(param: Field, indirection: String, structs: Map<String, Typ
     return ""
 }
 
-private fun getParams(returns: Field, params: List<Field>, types: Map<String, Type>, structs: Map<String, TypeStruct>, forceIN: Boolean = false, indent: String = "$T$T"): String = if (params.isEmpty())
+private fun getParams(returns: Field, params: List<Field>, types: Map<String, Type>, structs: Map<String, TypeStruct>, forceIN: Boolean = false, indent: String = "$t$t"): String = if (params.isEmpty())
     ""
 else {
     val functionDoc = FUNCTION_DOC[returns.name.let { if (it.startsWith("PFN_vk")) it else it.substring(2) }]
@@ -274,8 +276,8 @@ private fun getJavaImports(vulkanPackage: String, types: Map<String, Type>, fiel
     }
     .distinct()
     .map { "javaImport(\"$it\")" }
-    .joinToString("\n$T")
-    .let { if (it.isEmpty()) "" else "$it\n$T" }
+    .joinToString("\n$t")
+    .let { if (it.isEmpty()) "" else "$it\n$t" }
 
 private fun generateTypes(
     root: Path,
@@ -321,7 +323,7 @@ ${templateTypes
                 val functionDoc = FUNCTION_DOC[it.name]
                 """val ${it.name} = "${it.name}".callback(
     VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-    "${functionDoc?.shortDescription ?: ""}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = T)}
+    "${functionDoc?.shortDescription ?: ""}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = t)}
 ) {
     ${getJavaImports(vulkanPackage, types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
         $QUOTES3
@@ -405,7 +407,7 @@ ${templateTypes
 
                         "$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
                     }
-                    .joinToString("\n$T")}
+                    .joinToString("\n$t")}
 }"""
             }
             .joinToString("\n\n")}""")
@@ -449,7 +451,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
         ${apiConstants
             .filter { !it.value!!.contains('L') && !it.value.contains('f') }
             .map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace("U", "")}\"" }
-            .joinToString(",\n$T$T")}
+            .joinToString(",\n$t$t")}
     )"""
         )
 
@@ -460,7 +462,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
         ${apiConstants
             .filter { it.value!!.contains('f') }
             .map { "\"${it.name.substring(3)}\"..\"${it.value}\"" }
-            .joinToString(",\n$T$T")}
+            .joinToString(",\n$t$t")}
     )"""
         )
 
@@ -472,7 +474,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
         ${apiConstants
             .filter { it.value!!.contains('L') }
             .map { "\"${it.name.substring(3)}\"..\"${it.value!!.replace(longCleanup, "L")}\"" }
-            .joinToString(",\n$T$T")}
+            .joinToString(",\n$t$t")}
     )"""
         )
 
@@ -481,7 +483,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
         feature.requires.asSequence()
             .filter { it.commands != null }
             .forEach {
-                writer.println("\n$T// ${it.comment}")
+                writer.println("\n$t// ${it.comment}")
                 writer.printCommands(it.commands!!.asSequence(), types, structs, commands)
             }
 
@@ -567,13 +569,13 @@ val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postf
     EnumConstant(
         ${if (extends != null) "\"Extends {@code ${it.key}}.\"" else if (enumDoc == null) "\"${it.key}\"" else """"$QUOTES3
         ${enumDoc.shortDescription}${
-                        if (enumDoc.description.isEmpty()) "" else "\n\n$T$T${enumDoc.description}"}${
-                        if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$T$T${enumDoc.seeAlso}"}
+                        if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
+                        if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         $QUOTES3"""},
 
         ${it.value.asSequence()
                             .map { "\"${it.name.substring(3)}\".${it.getEnumValue(extension, enums)}" }
-                            .joinToString(",\n$T$T")}
+                            .joinToString(",\n$t$t")}
     )""")
                     }
                 }
@@ -638,8 +640,8 @@ private fun PrintWriter.printEnums(enums: Sequence<Enums>) {
     EnumConstant(
         ${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3
         ${enumDoc.shortDescription}${
-            if (enumDoc.description.isEmpty()) "" else "\n\n$T$T${enumDoc.description}"}${
-            if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$T$T${enumDoc.seeAlso}"}
+            if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
+            if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         $QUOTES3"""},
 
         ${block.enums!!.map {
@@ -647,7 +649,7 @@ private fun PrintWriter.printEnums(enums: Sequence<Enums>) {
                     "\"${it.name.substring(3)}\".enum(${bitposAsHex(it.bitpos)})"
                 else
                     "\"${it.name.substring(3)}\"..\"${it.value}\""
-            }.joinToString(",\n$T$T")}
+            }.joinToString(",\n$t$t")}
     )""")
         }
 }
@@ -663,7 +665,7 @@ private fun PrintWriter.printCommands(
         val name = it.name.substring(2)
         val functionDoc = FUNCTION_DOC[name]
 
-        print("\n$T")
+        print("\n$t")
         // If we don't have a dispatchable handle, mark ICD-global
         if (it.name == "vkGetInstanceProcAddr" || cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
             print("GlobalCommand..")

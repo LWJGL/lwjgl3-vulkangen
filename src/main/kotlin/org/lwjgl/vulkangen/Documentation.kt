@@ -124,7 +124,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         EXTENSION_DOC[it.id.substring(3)] = it.blocks.asSequence()
             .filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
             .map { nodeToJavaDoc(it, structs) }
-            .joinToString("\n\n$T$T")
+            .joinToString("\n\n$t$t")
     }
 
     // Enums, functions & structs
@@ -548,11 +548,11 @@ private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeS
 private fun containerToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>, indent: String = ""): String =
     node.blocks.asSequence()
         .map { nodeToJavaDoc(it, structs, indent) }
-        .joinToString("\n\n$T$T$indent").let {
+        .joinToString("\n\n$t$t$indent").let {
         if (node.title == null || node.title.isEmpty() || it.isEmpty() || it.startsWith("<h5>"))
             it
         else
-            "<h5>${node.title}</h5>\n$T$T$it".let {
+            "<h5>${node.title}</h5>\n$t$t$it".let {
                 if (node.style == "NOTE") {
                     """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
         $indent</div>"""
@@ -585,15 +585,15 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
                 if (it.blocks.isNotEmpty())
                     """<li>
                 $indent${it.text.replaceMarkup(structs)}
-                $indent${containerToJavaDoc(it, structs, "$T$T$indent")}
+                $indent${containerToJavaDoc(it, structs, "$t$t$indent")}
             $indent</li>"""
                 else
                     "<li>${it.text.replaceMarkup(structs)}</li>"
             }
-            .joinToString("\n$T$T$T$indent")}
+            .joinToString("\n$t$t$t$indent")}
         $indent</ul>"""
     } else if (it is Table) {
-        """${if (it.title == null) "" else "<h6>${it.title}</h6>\n$T$T"}<table class="lwjgl">
+        """${if (it.title == null) "" else "<h6>${it.title}</h6>\n$t$t"}<table class="lwjgl">
             ${sequenceOf(
             it.header to ("thead" to "th"),
             it.footer to ("tfoot" to "td"),
@@ -616,12 +616,12 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
                         }</tr>"
                     }
                     .joinToString(
-                        "\n$T$T$T$T$indent",
-                        prefix = if (groups.size == 1) "" else "\n$T$T$T$T$indent",
-                        postfix = if (groups.size == 1) "" else "\n$T$T$T$indent")
+                        "\n$t$t$t$t$indent",
+                        prefix = if (groups.size == 1) "" else "\n$t$t$t$t$indent",
+                        postfix = if (groups.size == 1) "" else "\n$t$t$t$indent")
                 }</$group>"
             }
-            .joinToString("\n$T$T$T$indent")}
+            .joinToString("\n$t$t$t$indent")}
         $indent</table>"""
     } else if (it is DescriptionList) {
         """<dl>
@@ -630,13 +630,13 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
                 if (it.terms.size != 1)
                     throw IllegalStateException("${it.terms}")
 
-                """${it.terms[0].text.let { if (it.isNotEmpty()) "<dt>${it.replaceMarkup(structs)}</dt>\n$T$T$T$indent" else "" }}<dd>${if (it.description.blocks.isEmpty())
+                """${it.terms[0].text.let { if (it.isNotEmpty()) "<dt>${it.replaceMarkup(structs)}</dt>\n$t$t$t$indent" else "" }}<dd>${if (it.description.blocks.isEmpty())
                     it.description.text.replaceMarkup(structs)
                 else
-                    containerToJavaDoc(it.description, structs, "$T$indent")
+                    containerToJavaDoc(it.description, structs, "$t$indent")
                 }</dd>"""
             }
-            .joinToString("\n\n$T$T$T$indent")}
+            .joinToString("\n\n$t$t$t$indent")}
         $indent</dl>"""
     } else {
         throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
@@ -660,7 +660,7 @@ private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStru
     return if (links.isEmpty())
         null
     else
-        "<h5>${node.title}</h5>\n$T$T${links.replaceMarkup(structs)}"
+        "<h5>${node.title}</h5>\n$t$t${links.replaceMarkup(structs)}"
 }
 
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
@@ -716,7 +716,7 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
                             else
                                 it.second
                         }
-                        .joinToString("\n\n$T$T", prefix = "\"\"", postfix = "\"\"")
+                        .joinToString("\n\n$t$t", prefix = "\"\"", postfix = "\"\"")
             }
             .toMap()
         else
@@ -750,20 +750,20 @@ private fun printStructure(node: StructuralNode, indent: String = "") {
 
     if (node is org.asciidoctor.ast.List) {
         node.items.forEach {
-            printStructure(it, "$T$indent")
+            printStructure(it, "$t$indent")
         }
     } else if (node is DescriptionList) {
         node.items.forEach {
-            printStructure(it.description, "$T$indent")
+            printStructure(it.description, "$t$indent")
             it.terms.forEach {
-                printStructure(it, "$T$indent")
+                printStructure(it, "$t$indent")
             }
         }
     }
 
     if (node.blocks != null) {
         node.blocks.asSequence().forEach {
-            printStructure(it, "$T$indent")
+            printStructure(it, "$t$indent")
         }
     }
 }
