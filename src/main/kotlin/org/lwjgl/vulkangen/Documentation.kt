@@ -124,6 +124,9 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         EXTENSION_DOC[it.id.substring(3)] = it.blocks.asSequence()
             .filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
             .map { nodeToJavaDoc(it, structs) }
+            .withIndex()
+            .sortedBy { if (it.index == 0) Int.MAX_VALUE else it.index }
+            .map { it.value }
             .joinToString("\n\n$t$t")
     }
 
