@@ -131,6 +131,7 @@ fun main(args: Array<String>) {
         generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
     }
 
+    printUnusedSectionXREFs()
     printUnusedLatexEquations()
 
     exitProcess(0)

@@ -229,7 +229,9 @@ private fun addEnum(node: StructuralNode, structs: Map<String, TypeStruct>) {
 }
 
 private val SECTION_XREFS = mapOf(
+    "clears" to "the “Clear Commands” section",
     "clears-values" to "the “Clear Values” section",
+    "copies" to "the “Copy Commands” section",
     "descriptorsets-combinedimagesampler" to "the “Combined Image Sampler” section",
     "descriptorsets-compatibility" to "the “Pipeline Layout Compatibility” section",
     "descriptorsets-inputattachment" to "the “Input Attachment” section",
@@ -243,7 +245,8 @@ private val SECTION_XREFS = mapOf(
     "descriptorsets-uniformbuffer" to "the “Uniform Buffer” section",
     "descriptorsets-uniformbufferdynamic" to "the “Dynamic Uniform Buffer” section",
     "descriptorsets-uniformtexelbuffer" to "the “Uniform Texel Buffer” section",
-    "descriptorsets-updates-consecutive" to "consecutive binding updates",
+    "descriptorsets-updates" to "the “Descriptor Set Updates” section",
+    "descriptorsets-updates-consecutive" to "the “consecutive binding updates” section",
     "devsandqueues-priority" to "the “Queue Priority” section",
     "devsandqueues-queueprops" to "the “Queue Family Properties” section",
     "dispatch" to "the “Dispatching Commands” chapter",
@@ -257,16 +260,33 @@ private val SECTION_XREFS = mapOf(
     "memory-device-hostaccess" to "the “Host Access to Device Memory Objects” section",
     "primsrast" to "the “Rasterization” chapter",
     "queries-pipestats" to "the “Pipeline Statistics Queries” section",
-    "renderpass-compatibility" to "the “Render Pass Compatibility” section",
     "resources-association" to "the “Resource Memory Association” section",
     "resources-image-views" to "the “Image Views” section",
     "samplers-maxAnisotropy" to "samplers-maxAnisotropy",
     "samplers-mipLodBias" to "samplers-mipLodBias",
     "shaders-vertex" to "the “Vertex Shaders” section",
-    "synchronization-pipeline-stage-flags" to "the “Pipeline Stage Flags” section",
-    "synchronization-memory-barriers" to "the “Memory Barriers” section",
     "tessellation" to "the “Tessellation” chapter"
 )
+
+private val SECTION_XREFS_USED = HashSet<String>()
+
+private fun getSectionXREF(section: String): String {
+    val text = SECTION_XREFS[section]
+    if (text == null) {
+        System.err.println("Missing section reference: $section")
+        return section
+    }
+    SECTION_XREFS_USED.add(section)
+    return text
+}
+
+fun printUnusedSectionXREFs() {
+    SECTION_XREFS.keys.asSequence()
+        .filter { !SECTION_XREFS_USED.contains(it) }
+        .forEach {
+            System.err.println("Unused section XREF:\n$it")
+        }
+}
 
 internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringConverter(backend, opts) {
     override fun convert(node: ContentNode, transform: String?, opts: MutableMap<Any, Any>): String {
@@ -279,16 +299,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                     else
                         throw IllegalStateException(node.roles.joinToString(", "))
                 }
-                "xref"        -> node.getAttr("refid").let {
-                    if (node.text != null)
-                        "<<$it,${node.text}>>"
-                    else {
-                        val title = SECTION_XREFS[it]// ?: throw IllegalStateException("Missing section reference: $it")
-                        if (title == null)
-                            System.err.println("Missing section reference: $it")
-                        "<<$it,$title>>"
-                    }
-                }
+                "xref"        -> node.getAttr("refid").let { "<<$it,${if (node.text != null) node.text else getSectionXREF(it as String)}>>" }
                 "ref"         -> ""
                 "emphasis"    -> "_${node.text}_"
                 "strong"      -> "*${node.text}*"
@@ -501,6 +512,7 @@ private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:pname|ptext|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
+private val SPEC_LINK_RELATIVE = """(?:link:)?\{html_spec_relative}#([^\[]+?)\[([^]]*)]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 
 private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
@@ -541,6 +553,15 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     .replace(CODE2, "{@code $1}")
     .replace(LINK, """<a target="_blank" href="$1">$2</a>""")
     .replace(SPEC_LINK, """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
+    .replace(SPEC_LINK_RELATIVE) {
+        val (section, text) = it.destructured
+        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\#$section">${text.let {
+            if (it.isEmpty() || it.startsWith("{html_spec_relative}#")) {
+                getSectionXREF(section)
+            } else
+                it
+        }}</a>"""
+    }
     .replace(EXTENSION, "{@code $1}")
 
 private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) =
