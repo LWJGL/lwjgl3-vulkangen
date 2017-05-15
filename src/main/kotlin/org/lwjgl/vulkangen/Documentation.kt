@@ -328,16 +328,17 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
 private val CODE_BLOCK_TRIM_PATTERN = """^\s*\n|\n\s*$""".toRegex() // first and/or last empty lines...
 private val CODE_BLOCK_COMMENT_PATTERN = """/\*\s*(.+)\s*\*/""".toRegex() // first and/or last empty lines...
 private val CODE_BLOCK_HASH = "#".toRegex()
-private val CODE_BLOCK_ESCAPE_PATTERN = "^[ \t\n]".toRegex(RegexOption.MULTILINE) // leading space/tab in line, empty line
+private val CODE_BLOCK_ESCAPE_PATTERN = "^".toRegex(RegexOption.MULTILINE) // line starts
 private val CODE_BLOCK_TAB_PATTERN = "\t".toRegex() // tabs
 
-fun codeBlock(code: String) = """<pre><code>${code
+fun codeBlock(code: String) = """<code><pre>
+${code
     .replace(CODE_BLOCK_TRIM_PATTERN, "") // ...trim
     .replace(CODE_BLOCK_COMMENT_PATTERN, "// $1") // ...replace block comments with line comments
     .replace(CODE_BLOCK_HASH, """\\#""") // ...escape hashes
-    .replace(CODE_BLOCK_ESCAPE_PATTERN, "\uFFFF$0") // ...escape
+    .replace(CODE_BLOCK_ESCAPE_PATTERN, "\uFFFF") // ...escape
     .replace(CODE_BLOCK_TAB_PATTERN, "    ") // ...replace with 4 spaces for consistent formatting.
-}</code></pre>"""
+}</pre></code>"""
 
 private val LATEX_MATH = """latexmath:\[(.+?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
