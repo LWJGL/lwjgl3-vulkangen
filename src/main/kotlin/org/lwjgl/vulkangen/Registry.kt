@@ -95,7 +95,7 @@ fun main(args: Array<String>) {
 
     try {
         convert(vulkanDocs, structs)
-    } catch(e: Exception) {
+    } catch (e: Exception) {
         e.printStackTrace()
         System.exit(-1)
     }
@@ -150,11 +150,9 @@ private fun getDistinctTypes(
     .flatMap {
         // Get all top-level types
         sequenceOf(
-            if (it.types == null) emptySequence<String>() else it.types.asSequence()
-                .map { it.name },
-            if (it.enums == null) emptySequence<String>() else it.enums.asSequence()
-                .map { it.name },
-            if (it.commands == null) emptySequence<String>() else it.commands.asSequence()
+            if (it.types == null) emptySequence() else it.types.asSequence().map { it.name },
+            if (it.enums == null) emptySequence() else it.enums.asSequence().map { it.name },
+            if (it.commands == null) emptySequence() else it.commands.asSequence()
                 .map { commands[it.name]!! }
                 .flatMap {
                     sequenceOf(it.proto.type) + it.params.asSequence().map { it.type }
@@ -164,7 +162,7 @@ private fun getDistinctTypes(
             .distinct()
             .flatMap {
                 if (!types.containsKey(it)) {
-                    emptySequence<Type>()
+                    emptySequence()
                 } else {
                     // recurse into struct types
                     getDistinctTypes(it, types)
@@ -175,12 +173,11 @@ private fun getDistinctTypes(
 
 private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> {
     val type = types[name]!!
-    return if (type is TypeStruct)
-        type.members.asSequence().flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
-    else if (type is TypeFuncpointer)
-        getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
-    else
-        sequenceOf(type)
+    return when (type) {
+        is TypeStruct      -> type.members.asSequence().flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
+        is TypeFuncpointer -> getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
+        else               -> sequenceOf(type)
+    }
 }
 
 private fun getReturnType(proto: Field): String = proto.let { "${if (it.modifier == "const") "const.." else ""}${it.type}${it.indirection}" }
@@ -303,24 +300,21 @@ import org.lwjgl.system.windows.*""" else ""}
 ${if (custom != null) custom() else ""}// Handle types
 ${templateTypes
             .filterIsInstance<TypeHandle>()
-            .map { "val ${it.name} = ${it.type}(\"${it.name}\")" }
-            .joinToString("\n")}
+            .joinToString("\n") { "val ${it.name} = ${it.type}(\"${it.name}\")" }}
 
 // Enum types
 ${templateTypes
             .filterIsInstance<TypeEnum>()
-            .map { "val ${it.name} = \"${it.name}\".enumType" }
-            .joinToString("\n")}
+            .joinToString("\n") { "val ${it.name} = \"${it.name}\".enumType" }}
 
 // Bitmask types
 ${templateTypes
             .filterIsInstance<TypeBitmask>()
-            .map { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }
-            .joinToString("\n")}
+            .joinToString("\n") { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }}
 
 ${templateTypes
             .filterIsInstance<TypeFuncpointer>()
-            .map {
+            .joinToString("\n\n") {
                 val functionDoc = FUNCTION_DOC[it.name]
                 """val ${it.name} = "${it.name}".callback(
     VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
@@ -339,16 +333,16 @@ ${templateTypes
     """}useSystemCallConvention()
 }"""
             }
-            .joinToString("\n\n").let {
-            if (it.isNotEmpty())
-                """// Function pointer types
+            .let {
+                if (it.isNotEmpty())
+                    """// Function pointer types
 $it
 
 """ else ""
-        }}// Struct types
+            }}// Struct types
 ${templateTypes
             .filterIsInstance<TypeStruct>()
-            .map { struct ->
+            .joinToString("\n\n") { struct ->
                 val structDoc = STRUCT_DOC[struct.name]
 
                 """val ${struct.name} = ${struct.type}(VULKAN_PACKAGE, "${struct.name}"${if (struct.returnedonly) ", mutable = false" else ""}) {
@@ -410,8 +404,7 @@ ${templateTypes
                     }
                     .joinToString("\n$t")}
 }"""
-            }
-            .joinToString("\n\n")}""")
+            }}""")
     }
 }
 
@@ -599,16 +592,15 @@ val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postf
     }
 }
 
-private fun EnumRef.getEnumValue(extension: Extension, enums: Map<String, Enums>) = if (value != null)
-    ".\"$value\""
-else if (offset != null)
-    ".\"${offsetAsEnum(extension.number, offset, dir)}\""
-else if (bitpos != null)
-    "enum(${bitposAsHex(bitpos)})"
-else {
-    val hardcoded = enums["API Constants"]!!.enums!!
-                        .firstOrNull { c -> c.name == name } ?: throw IllegalStateException("Illegal enum reference: $name")
-    ".\"${hardcoded.value!!.replace("U", "")}\""
+private fun EnumRef.getEnumValue(extension: Extension, enums: Map<String, Enums>) = when {
+    value != null  -> ".\"$value\""
+    offset != null -> ".\"${offsetAsEnum(extension.number, offset, dir)}\""
+    bitpos != null -> "enum(${bitposAsHex(bitpos)})"
+    else           -> {
+        val hardcoded = enums["API Constants"]!!.enums!!
+                            .firstOrNull { c -> c.name == name } ?: throw IllegalStateException("Illegal enum reference: $name")
+        ".\"${hardcoded.value!!.replace("U", "")}\""
+    }
 }
 
 private fun offsetAsEnum(extension_number: Int, offset: String, dir: String?) =
@@ -645,12 +637,12 @@ private fun PrintWriter.printEnums(enums: Sequence<Enums>) {
             if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         $QUOTES3"""},
 
-        ${block.enums!!.map {
+        ${block.enums!!.joinToString(",\n$t$t") {
                 if (it.bitpos != null)
                     "\"${it.name.substring(3)}\".enum(${bitposAsHex(it.bitpos)})"
                 else
                     "\"${it.name.substring(3)}\"..\"${it.value}\""
-            }.joinToString(",\n$t$t")}
+            }}
     )""")
         }
 }

@@ -190,7 +190,7 @@ private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) 
             seeAlsoToJavaDoc(node.blocks[4], structs),
             nodeToParamJavaDoc(node.blocks[2], structs)
         )
-    } catch(e: Exception) {
+    } catch (e: Exception) {
         System.err.println("Failed while parsing: $function")
         throw RuntimeException(e)
     }
@@ -207,7 +207,7 @@ private fun addStruct(node: StructuralNode, structs: Map<String, TypeStruct>) {
             seeAlsoToJavaDoc(node.blocks[4], structs),
             nodeToParamJavaDoc(node.blocks[2], structs)
         )
-    } catch(e: Exception) {
+    } catch (e: Exception) {
         System.err.println("Failed while parsing: $struct")
         throw RuntimeException(e)
     }
@@ -222,7 +222,7 @@ private fun addEnum(node: StructuralNode, structs: Map<String, TypeStruct>) {
             containerToJavaDoc(node.blocks[2], structs),
             containerToJavaDoc(node.blocks[3], structs)
         )
-    } catch(e: Exception) {
+    } catch (e: Exception) {
         System.err.println("Failed while parsing: $enum")
         throw RuntimeException(e)
     }
@@ -343,6 +343,31 @@ ${code
 private val LATEX_MATH = """latexmath:\[(.+?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
     """0 \leq L \leq 1""" to "0 &le L &le; 1",
+    """                                              \begin{aligned}
+                                                p_0(A_s,A_d) & = A_sA_d \\
+                                                p_1(A_s,A_d) & = A_s(1-A_d) \\
+                                                p_2(A_s,A_d) & = A_d(1-A_s) \\
+                                              \end{aligned}""" to codeBlock("""
+p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; A<sub>s</sub>A<sub>d</sub> \\
+p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; A<sub>s</sub>(1 &minus; A<sub>d</sub>) \\
+p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; A<sub>d</sub>(1 &minus; A<sub>s</sub>) \\"""),
+    """                                              \begin{aligned}
+                                                p_0(A_s,A_d) & = min(A_s,A_d) \\
+                                                p_1(A_s,A_d) & = max(A_s-A_d,0) \\
+                                                p_2(A_s,A_d) & = max(A_d-A_s,0) \\
+                                              \end{aligned}""" to codeBlock("""
+p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>s</sub>, A<sub>d</sub>) \\
+p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; max(A<sub>s</sub> &minus; A<sub>d</sub>, 0) \\
+p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; max(A<sub>d</sub> &minus; A<sub>s</sub>, 0) \\"""),
+    """                                              \begin{aligned}
+                                                p_0(A_s,A_d) & = max(A_s+A_d-1,0) \\
+                                                p_1(A_s,A_d) & = min(A_s,1-A_d) \\
+                                                p_2(A_s,A_d) & = min(A_d,1-A_s) \\
+                                              \end{aligned}""" to codeBlock("""
+p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; max(A<sub>s</sub> + A<sub>d</sub> &minus; 1, 0) \\
+p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>s</sub>, 1 &minus; A<sub>d</sub>) \\
+p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>d</sub>, 1 &minus; A<sub>s</sub>) \\"""),
+    /*
     "a = 0.948" to codeBlock("a = 0.948"),
     "b = 0.052" to codeBlock("b = 0.052"),
     "c = 0.077" to codeBlock("c = 0.077"),
@@ -369,7 +394,7 @@ private val LATEX_REGISTRY = mapOf(
     """E = L^\frac{1}{2.19921875}""" to
         codeBlock("""E = L^<sup>1 / 2.19921875</sup>"""),
     """E = L^\frac{1}{2.6}""" to
-        codeBlock("""E = L^<sup>1 / 2.6</sup>"""),
+        codeBlock("""E = L^<sup>1 / 2.6</sup>"""),*/
     """\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to
         codeBlock("ceil(rasterizationSamples / 32)"),
     """codeSize \over 4""" to
@@ -400,9 +425,9 @@ private val LATEX_REGISTRY = mapOf(
         codeBlock("""
         m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor                     depthBiasClamp = 0 or NaN
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
-    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
+    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0""")
 
-    """\begin{aligned}
+    /*"""\begin{aligned}
 E & =
   \begin{cases}
     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 1 \\
@@ -470,7 +495,7 @@ E & =
   \end{cases}
 \end{aligned}""" to codeBlock("""
 E = r &times; sqrt(L) for 0 &le; L &le; 1
-    a &times; ln(L - b) + c for 1 &lt L""")
+    a &times; ln(L - b) + c for 1 &lt L""")*/
 )
 
 private val LATEX_REGISTRY_USED = HashSet<String>()
@@ -595,12 +620,11 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
         else {
             if (it.blocks.isNotEmpty())
                 throw IllegalStateException()
-            if (it.style == "source")
-                codeBlock(it.source)
-            else if (it.style == "latexmath")
-                getLatexCode(it.source)
-            else
-                it.lines.joinToString(" ").replaceMarkup(structs)
+            when {
+                it.style == "source"    -> codeBlock(it.source)
+                it.style == "latexmath" -> getLatexCode(it.source)
+                else                    -> it.lines.joinToString(" ").replaceMarkup(structs)
+            }
         }
     } else if (it is org.asciidoctor.ast.List) {
         """<ul>
@@ -663,10 +687,13 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
             }
             .joinToString("\n\n$t$t$t$indent")}
         $indent</dl>"""
+    } else if (it is Document) {
+        containerToJavaDoc(it, structs, indent)
     } else {
         throw IllegalStateException("${it.nodeName} - ${it.javaClass}")
     }
 
+// TODO: add enum links
 private val SEE_ALSO_LINKS_REGEX = """([fst])link:(\w+)""".toRegex()
 
 private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>): String? {
@@ -718,7 +745,7 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
                     try {
                         val (When, param, field, description) = PARAM_DOC_REGEX.matchEntire(it.text)!!.destructured
                         sequenceOf(param to getItemDescription(it, if (When.isEmpty() && field.isEmpty()) description else it.text, structs))
-                    } catch(e: Exception) {
+                    } catch (e: Exception) {
                         println("FAILED AT: ${it.text}")
                         throw RuntimeException(e)
                     }

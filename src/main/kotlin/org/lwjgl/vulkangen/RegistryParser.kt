@@ -4,6 +4,7 @@ import com.thoughtworks.xstream.*
 import com.thoughtworks.xstream.converters.*
 import com.thoughtworks.xstream.io.*
 import com.thoughtworks.xstream.io.xml.*
+import java.nio.charset.*
 import java.nio.file.*
 import java.util.*
 
@@ -86,7 +87,7 @@ internal class Field(
     val attribs: MutableMap<String, String>
 ) {
     val len: Sequence<String> get() = attribs["len"].let {
-        it?.splitToSequence(",") ?: emptySequence<String>()
+        it?.splitToSequence(",") ?: emptySequence()
     }
 
     val optional: String? get() = attribs["optional"]
@@ -148,7 +149,6 @@ internal class Extension(
 )
 
 internal class Registry(
-    val comment: String,
     val vendorids: List<VendorID>,
     val tags: List<Tag>,
     val types: List<Type>,
@@ -442,4 +442,8 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     }
 
     xs
-}.fromXML(registry.toFile()) as Registry
+}.fromXML(Files
+    .readAllBytes(registry)
+    .toString(StandardCharsets.UTF_8)
+    .replace("""<comment>[\s\S]*?</comment>""".toRegex(), "") // easier to remove than parse correctly
+) as Registry
