@@ -232,6 +232,7 @@ private val SECTION_XREFS = mapOf(
     "clears" to "the “Clear Commands” section",
     "clears-values" to "the “Clear Values” section",
     "copies" to "the “Copy Commands” section",
+    "debug-report-object-types" to "the “{@code VkDebugReportObjectTypeEXT} and Vulkan Handle Relationship” table",
     "descriptorsets-combinedimagesampler" to "the “Combined Image Sampler” section",
     "descriptorsets-compatibility" to "the “Pipeline Layout Compatibility” section",
     "descriptorsets-inputattachment" to "the “Input Attachment” section",
