@@ -304,7 +304,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                 "ref"         -> ""
                 "emphasis"    -> "_${node.text}_"
                 "strong"      -> "*${node.text}*"
-                "latexmath"   -> "<code>${getLatexCode(node.text)}</code>"
+                "latexmath"   -> getLatexCode(node.text)
                 "line"        -> node.text
                 "link"        -> "${node.target}[${node.text}]"
                 "subscript"   -> "~${node.text}~"
@@ -396,12 +396,9 @@ p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>d</sub>, 1 &minus
         codeBlock("""E = L^<sup>1 / 2.19921875</sup>"""),
     """E = L^\frac{1}{2.6}""" to
         codeBlock("""E = L^<sup>1 / 2.6</sup>"""),*/
-    """\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to
-        codeBlock("ceil(rasterizationSamples / 32)"),
-    """codeSize \over 4""" to
-        codeBlock("codeSize / 4"),
-    """\frac{k}{2^m - 1}""" to
-        codeBlock("k / (2<sup>m</sup> - 1)"),
+    """\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to "{@code ceil(rasterizationSamples / 32)}",
+    """codeSize \over 4""" to "{@code codeSize / 4}",
+    """\frac{k}{2^m - 1}""" to "<code>k / (2<sup>m</sup> - 1)</code>",
 
     """m = \sqrt{ \left({{\partial z_f} \over {\partial x_f}}\right)^2
         +  \left({{\partial z_f} \over {\partial y_f}}\right)^2}""" to
