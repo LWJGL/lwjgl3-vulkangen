@@ -503,7 +503,7 @@ private val LATEX_REGISTRY_USED = HashSet<String>()
 
 private fun getLatexCode(source: String): String {
     //val code = LATEX_REGISTRY[source] ?: throw IllegalStateException("Missing LaTeX equation:\n$source")
-    val code = LATEX_REGISTRY[source]
+    val code = LATEX_REGISTRY[source] ?: LATEX_REGISTRY[source.replace("\\s+".toRegex(), " ")]
     if (code == null) {
         System.err.println(source)
         return source
