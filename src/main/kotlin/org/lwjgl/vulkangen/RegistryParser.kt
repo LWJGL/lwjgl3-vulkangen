@@ -127,7 +127,8 @@ internal class EnumRef(
 internal class CommandRef(val name: String)
 
 internal class Require(
-    val comment: String,
+    val comment: String?,
+    val extension: String?,
     val types: List<TypeRef>?,
     val enums: List<EnumRef>?,
     val commands: List<CommandRef>?
@@ -145,7 +146,7 @@ internal class Extension(
     val number: Int,
     val type: String,
     val supported: String,
-    val require: Require
+    val requires: List<Require>
 )
 
 internal class Registry(
@@ -410,7 +411,9 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 
     Require::class.java.let {
         xs.addImplicitCollection(Feature::class.java, "requires", "require", it)
+        xs.addImplicitCollection(Extension::class.java, "requires", "require", it)
         xs.useAttributeFor(it, "comment")
+        xs.useAttributeFor(it, "extension")
     }
 
     TypeRef::class.java.let {

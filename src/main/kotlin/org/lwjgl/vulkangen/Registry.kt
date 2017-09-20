@@ -118,7 +118,7 @@ fun main(args: Array<String>) {
     val extensions = registry.extensions.asSequence()
         .filter { it.supported != "disable" && it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
 
-    val extensionTypes = getDistinctTypes(extensions.map { it.require }, commands, types)
+    val extensionTypes = getDistinctTypes(extensions.flatMap { it.requires.asSequence() }, commands, types)
         .filter { !featureTypes.contains(it) }
         .toSet()
 
@@ -478,7 +478,7 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
             .filter { it.commands != null }
             .forEach {
                 writer.println("\n$t// ${it.comment}")
-                writer.printCommands(it.commands!!.asSequence(), types, structs, commands)
+                writer.printCommands(it.commands!!.asSequence(), types, structs, commands, null)
             }
 
         writer.print("\n}")
@@ -495,7 +495,7 @@ private fun generateExtension(
     extension: Extension,
     enumsSeen: MutableSet<Enums>
 ) {
-    val distinctTypes = getDistinctTypes(sequenceOf(extension.require), commands, types)
+    val distinctTypes = getDistinctTypes(extension.requires.asSequence(), commands, types)
 
     val name = extension.name.substring(3)
     val template = name
@@ -530,49 +530,51 @@ val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postf
         ${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}
         $QUOTES3
 """)
-        if (extension.require.enums != null) {
-            extension.require.enums
-                .groupBy { it.extends ?: it.name }
-                .forEach {
-                    if (it.value.singleOrNull()?.value != null) {
-                        it.value.first().let {
-                            if (it.value != null) {
-                                if (it.value.startsWith('\"')) {
-                                    val description = if (it.name.endsWith("_EXTENSION_NAME")) "The extension name." else ""
-                                    writer.println("""
+        extension.requires.forEach { require ->
+            if (require.enums != null) {
+                require.enums
+                    .groupBy { it.extends ?: it.name }
+                    .forEach {
+                        if (it.value.singleOrNull()?.value != null) {
+                            it.value.first().let {
+                                if (it.value != null) {
+                                    if (it.value.startsWith('\"')) {
+                                        val description = if (it.name.endsWith("_EXTENSION_NAME")) "The extension name." else ""
+                                        writer.println("""
     StringConstant(
         "$description",
 
         "${it.name.substring(3)}"..${it.value}
     )""")
-                                } else if (!it.value.startsWith("VK_")) { // skip aliases
-                                    val description = if (it.name.endsWith("_SPEC_VERSION")) "The extension specification version." else ""
-                                    writer.println("""
+                                    } else if (!it.value.startsWith("VK_")) { // skip aliases
+                                        val description = if (it.name.endsWith("_SPEC_VERSION")) "The extension specification version." else ""
+                                        writer.println("""
     ${if (it.name.endsWith("_SPEC_VERSION")) "Int" else "Enum"}Constant(
         "$description",
 
         "${it.name.substring(3)}".."${it.value}"
     )""")
+                                    }
                                 }
                             }
-                        }
-                    } else {
-                        val extends = it.value.firstOrNull { it.extends != null }?.extends
-                        val enumDoc = ENUM_DOC[it.key]
-                        writer.println("""
+                        } else {
+                            val extends = it.value.firstOrNull { it.extends != null }?.extends
+                            val enumDoc = ENUM_DOC[it.key]
+                            writer.println("""
     EnumConstant(
         ${if (extends != null) "\"Extends {@code ${it.key}}.\"" else if (enumDoc == null) "\"${it.key}\"" else """"$QUOTES3
         ${enumDoc.shortDescription}${
-                        if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-                        if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
+                            if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
+                            if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         $QUOTES3"""},
 
         ${it.value.asSequence()
-                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(extension, enums)}" }
-                            .joinToString(",\n$t$t")}
+                                .map { "\"${it.name.substring(3)}\".${it.getEnumValue(extension, enums)}" }
+                                .joinToString(",\n$t$t")}
     )""")
+                        }
                     }
-                }
+            }
         }
 
         val extensionEnums = distinctTypes
@@ -585,8 +587,10 @@ val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postf
             writer.printEnums(extensionEnums.asSequence())
         }
 
-        if (extension.require.commands != null)
-            writer.printCommands(extension.require.commands.asSequence(), types, structs, commands)
+        extension.requires.forEach { require ->
+            if (require.commands != null)
+                writer.printCommands(require.commands.asSequence(), types, structs, commands, require.extension)
+        }
 
         writer.print("}")
     }
@@ -651,7 +655,8 @@ private fun PrintWriter.printCommands(
     commandRefs: Sequence<CommandRef>,
     types: Map<String, Type>,
     structs: Map<String, TypeStruct>,
-    commands: Map<String, Command>
+    commands: Map<String, Command>,
+    extension: String?
 ) {
     commandRefs.forEach {
         val cmd = commands[it.name]!!
@@ -662,6 +667,10 @@ private fun PrintWriter.printCommands(
         // If we don't have a dispatchable handle, mark ICD-global
         if (it.name == "vkGetInstanceProcAddr" || cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
             print("GlobalCommand..")
+        // Extension dependency
+        if (extension != null) {
+            print("DependsOn(\"$extension\")..")
+        }
         println("""${getReturnType(cmd.proto)}(
         "$name",
         ${if (functionDoc == null) "\"\"" else """$QUOTES3

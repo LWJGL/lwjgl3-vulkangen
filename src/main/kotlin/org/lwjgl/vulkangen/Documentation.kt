@@ -251,12 +251,15 @@ private val SECTION_XREFS = mapOf(
     "devsandqueues-priority" to "the “Queue Priority” section",
     "devsandqueues-queueprops" to "the “Queue Family Properties” section",
     "dispatch" to "the “Dispatching Commands” chapter",
+    "features-formats-compatible-planes" to "the “Compatible formats of planes of multi-planar formats” section",
+    "features-formats-requiring-sampler-ycbcr-conversion" to "the “Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views” table",
     "framebuffer-dsb" to "the “Dual-Source Blending” section",
     "fundamentals-fp10" to "the “Unsigned 10-Bit Floating-Point Numbers” section",
     "fundamentals-fp11" to "the “Unsigned 11-Bit Floating-Point Numbers” section",
     "fxvertex-attrib" to "the “Vertex Attributes” section",
     "fxvertex-input" to "the “Vertex Input Description” section",
     "geometry" to "the “Geometry Shading” chapter",
+    "img-tessellation-topology" to "img-tessellation-topology",
     "memory" to "the “Memory Allocation” chapter",
     "memory-device-hostaccess" to "the “Host Access to Device Memory Objects” section",
     "primsrast" to "the “Rasterization” chapter",
@@ -266,7 +269,8 @@ private val SECTION_XREFS = mapOf(
     "samplers-maxAnisotropy" to "samplers-maxAnisotropy",
     "samplers-mipLodBias" to "samplers-mipLodBias",
     "shaders-vertex" to "the “Vertex Shaders” section",
-    "tessellation" to "the “Tessellation” chapter"
+    "tessellation" to "the “Tessellation” chapter",
+    "textures-chroma-reconstruction" to "Chroma Reconstruction"
 )
 
 private val SECTION_XREFS_USED = HashSet<String>()
@@ -493,7 +497,9 @@ E & =
   \end{cases}
 \end{aligned}""" to codeBlock("""
 E = r &times; sqrt(L) for 0 &le; L &le; 1
-    a &times; ln(L - b) + c for 1 &lt L""")*/
+    a &times; ln(L - b) + c for 1 &lt L""")*/,
+    """\lfloor i_G \times 0.5 \rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
+    """\lfloor j_G \times 0.5 \rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>"
 )
 
 private val LATEX_REGISTRY_USED = HashSet<String>()
@@ -715,7 +721,7 @@ private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStru
 
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
 private val PARAM_REGEX = Regex("""pname:(\w+)""")
-private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?pname:(\w+)(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
+private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:sname:(\w+)::)?pname:(\w+)(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
 
 private val ESCAPE_REGEX = Regex(""""|\\#""")
 
@@ -741,7 +747,10 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
                         }
                 } else {
                     try {
-                        val (When, param, field, description) = PARAM_DOC_REGEX.matchEntire(it.text)!!.destructured
+                        val (When, struct, param, field, description) = PARAM_DOC_REGEX.matchEntire(it.text)!!.destructured
+                        if (struct.isNotEmpty()) {
+                            System.err.println("lwjgl: struct member cross reference: $struct::$param")
+                        }
                         sequenceOf(param to getItemDescription(it, if (When.isEmpty() && field.isEmpty()) description else it.text, structs))
                     } catch (e: Exception) {
                         println("FAILED AT: ${it.text}")
