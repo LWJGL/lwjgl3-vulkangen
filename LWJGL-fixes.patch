@@ -1,25 +1,23 @@
-From 44f7d3ca76f575973c7a9dc619879daa4775b131 Mon Sep 17 00:00:00 2001
+From 195c24417eb9a017760182d42514b3e1fdd48a7c Mon Sep 17 00:00:00 2001
 From: Ioannis Tsakpinis <iotsakp@gmail.com>
-Date: Mon, 24 Oct 2016 00:26:46 +0300
+Date: Wed, 20 Sep 2017 13:33:00 +0300
 Subject: [PATCH] LWJGL fixes
 
 ---
- .../appendices/VK_AMD_negative_viewport_height.txt     |  2 ++
- .../appendices/VK_KHR_display/vk_khr_display.txt       |  1 +
- doc/specs/vulkan/appendices/extensions.txt             |  4 ++--
- doc/specs/vulkan/chapters/VK_EXT_debug_report.txt      |  3 +--
- .../create_shared_swapchains.txt                       |  2 +-
- .../VK_NVX_device_generated_commands/generation.txt    |  2 +-
- doc/specs/vulkan/chapters/primsrast.txt                |  2 +-
- doc/specs/vulkan/chapters/resources.txt                | 18 +++++++++---------
- src/spec/vk.xml                                        |  4 ++--
- 9 files changed, 20 insertions(+), 18 deletions(-)
+ doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt     | 2 ++
+ .../chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt  | 2 +-
+ .../vulkan/chapters/VK_NVX_device_generated_commands/generation.txt | 2 +-
+ .../vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt   | 2 +-
+ doc/specs/vulkan/chapters/features.txt                              | 4 ++--
+ doc/specs/vulkan/chapters/primsrast.txt                             | 2 +-
+ src/spec/vk.xml                                                     | 6 +++---
+ 7 files changed, 11 insertions(+), 9 deletions(-)
 
 diff --git a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
-index eeaa4e9..fd1eea0 100755
+index 4dcf770..37469fa 100755
 --- a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
 +++ b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
-@@ -27,5 +27,7 @@
+@@ -13,5 +13,7 @@ include::meta/VK_AMD_negative_viewport_height.txt[]
  This extension allows an application to specify a negative viewport height.
  The result is that the viewport transformation will flip along the y-axis.
 
@@ -27,64 +25,11 @@ index eeaa4e9..fd1eea0 100755
 +
   * Revision 1, 2016-09-02 (Matthaeus Chajdas)
     - Initial draft
-diff --git a/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt b/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt
-index 2057783..e90c0f0 100644
---- a/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt
-+++ b/doc/specs/vulkan/appendices/VK_KHR_display/vk_khr_display.txt
-@@ -186,6 +186,7 @@ They will dispatch based on their associated physical device.
- *PROPOSED RESOLUTION*: Defer.
- This could be a separate extension on top of the base WSI specs.
-
-+ifdef::editing-notes[]
- [NOTE]
- .editing-note
- ==================
-diff --git a/doc/specs/vulkan/appendices/extensions.txt b/doc/specs/vulkan/appendices/extensions.txt
-index 2a978fe..99650ef 100644
---- a/doc/specs/vulkan/appendices/extensions.txt
-+++ b/doc/specs/vulkan/appendices/extensions.txt
-@@ -61,13 +61,13 @@ endif::VK_KHR_shader_draw_parameters[]
-
- // WSI extensions are all grouped below
-
--:leveloffset: 2
-+:leveloffset: 1
-
- ifdef::VK_KHR_surface[]
- include::VK_KHR_surface/wsi.txt[]
- endif::VK_KHR_surface[]
-
--:leveloffset: 1
-+:leveloffset: 0
-
-
- // == Multivendor +EXT+ Extensions
-diff --git a/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt b/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
-index 325d1e7..455d6f6 100644
---- a/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
-+++ b/doc/specs/vulkan/chapters/VK_EXT_debug_report.txt
-@@ -51,7 +51,6 @@ include::../api/structs/VkDebugReportCallbackCreateInfoEXT.txt[]
- --
- // refBegin VkDebugReportFlagBitsEXT Bitmask specifying events which cause a debug report callback
- include::../api/enums/VkDebugReportFlagBitsEXT.txt[]
--
-   * ename:VK_DEBUG_REPORT_ERROR_BIT_EXT indicates an error that may cause
-     undefined results, including an application crash.
-   * ename:VK_DEBUG_REPORT_WARNING_BIT_EXT indicates use of Vulkan that may
-@@ -150,7 +149,7 @@ include::../api/protos/vkDebugReportMessageEXT.txt[]
-     type of object being used or created at the time the event was
-     triggered.
-   * pname:object is object where the issue was detected.
--    pname:object may be ename:VK_NULL_OBJECT if there is no object
-+    pname:object may be ename:VK_NULL_HANDLE if there is no object
-     associated with the event.
-   * pname:location is a component (layer, driver, loader) defined value that
-     indicates the _location_ of the trigger.
 diff --git a/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt b/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
-index 310ea89..2fc2c60 100644
+index 49ea748..f9efe1d 100644
 --- a/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
 +++ b/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
-@@ -21,7 +21,7 @@ include::../../api/protos/vkCreateSharedSwapchainsKHR.txt[]
+@@ -23,7 +23,7 @@ include::../../api/protos/vkCreateSharedSwapchainsKHR.txt[]
    * pname:pSwapchains is a pointer to an array of sname:VkSwapchainKHR
      handles in which the created swapchain objects will be returned.
 
@@ -94,23 +39,51 @@ index 310ea89..2fc2c60 100644
  and returns an array of swapchain objects.
 
 diff --git a/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt b/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
-index c3d2609..fe5fa02 100644
+index 3b31259..c6c922d 100644
 --- a/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
 +++ b/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
-@@ -96,7 +96,7 @@ include::../../api/structs/VkCmdProcessCommandsInfoNVX.txt[]
+@@ -105,7 +105,7 @@ include::../../api/structs/VkCmdProcessCommandsInfoNVX.txt[]
      pname:sequencesCountBuffer where the count value is stored.
    * pname:sequencesIndexBuffer must: be set if
      pname:indirectCommandsLayout's
 -    ename:VK_INDIRECT_COMMANDS_LAYOUT_USAGE_INDEXED_SEQUENCES_BIT is set and
 +    ename:VK_INDIRECT_COMMANDS_LAYOUT_USAGE_INDEXED_SEQUENCES_BIT_NVX is set and
      provides the used sequence indices as ftext:uint32_t array.
-     Otherwise it must: be `NULL`.
+     Otherwise it must: be dlink:VK_NULL_HANDLE.
    * pname:sequencesIndexOffset is the byte offset into
+diff --git a/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt b/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt
+index c5c09b5..e973277 100644
+--- a/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt
++++ b/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt
+@@ -25,7 +25,7 @@ include::../../api/structs/VkPipelineViewportWScalingStateCreateInfoNV.txt[]
+     sname:VkViewportWScalingNV structures which define the W scaling
+     parameters for the corresponding viewport.
+     If the viewport W scaling state is dynamic, this member is ignored.
+-  * If no element of the pname:pDynamicStates member of
++    If no element of the pname:pDynamicStates member of
+     sname::VkPipelineViewportStateCreateInfo::pname:pDynamicState is
+     ename:VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV, the
+     pname:pViewportScalings member of a
+diff --git a/doc/specs/vulkan/chapters/features.txt b/doc/specs/vulkan/chapters/features.txt
+index e839578..d8b1a7e 100644
+--- a/doc/specs/vulkan/chapters/features.txt
++++ b/doc/specs/vulkan/chapters/features.txt
+@@ -3403,8 +3403,8 @@ ifdef::VK_KHR_sampler_ycbcr_conversion[]
+     plane 1, and a 16-bit R component in each 16-bit word of plane 2.
+     The horizontal and vertical dimensions of the R and B planes are halved
+     relative to the image dimensions, and each R and B component is shared
+-    with the G components for which latexmath:[\lfloor i_G \times 0.5\
+-    rfloor = i_B = i_R] and latexmath:[\lfloor j_G \times 0.5 \rfloor = j_B
++    with the G components for which latexmath:[\lfloor i_G \times 0.5
++    \rfloor = i_B = i_R] and latexmath:[\lfloor j_G \times 0.5 \rfloor = j_B
+     = j_R].
+     The location of each plane when this image is in linear layout can be
+     determined via vkGetImageSubresourceLayout, using
 diff --git a/doc/specs/vulkan/chapters/primsrast.txt b/doc/specs/vulkan/chapters/primsrast.txt
-index df69b8a..6913ac8 100644
+index c3efe4a..14c41f4 100644
 --- a/doc/specs/vulkan/chapters/primsrast.txt
 +++ b/doc/specs/vulkan/chapters/primsrast.txt
-@@ -857,7 +857,7 @@ is guaranteed to remain distinct throughout polygon rasterization and in the
+@@ -1125,7 +1125,7 @@ is guaranteed to remain distinct throughout polygon rasterization and in the
  depth buffer.
  All pairs of fragments generated by the rasterization of two polygons with
  otherwise identical vertices, but [eq]#pname:z~f~# values that differ by
@@ -119,96 +92,20 @@ index df69b8a..6913ac8 100644
 
  For fixed-point depth buffer representations, [eq]#r# is constant throughout
  the range of the entire depth buffer.
-diff --git a/doc/specs/vulkan/chapters/resources.txt b/doc/specs/vulkan/chapters/resources.txt
-index 6eb11eb..e021039 100644
---- a/doc/specs/vulkan/chapters/resources.txt
-+++ b/doc/specs/vulkan/chapters/resources.txt
-@@ -1296,7 +1296,7 @@ pname:height = 1 +
- pname:depth = 1 +
- pname:arrayLayers {geq} 1 +
- pname:samples = 1 |
--pname:viewType = ename:VK_VIEW_TYPE_1D +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_1D +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount = 1
- | 1D, 1, 0 |
-@@ -1306,7 +1306,7 @@ pname:height = 1 +
- pname:depth = 1 +
- pname:arrayLayers {geq} 1 +
- pname:samples = 1 |
--pname:viewType = ename:VK_VIEW_TYPE_1D_ARRAY +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_1D_ARRAY +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount {geq} 1
- | 2D, 0, 0 |
-@@ -1316,7 +1316,7 @@ pname:height {geq} 1 +
- pname:depth = 1 +
- pname:arrayLayers {geq} 1 +
- pname:samples = 1 |
--pname:viewType = ename:VK_VIEW_TYPE_2D +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount = 1
- | 2D, 1, 0 |
-@@ -1326,7 +1326,7 @@ pname:height {geq} 1 +
- pname:depth = 1 +
- pname:arrayLayers {geq} 1 +
- pname:samples = 1 |
--pname:viewType = ename:VK_VIEW_TYPE_2D_ARRAY +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount {geq} 1
- | 2D, 0, 1 |
-@@ -1336,7 +1336,7 @@ pname:height {geq} 1 +
- pname:depth = 1 +
- pname:arrayLayers {geq} 1 +
- pname:samples > 1 |
--pname:viewType = ename:VK_VIEW_TYPE_2D +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount = 1
- | 2D, 1, 1 |
-@@ -1346,7 +1346,7 @@ pname:height {geq} 1 +
- pname:depth = 1 +
- pname:arrayLayers {geq} 1 +
- pname:samples > 1 |
--pname:viewType = ename:VK_VIEW_TYPE_2D_ARRAY +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount {geq} 1
- | CUBE, 0, 0 |
-@@ -1357,7 +1357,7 @@ pname:depth = 1 +
- pname:arrayLayers {geq} 6 +
- pname:samples = 1 +
- pname:flags includes ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT |
--pname:viewType = ename:VK_VIEW_TYPE_CUBE +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_CUBE +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount = 6
- | CUBE, 1, 0 |
-@@ -1369,7 +1369,7 @@ _N_ {geq} 1 +
- pname:arrayLayers {geq} 6 {times} _N_ +
- pname:samples = 1 +
- pname:flags includes ename:VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT |
--pname:viewType = ename:VK_VIEW_TYPE_CUBE_ARRAY +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_CUBE_ARRAY +
- pname:baseArrayLayer {geq} 0 +
- pname:layerCount = 6 {times} _N_, _N_ {geq} 1
- | 3D, 0, 0 |
-@@ -1379,7 +1379,7 @@ pname:height {geq} 1 +
- pname:depth {geq} 1 +
- pname:arrayLayers = 1 +
- pname:samples = 1 |
--pname:viewType = ename:VK_VIEW_TYPE_3D +
-+pname:viewType = ename:VK_IMAGE_VIEW_TYPE_3D +
- pname:baseArrayLayer = 0 +
- pname:layerCount = 1
- ifdef::VK_KHR_maintenance1[]
 diff --git a/src/spec/vk.xml b/src/spec/vk.xml
-index 779875b..90460c5 100644
+index f4182d8..0e15d56 100644
 --- a/src/spec/vk.xml
 +++ b/src/spec/vk.xml
-@@ -530,9 +530,9 @@ maintained in the master branch of the Khronos Vulkan GitHub project.
+@@ -140,7 +140,7 @@ private version is maintained in the 1.0 branch of the member gitlab server.
+         <type requires="vk_platform" name="uint64_t"/>
+         <type requires="vk_platform" name="int32_t"/>
+         <type requires="vk_platform" name="size_t"/>
+-        <type name="int"/>
++        <type requires="vk_platform" name="int"/>
+
+             <comment>Bitmask types</comment>
+         <type                                             category="bitmask">typedef <type>VkFlags</type> <name>VkFramebufferCreateFlags</name>;</type>
+@@ -584,9 +584,9 @@ private version is maintained in the 1.0 branch of the member gitlab server.
          </type>
          <type category="struct" name="VkPhysicalDeviceMemoryProperties" returnedonly="true">
              <member><type>uint32_t</type>               <name>memoryTypeCount</name></member>
@@ -220,6 +117,6 @@ index 779875b..90460c5 100644
          </type>
          <type category="struct" name="VkMemoryAllocateInfo">
              <member values="VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO"><type>VkStructureType</type> <name>sType</name></member>
--- 
-1.9.1
+--
+2.14.1.windows.1
 
