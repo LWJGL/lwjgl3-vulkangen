@@ -631,11 +631,11 @@ private fun PrintWriter.printEnums(enums: Sequence<Enums>) {
             val enumDoc = ENUM_DOC[block.name]
             println("""
     EnumConstant(
-        ${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3
+        ${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3${"""
         ${enumDoc.shortDescription}${
             if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
             if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
-        $QUOTES3"""},
+        """.splitLargeLiteral()}$QUOTES3"""},
 
         ${block.enums!!.joinToString(",\n$t$t") {
                 if (it.bitpos != null)
