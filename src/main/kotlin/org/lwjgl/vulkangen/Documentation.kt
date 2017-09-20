@@ -274,7 +274,7 @@ private val SECTION_XREFS_USED = HashSet<String>()
 private fun getSectionXREF(section: String): String {
     val text = SECTION_XREFS[section]
     if (text == null) {
-        System.err.println("Missing section reference: $section")
+        System.err.println("lwjgl: Missing section reference: $section")
         return section
     }
     SECTION_XREFS_USED.add(section)
@@ -285,7 +285,7 @@ fun printUnusedSectionXREFs() {
     SECTION_XREFS.keys.asSequence()
         .filter { !SECTION_XREFS_USED.contains(it) }
         .forEach {
-            System.err.println("Unused section XREF:\n$it")
+            System.err.println("lwjgl: Unused section XREF:\n$it")
         }
 }
 
@@ -312,12 +312,12 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                 "double"      -> "``${node.text}''"
                 "single"      -> "`${node.text}'"
                 else          -> {
-                    System.err.println("type: ${node.type}")
-                    System.err.println("text: ${node.text}")
-                    System.err.println("target: ${node.target}")
-                    System.err.println("reftext: ${node.reftext}")
-                    System.err.println("id: ${node.id}")
-                    System.err.println("attributes: ${node.attributes}")
+                    System.err.println("lwjgl: type: ${node.type}")
+                    System.err.println("lwjgl: text: ${node.text}")
+                    System.err.println("lwjgl: target: ${node.target}")
+                    System.err.println("lwjgl: reftext: ${node.reftext}")
+                    System.err.println("lwjgl: id: ${node.id}")
+                    System.err.println("lwjgl: attributes: ${node.attributes}")
                     throw IllegalStateException()
                 }
             }
@@ -516,7 +516,7 @@ fun printUnusedLatexEquations() {
     LATEX_REGISTRY.keys.asSequence()
         .filter { !LATEX_REGISTRY_USED.contains(it) }
         .forEach {
-            System.err.println("Unused LateX equation:\n$it")
+            System.err.println("lwjgl: Unused LateX equation:\n$it")
         }
 }
 
