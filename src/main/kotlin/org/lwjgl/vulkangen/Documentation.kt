@@ -192,6 +192,7 @@ private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) 
         )
     } catch (e: Exception) {
         System.err.println("Failed while parsing: $function")
+        printStructure(node)
         throw RuntimeException(e)
     }
 }
@@ -209,6 +210,7 @@ private fun addStruct(node: StructuralNode, structs: Map<String, TypeStruct>) {
         )
     } catch (e: Exception) {
         System.err.println("Failed while parsing: $struct")
+        printStructure(node)
         throw RuntimeException(e)
     }
 }
@@ -224,6 +226,7 @@ private fun addEnum(node: StructuralNode, structs: Map<String, TypeStruct>) {
         )
     } catch (e: Exception) {
         System.err.println("Failed while parsing: $enum")
+        printStructure(node)
         throw RuntimeException(e)
     }
 }
@@ -754,6 +757,7 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
                         sequenceOf(param to getItemDescription(it, if (When.isEmpty() && field.isEmpty()) description else it.text, structs))
                     } catch (e: Exception) {
                         println("FAILED AT: ${it.text}")
+                        printStructure(it)
                         throw RuntimeException(e)
                     }
                 }
