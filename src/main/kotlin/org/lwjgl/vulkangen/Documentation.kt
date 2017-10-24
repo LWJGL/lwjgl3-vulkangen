@@ -789,7 +789,7 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
 
 private fun getItemDescription(listItem: ListItem, description: String, structs: Map<String, TypeStruct>) =
     if (listItem.blocks.isNotEmpty())
-        "\"\"${description.replaceMarkup(structs)}\n${containerToJavaDoc(listItem, structs)}\"\""
+        "\"\"${description.replaceMarkup(structs)}\n\n$t$t${containerToJavaDoc(listItem, structs)}\"\""
     else
         description.replaceMarkup(structs)
 
