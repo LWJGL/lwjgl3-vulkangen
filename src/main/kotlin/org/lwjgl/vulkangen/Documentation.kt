@@ -745,11 +745,12 @@ private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:sname:(\w+)::)?pname:(\w
 private val ESCAPE_REGEX = Regex(""""|\\#""")
 
 private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, TypeStruct>): Map<String, String> {
-    if (members.blocks.isEmpty())
-        return emptyMap()
+    members.blocks.forEach {
+        if (it !is org.asciidoctor.ast.List) {
+            return@forEach
+        }
 
-    return members.blocks[0].let {
-        if (it is org.asciidoctor.ast.List) it.items.asSequence()
+        return it.items.asSequence()
             .filterIsInstance<ListItem>()
             .filter { it.text != null }
             .flatMap {
@@ -798,9 +799,8 @@ private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, Typ
                         .joinToString("\n\n$t$t", prefix = "\"\"", postfix = "\"\"")
             }
             .toMap()
-        else
-            emptyMap()
     }
+    return emptyMap()
 }
 
 private fun getItemDescription(listItem: ListItem, description: String, structs: Map<String, TypeStruct>) =
