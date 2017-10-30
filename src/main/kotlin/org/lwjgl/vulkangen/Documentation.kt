@@ -40,6 +40,42 @@ internal val ENUM_DOC = HashMap<String, EnumDoc>(256)
 
 internal val EXTENSION_DOC = HashMap<String, String>(64)
 
+private val ATTRIBS = mapOf(
+    "sym1" to "✓",
+    "sym2" to "†",
+    "times" to "×",
+    "plus" to "+",
+    "geq" to "≥",
+    "leq" to "≤",
+    "neq" to "≠",
+    "leftarrow" to "←",
+    "uparrow" to "↑",
+    "rightarrow" to "→",
+    "downarrow" to "↓",
+    "elem" to "∈",
+    "lnot" to "¬",
+    "land" to "∧",
+    "lor" to "∨",
+    "oplus" to "⊕",
+    "alpha" to "α",
+    "beta" to "β",
+    "gamma" to "γ",
+    "DeltaUpper" to "Δ",
+    "delta" to "δ",
+    "epsilon" to "ε",
+    "lambda" to "λ",
+    "rho" to "ρ",
+    "tau" to "τ",
+    "lceil" to "⌈",
+    "rceil" to "⌉",
+    "lfloor" to "⌊",
+    "rfloor" to "⌋",
+    "vert" to "|",
+    "partial" to "∂",
+    "onehalf" to "½",
+    "onequarter" to "¼"
+)
+
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     val asciidoctor = Asciidoctor.Factory.create()
 
@@ -71,39 +107,11 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     val attribs = AttributesBuilder.attributes()
         .ignoreUndefinedAttributes(false)
         .attributes(extensionIDs)
-        .attribute("sym1", "✓")
-        .attribute("sym2", "†")
-        .attribute("times", "×")
-        .attribute("plus", "+")
-        .attribute("geq", "≥")
-        .attribute("leq", "≤")
-        .attribute("neq", "≠")
-        .attribute("leftarrow", "←")
-        .attribute("uparrow", "↑")
-        .attribute("rightarrow", "→")
-        .attribute("downarrow", "↓")
-        .attribute("elem", "∈")
-        .attribute("lnot", "¬")
-        .attribute("land", "∧")
-        .attribute("lor", "∨")
-        .attribute("oplus", "⊕")
-        .attribute("alpha", "α")
-        .attribute("beta", "β")
-        .attribute("gamma", "γ")
-        .attribute("DeltaUpper", "Δ")
-        .attribute("delta", "δ")
-        .attribute("epsilon", "ε")
-        .attribute("lambda", "λ")
-        .attribute("rho", "ρ")
-        .attribute("tau", "τ")
-        .attribute("lceil", "⌈")
-        .attribute("rceil", "⌉")
-        .attribute("lfloor", "⌊")
-        .attribute("rfloor", "⌋")
-        .attribute("vert", "|")
-        .attribute("partial", "∂")
-        .attribute("onehalf", "½")
-        .attribute("onequarter", "¼")
+        .apply {
+            ATTRIBS.forEach { (key, value) ->
+                attribute(key, value)
+            }
+        }
         .asMap()
 
     val extensions = asciidoctor.loadFile(
@@ -305,7 +313,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                     else
                         throw IllegalStateException(node.roles.joinToString(", "))
                 }
-                "xref"        -> node.getAttr("refid").let { "<<$it,${if (node.text != null) node.text else getSectionXREF(it as String)}>>" }
+                "xref"        -> node.getAttribute("refid").let { "<<$it,${if (node.text != null) node.text else getSectionXREF(it as String)}>>" }
                 "ref"         -> ""
                 "emphasis"    -> "_${node.text}_"
                 "strong"      -> "*${node.text}*"
@@ -534,6 +542,7 @@ private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
 private val DOUBLE = """``((?:(?!').)+)''""".toRegex()
 private val EQUATION = """\[eq]#((?:[^#]|(?<=&)#(?=x?[0-9a-fA-F]{1,4};))+)#""".toRegex()
+private val EQUATION_ATTRIB = """\{(\w+)}""".toRegex()
 private val STRUCT_OR_HANDLE = """s(?:name|link):(\w+)""".toRegex()
 private val STRUCT_FIELD = """::pname:(\w+)""".toRegex()
 private val CODE1 = """`([^`]+)`""".toRegex()
@@ -562,7 +571,16 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     .replace(SUPERSCRIPT, "<sup>$1</sup>")
     .replace(SUBSCRIPT, "<sub>$1</sub>")
     .replace(DOUBLE, "“$1”")
-    .replace(EQUATION) { "<code>${it.groups[1]!!.value.replace(CODE2, "$1")}</code>" } // TODO: more?
+    .replace(EQUATION) { "<code>${it.groups[1]!!.value
+        .replace(CODE2, "$1")
+        .replace(EQUATION_ATTRIB) {
+            val attrib = it.groups[1]!!.value
+            if (ATTRIBS.containsKey(attrib)) {
+                ATTRIBS[attrib]!!
+            } else
+                it.value
+        } // TODO: more?
+    }</code>" }
     .replace(STRUCT_OR_HANDLE) {
         val type = it.groups[1]!!.value
         if (structs.containsKey(type))
