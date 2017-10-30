@@ -116,7 +116,6 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
             .attributes(attribs)
             .asMap()
     )
-    fixNestedLists(extensions)
 
     findNodes(extensions) {
         it.nodeName == "section" && extensionIDs.containsKey(it.id)
@@ -153,7 +152,6 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
                 .asMap()
         )
     }
-    fixNestedLists(document)
 
     document.blocks.asSequence().forEach {
         when (it.id) {
@@ -827,89 +825,6 @@ private fun printStructure(node: StructuralNode, indent: String = "") {
     if (node.blocks != null) {
         node.blocks.asSequence().forEach {
             printStructure(it, "$t$indent")
-        }
-    }
-}
-
-
-private val org.asciidoctor.ast.List.markerLength: Int get() = (this.items[0] as ListItem).marker.length
-
-/*
-This fixes https://github.com/asciidoctor/asciidoctorj/issues/466.
-The fix is partial (we can change blocks/items, cannot change parents),
-but good enough in our case.
- */
-private fun fixNestedLists(node: StructuralNode) {
-    // depth-first
-    if (node.blocks != null)
-        node.blocks.asSequence().forEach(::fixNestedLists)
-
-    if (node is org.asciidoctor.ast.List) {
-        // last-to-first
-        node.items
-            .reversed()
-            .forEach(::fixNestedLists)
-    } else if (node is ListItem && node.marker != null) {
-        val bugged = node.blocks
-            .asSequence()
-            .filterIsInstance<org.asciidoctor.ast.List>()
-            .filter { list -> list.markerLength < node.marker.length }
-            .toMutableList()
-
-        if (bugged.isNotEmpty()) {
-            node.blocks.removeAll(bugged)
-
-            // last-to-first
-            bugged.reverse()
-            bugged.forEach {
-                val markerLength = it.markerLength
-                val items = it.items.toList()
-                it.items.clear()
-
-                var anchor = node
-                var parent = anchor.parent as org.asciidoctor.ast.List
-
-                // Find correct parent list
-                while (markerLength < parent.markerLength) {
-                    // If we're at the correct level minus one,
-                    // grab all children after the current anchor,
-                    // because they belong to this list
-                    if (markerLength + 1 == parent.markerLength) {
-                        val grabAfter = parent.items.indexOf(anchor) + 1
-
-                        while (grabAfter < parent.items.size)
-                            it.items.add(parent.items.removeAt(grabAfter))
-
-                        if (it.items.isNotEmpty())
-                            items.last().blocks.add(it)
-                    }
-
-                    // Go up
-                    anchor = (parent.parent as ListItem)
-                    parent = anchor.parent as org.asciidoctor.ast.List
-                }
-
-                // Inject to the correct parent
-                parent.items.addAll(parent.items.indexOf(anchor) + 1, items)
-            }
-        }
-    } else if (node is Table) {
-        sequenceOf(
-            node.header,
-            node.body,
-            node.footer
-        ).forEach {
-            it.forEach {
-                it.cells.forEach {
-                    if (it.style == "asciidoc")
-                        fixNestedLists(it.innerDocument)
-                }
-            }
-        }
-    } else if (node is DescriptionList) {
-        node.items.forEach {
-            fixNestedLists(it.description)
-            it.terms.forEach(::fixNestedLists)
         }
     }
 }
