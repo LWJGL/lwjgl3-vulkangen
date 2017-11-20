@@ -11,9 +11,9 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
-		<kotlin.version>1.1.51</kotlin.version>
+		<kotlin.version>1.1.60</kotlin.version>
 		<main.class>org.lwjgl.vulkangen.RegistryKt</main.class>
-		<path.vulkan-docs>../../DEPENDENCIES/KHRONOS/Vulkan-Docs</path.vulkan-docs>
+		<path.vulkan-docs>../../CLONES/KHRONOS/Vulkan-Docs</path.vulkan-docs>
 		<path.lwjgl3>../lwjgl3</path.lwjgl3>
 	</properties>
 	<dependencies>
