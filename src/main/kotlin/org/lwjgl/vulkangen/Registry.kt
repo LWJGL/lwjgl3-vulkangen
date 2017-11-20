@@ -25,6 +25,16 @@ private val ABBREVIATIONS = setOf(
     "pvrtc"
 )
 
+val String.template get() = this
+    .splitToSequence('_')
+    .map {
+        if (ABBREVIATIONS.contains(it))
+            it.toUpperCase()
+        else
+            "${it[0].toUpperCase()}${it.substring(1)}"
+    }
+    .joinToString("")
+
 private val IMPORTS = mapOf(
     "android/native_window.h" to "org.lwjgl.system.android.*",
     "X11/Xlib.h" to "org.lwjgl.system.linux.*",
@@ -498,16 +508,6 @@ private fun generateExtension(
     val distinctTypes = getDistinctTypes(extension.requires.asSequence(), commands, types)
 
     val name = extension.name.substring(3)
-    val template = name
-        .splitToSequence('_')
-        .map {
-            if (ABBREVIATIONS.contains(it))
-                it.toUpperCase()
-            else
-                "${it[0].toUpperCase()}${it.substring(1)}"
-        }
-        .joinToString("")
-
     val file = root.resolve("templates/$name.kt")
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
@@ -524,7 +524,7 @@ import org.lwjgl.generator.*${distinctTypes
         }
 import $vulkanPackage.*
 
-val $name = "$template".nativeClassVK("$name", type = "${extension.type}", postfix = ${name.substringBefore('_')}) {
+val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}", postfix = ${name.substringBefore('_')}) {
     documentation =
         $QUOTES3
         ${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}

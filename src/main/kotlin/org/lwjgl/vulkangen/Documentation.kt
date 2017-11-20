@@ -38,6 +38,7 @@ internal val FUNCTION_DOC = HashMap<String, FunctionDoc>(256)
 internal val STRUCT_DOC = HashMap<String, StructDoc>(256)
 internal val ENUM_DOC = HashMap<String, EnumDoc>(256)
 
+internal val EXTENSION_TEMPLATES = HashMap<String, String>(64)
 internal val EXTENSION_DOC = HashMap<String, String>(64)
 
 private val ATTRIBS = mapOf(
@@ -102,6 +103,11 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         appendices.resolve("extensions.txt"),
         """^include::(VK_\w+)\.txt\[]""".toRegex()
     )
+    extensionIDs.keys
+        .map { it.substring(3) }
+        .associateTo(EXTENSION_TEMPLATES) {
+            it to it.template
+        }
 
     // TODO: As of 1.0.42 the attribs.txt include doesn't work
     val attribs = AttributesBuilder.attributes()
@@ -598,7 +604,14 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         else
             "##Vk$type"
     }
-    .replace(ENUM, "#$1")
+    .replace(ENUM) {
+        val name = it.groups[1]!!.value
+        if (name.any { it in 'a'..'z' } && EXTENSION_TEMPLATES.containsKey(name)) {
+            "##${EXTENSION_TEMPLATES[name]}" // link to extension class
+        } else {
+            "#$name"
+        }
+    }
     .replace(CODE2, "{@code $1}")
     .replace(LINK, """<a target="_blank" href="$1">$2</a>""")
     .replace(SPEC_LINK, """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
