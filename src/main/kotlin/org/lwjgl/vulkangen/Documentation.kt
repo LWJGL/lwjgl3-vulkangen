@@ -266,6 +266,7 @@ private val SECTION_XREFS = mapOf(
     "devsandqueues-priority" to "the “Queue Priority” section",
     "devsandqueues-queueprops" to "the “Queue Family Properties” section",
     "dispatch" to "the “Dispatching Commands” chapter",
+    "external-memory-handle-types-compatibility" to "External memory handle types compatibility",
     "features-formats-compatible-planes" to "the “Compatible formats of planes of multi-planar formats” section",
     "features-formats-requiring-sampler-ycbcr-conversion" to "the “Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views” table",
     "framebuffer-dsb" to "the “Dual-Source Blending” section",
@@ -284,6 +285,7 @@ private val SECTION_XREFS = mapOf(
     "samplers-maxAnisotropy" to "samplers-maxAnisotropy",
     "samplers-mipLodBias" to "samplers-mipLodBias",
     "shaders-vertex" to "the “Vertex Shaders” section",
+    "synchronization-queue-transfers" to "Queue Family Ownership Transfer",
     "tessellation" to "the “Tessellation” chapter",
     "textures-chroma-reconstruction" to "Chroma Reconstruction"
 )
@@ -328,7 +330,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                 "link"        -> "${node.target}[${node.text}]"
                 "subscript"   -> "~${node.text}~"
                 "superscript" -> "^${node.text}^"
-                "double"      -> "``${node.text}''"
+                "double"      -> "“${node.text}”"
                 "single"      -> "`${node.text}'"
                 else          -> {
                     System.err.println("lwjgl: type: ${node.type}")
@@ -546,16 +548,16 @@ private val STRONG = """(?<=^|\W)\*+([^*]+)\*+(?=[\W]|$)""".toRegex()
 private val EMPHASIS = """(?<=^|\W)_([^_]+)_(?=[\W]|$)""".toRegex()
 private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
-private val DOUBLE = """``((?:(?!').)+)''""".toRegex()
 private val EQUATION = """\[eq]#((?:[^#]|(?<=&)#(?=x?[0-9a-fA-F]{1,4};))+)#""".toRegex()
 private val EQUATION_ATTRIB = """\{(\w+)}""".toRegex()
 private val STRUCT_OR_HANDLE = """s(?:name|link):(\w+)""".toRegex()
 private val STRUCT_FIELD = """::pname:(\w+)""".toRegex()
-private val CODE1 = """`([^`]+)`""".toRegex()
+private val CODE1 = """`([^`]+?)`""".toRegex()
 private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:pname|ptext|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
+private val CODE3 = """etext:([\w*]+)""".toRegex()
 private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
 private val SPEC_LINK_RELATIVE = """(?:link:)?\{html_spec_relative}#([^\[]+?)\[([^]]*)]""".toRegex()
@@ -576,7 +578,6 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     .replace(EMPHASIS, "<em>$1</em>")
     .replace(SUPERSCRIPT, "<sup>$1</sup>")
     .replace(SUBSCRIPT, "<sub>$1</sub>")
-    .replace(DOUBLE, "“$1”")
     .replace(EQUATION) { "<code>${it.groups[1]!!.value
         .replace(CODE2, "$1")
         .replace(EQUATION_ATTRIB) {
@@ -595,7 +596,15 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
             "{@code $type}" // handle
     }
     .replace(STRUCT_FIELD, "{@code ::$1}")
-    .replace(CODE1, "{@code $1}")
+    .replace(CODE1) {
+        it.groups[1]!!.value.let {
+            if (it.startsWith("etext:")) {
+                it
+            } else {
+                "{@code $it}"
+            }
+        }
+    }
     .replace(FUNCTION, "#$1()")
     .replace(FUNCTION_TYPE) {
         val type = it.groups[1]!!.value
@@ -613,11 +622,12 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         }
     }
     .replace(CODE2, "{@code $1}")
+    .replace(CODE3, "{@code $1}")
     .replace(LINK, """<a target="_blank" href="$1">$2</a>""")
-    .replace(SPEC_LINK, """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\\#$1">$2</a>""")
+    .replace(SPEC_LINK, """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\\#$1">$2</a>""")
     .replace(SPEC_LINK_RELATIVE) {
         val (section, text) = it.destructured
-        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/xhtml/vkspec.html\#$section">${text.let {
+        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#$section">${text.let {
             if (it.isEmpty() || it.startsWith("{html_spec_relative}#")) {
                 getSectionXREF(section)
             } else
@@ -753,7 +763,7 @@ private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStru
 
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
 private val PARAM_REGEX = Regex("""pname:(\w+)""")
-private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:sname:(\w+)::)?pname:(\w+)(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
+private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:(?:sname|slink):(\w+)::)?pname:(\w+)(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
 
 private val ESCAPE_REGEX = Regex(""""|\\#""")
 
