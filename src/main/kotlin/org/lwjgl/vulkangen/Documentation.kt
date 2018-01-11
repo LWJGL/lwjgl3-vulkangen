@@ -264,7 +264,6 @@ private val SECTION_XREFS = mapOf(
     "descriptorsets-updates" to "the “Descriptor Set Updates” section",
     "descriptorsets-updates-consecutive" to "the “consecutive binding updates” section",
     "devsandqueues-priority" to "the “Queue Priority” section",
-    "devsandqueues-queueprops" to "the “Queue Family Properties” section",
     "dispatch" to "the “Dispatching Commands” chapter",
     "external-memory-handle-types-compatibility" to "External memory handle types compatibility",
     "features-formats-compatible-planes" to "the “Compatible formats of planes of multi-planar formats” section",
@@ -275,7 +274,8 @@ private val SECTION_XREFS = mapOf(
     "fxvertex-attrib" to "the “Vertex Attributes” section",
     "fxvertex-input" to "the “Vertex Input Description” section",
     "geometry" to "the “Geometry Shading” chapter",
-    "img-tessellation-topology" to "img-tessellation-topology",
+    "img-tessellation-topology-ul" to "Domain parameterization for tessellation primitive modes (upper-left origin)",
+    "img-tessellation-topology-ll" to "Domain parameterization for tessellation primitive modes (lower-left origin)",
     "memory" to "the “Memory Allocation” chapter",
     "memory-device-hostaccess" to "the “Host Access to Device Memory Objects” section",
     "primsrast" to "the “Rasterization” chapter",
@@ -293,6 +293,10 @@ private val SECTION_XREFS = mapOf(
 private val SECTION_XREFS_USED = HashSet<String>()
 
 private fun getSectionXREF(section: String): String {
+    if (section.startsWith("VK_")) {
+        return section
+    }
+
     val text = SECTION_XREFS[section]
     if (text == null) {
         System.err.println("lwjgl: Missing section reference: $section")
@@ -559,7 +563,7 @@ private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:pname|ptext|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val CODE3 = """etext:([\w*]+)""".toRegex()
 private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
-private val SPEC_LINK = """<<([^,]+),([^>]+)>>""".toRegex()
+private val SPEC_LINK = """<<([^,]+?)(?:,([^>]+))?>>""".toRegex()
 private val SPEC_LINK_RELATIVE = """(?:link:)?\{html_spec_relative}#([^\[]+?)\[([^]]*)]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 
@@ -601,7 +605,16 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
             if (it.startsWith("etext:")) {
                 it
             } else {
-                "{@code $it}"
+                val m = SPEC_LINK.find(it) ?: SPEC_LINK_RELATIVE.find(it)
+                if (m != null) {
+                    val extension = m.groups[1]!!.value
+                    if (!extension.startsWith("VK_")) {
+                        throw IllegalStateException()
+                    }
+                    "{@link ${extension.substring(3).template} $extension}"
+                } else {
+                    "{@code $it}"
+                }
             }
         }
     }
@@ -624,7 +637,10 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     .replace(CODE2, "{@code $1}")
     .replace(CODE3, "{@code $1}")
     .replace(LINK, """<a target="_blank" href="$1">$2</a>""")
-    .replace(SPEC_LINK, """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\\#$1">$2</a>""")
+    .replace(SPEC_LINK) {
+        val section = it.groups[1]!!
+        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#${section.value}">${it.groups[2]?.value ?: section.value}</a>"""
+    }
     .replace(SPEC_LINK_RELATIVE) {
         val (section, text) = it.destructured
         """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#$section">${text.let {
