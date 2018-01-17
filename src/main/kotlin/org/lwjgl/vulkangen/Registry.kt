@@ -42,7 +42,7 @@ private val IMPORTS = mapOf(
     "windows.h" to "org.lwjgl.system.windows.*"
 )
 
-private val HEADER = """/*
+private const val HEADER = """/*
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
  * MACHINE GENERATED FILE, DO NOT EDIT
@@ -50,10 +50,10 @@ private val HEADER = """/*
 """
 
 // Character sequence used for alignment
-internal val t = "    "
+internal const val t = "    "
 
-private val S = "\$"
-private val QUOTES3 = "\"\"\""
+private const val S = "\$"
+private const val QUOTES3 = "\"\"\""
 
 internal class LWJGLWriter(out: Writer) : PrintWriter(out) {
     override fun println() = print('\n')

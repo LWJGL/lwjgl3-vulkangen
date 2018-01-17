@@ -1,6 +1,6 @@
 package org.lwjgl.vulkangen
 
-private val MERGE_SEQUENCE = "\"\"\" mergeLargeLiteral \"\"\""
+private const val MERGE_SEQUENCE = "\"\"\" mergeLargeLiteral \"\"\""
 
 private val Char.modifiedUTF8Length: Int
     get() {
