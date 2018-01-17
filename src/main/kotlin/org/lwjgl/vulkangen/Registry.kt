@@ -75,13 +75,12 @@ fun main(args: Array<String>) {
         parse(registryPath)
     }
 
-    val vulkanPath = "org/lwjgl/vulkan"
     val root = args[1].let {
         val lwjgl3 = Paths.get(it)
         if (!Files.isDirectory(lwjgl3))
             throw IllegalArgumentException("Invalid lwjgl3 repository path specified: $it")
 
-        val root = lwjgl3.resolve("modules/templates/src/main/kotlin/$vulkanPath")
+        val root = lwjgl3.resolve("modules/lwjgl/vulkan/src/main/kotlin/vulkan")
         if (!Files.isDirectory(root))
             throw IllegalArgumentException("The path specified does not contain the lwjgl3 repository: $it")
 
@@ -110,11 +109,9 @@ fun main(args: Array<String>) {
         System.exit(-1)
     }
 
-    val vulkanPackage = vulkanPath.replace('/', '.')
-
     // TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
     val featureTypes = getDistinctTypes(registry.features[0].requires.asSequence(), commands, types)
-    generateTypes(root, vulkanPackage, "VKTypes", types, structs, featureTypes) {
+    generateTypes(root, "VKTypes", types, structs, featureTypes) {
         registry.tags.asSequence()
             .map { "val ${it.name} = \"${it.name}\"" }
             .joinToString("\n", postfix = "\n\n")
@@ -122,7 +119,7 @@ fun main(args: Array<String>) {
 
     val featureEnums = featureTypes.filterEnums(enums)
     registry.features.forEach { feature ->
-        generateFeature(root, vulkanPackage, types, enums, structs, commands, feature, featureEnums)
+        generateFeature(root, types, enums, structs, commands, feature, featureEnums)
     }
 
     val extensions = registry.extensions.asSequence()
@@ -132,13 +129,13 @@ fun main(args: Array<String>) {
         .filter { !featureTypes.contains(it) }
         .toSet()
 
-    generateTypes(root, vulkanPackage, "ExtensionTypes", types, structs, extensionTypes)
+    generateTypes(root, "ExtensionTypes", types, structs, extensionTypes)
 
     val enumsSeen = featureEnums.toMutableSet()
     extensions.forEach { extension ->
         // Type declarations for enums are missing in some extensions.
         // We generate <enums> the first time we encounter them.
-        generateExtension(root, vulkanPackage, types, enums, structs, commands, extension, enumsSeen)
+        generateExtension(root, types, enums, structs, commands, extension, enumsSeen)
     }
 
     printUnusedSectionXREFs()
@@ -270,10 +267,10 @@ else {
     }.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
-private fun getJavaImports(vulkanPackage: String, types: Map<String, Type>, fields: Sequence<Field>) = fields
+private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>) = fields
     .mapNotNull {
         if (it.array != null && it.array.startsWith("\"VK_MAX_"))
-            "static $vulkanPackage.VK10.*"
+            "static org.lwjgl.vulkan.VK10.*"
         else {
             val type = types[it.type]
             if (type is TypeSystem)
@@ -289,7 +286,6 @@ private fun getJavaImports(vulkanPackage: String, types: Map<String, Type>, fiel
 
 private fun generateTypes(
     root: Path,
-    vulkanPackage: String,
     template: String,
     types: Map<String, Type>,
     structs: Map<String, TypeStruct>,
@@ -300,12 +296,12 @@ private fun generateTypes(
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
         writer.print(HEADER)
-        writer.print("""package $vulkanPackage
+        writer.print("""package vulkan
 
 import org.lwjgl.generator.*${if (templateTypes.any { it is TypeSystem }) """
-//import org.lwjgl.system.android.*
-import org.lwjgl.system.linux.*
-import org.lwjgl.system.windows.*""" else ""}
+//import core.android.*
+import core.linux.*
+import core.windows.*""" else ""}
 
 ${if (custom != null) custom() else ""}// Handle types
 ${templateTypes
@@ -327,10 +323,10 @@ ${templateTypes
             .joinToString("\n\n") {
                 val functionDoc = FUNCTION_DOC[it.name]
                 """val ${it.name} = "${it.name}".callback(
-    VULKAN_PACKAGE, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
+    Module.VULKAN, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
     "${functionDoc?.shortDescription ?: ""}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = t)}
 ) {
-    ${getJavaImports(vulkanPackage, types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
+    ${getJavaImports(types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
         $QUOTES3
         ${functionDoc.shortDescription}
 
@@ -355,8 +351,8 @@ ${templateTypes
             .joinToString("\n\n") { struct ->
                 val structDoc = STRUCT_DOC[struct.name]
 
-                """val ${struct.name} = ${struct.type}(VULKAN_PACKAGE, "${struct.name}"${if (struct.returnedonly) ", mutable = false" else ""}) {
-    ${getJavaImports(vulkanPackage, types, struct.members.asSequence())}${if (structDoc == null) "" else """documentation =
+                """val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${if (struct.returnedonly) ", mutable = false" else ""}) {
+    ${getJavaImports(types, struct.members.asSequence())}${if (structDoc == null) "" else """documentation =
         $QUOTES3
         ${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
 
@@ -420,7 +416,6 @@ ${templateTypes
 
 private fun generateFeature(
     root: Path,
-    vulkanPackage: String,
     types: Map<String, Type>,
     enums: Map<String, Enums>,
     structs: Map<String, TypeStruct>,
@@ -433,12 +428,12 @@ private fun generateFeature(
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
         writer.print(HEADER)
-        writer.print("""package $vulkanPackage.templates
+        writer.print("""package vulkan.templates
 
 import org.lwjgl.generator.*
-import $vulkanPackage.*
+import vulkan.*
 
-val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "VK", binding = VK_BINDING_INSTANCE) {
+val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK", binding = VK_BINDING_INSTANCE) {
     documentation =
         $QUOTES3
         The core Vulkan ${feature.number} functionality.
@@ -497,7 +492,6 @@ val $template = "$template".nativeClass(VULKAN_PACKAGE, "$template", prefix = "V
 
 private fun generateExtension(
     root: Path,
-    vulkanPackage: String,
     types: Map<String, Type>,
     enums: Map<String, Enums>,
     structs: Map<String, TypeStruct>,
@@ -512,17 +506,17 @@ private fun generateExtension(
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
         writer.print(HEADER)
-        writer.print("""package $vulkanPackage.templates
+        writer.print("""package vulkan.templates
 
 import org.lwjgl.generator.*${distinctTypes
             .filterIsInstance<TypeSystem>()
             .map { it.requires }
             .distinct()
-            .map { "\nimport ${IMPORTS[it]!!}" }
+            .map { "\nimport ${IMPORTS[it]!!.replace("org.lwjgl.system.", "core.")}" }
             .distinct()
             .joinToString()
         }
-import $vulkanPackage.*
+import vulkan.*
 
 val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}", postfix = ${name.substringBefore('_')}) {
     documentation =
