@@ -187,7 +187,23 @@ private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<T
     }
 }
 
-private fun getReturnType(proto: Field): String = proto.let { "${if (it.modifier == "const") "const.." else ""}${it.type}${it.indirection}" }
+private fun getParamType(param: Field, indirection: String, hasConst: Boolean, hasCheck: Boolean, encoding: String) =
+    if (param.type == "void" && indirection.startsWith(".p"))
+        "${if (param.len.none() && !hasCheck)
+            if (hasConst) "opaque_const_p" else "opaque_p"
+        else
+            if (hasConst) "void.const.p" else "void.p"
+        }${indirection.removePrefix(".p").let { if (it.isEmpty()) it else ".$it" }}"
+    else
+        "${param.type}$encoding${if (hasConst) ".const.p" + indirection.removePrefix(".p") else indirection}"
+
+private fun getReturnType(proto: Field) = proto.let {
+    val hasConst = it.modifier == "const"
+
+    getParamType(it, it.indirection, hasConst, true,
+        if (it.len.contains("null-terminated") || (it.array != null && it.type == "char")) "UTF8" else ""
+    )
+}
 
 private fun getCheck(param: Field, indirection: String, structs: Map<String, TypeStruct>, forceIN: Boolean): String {
     if (indirection.isNotEmpty()) { // pointer
@@ -225,7 +241,7 @@ else {
         val indirection = param.indirection.let {
             if (param.array != null) {
                 if (it.isEmpty())
-                    "_p"
+                    ".p"
                 else
                     "${it}p"
             } else
@@ -242,28 +258,20 @@ else {
             param.len.any() && params.any { param.len.contains(it.name) && "true" == it.optional })
                            ) "nullable.." else ""
 
-        val const = if (param.modifier == "const") "const.." else ""
-
-        val encoding = if (param.len.contains("null-terminated") || (param.array != null && param.type == "char")) {
-            if (returns.type == "PFN_vkVoidFunction") "ASCII" else "UTF8"
-        } else ""
-        val type = if (param.type == "void" && indirection == "_p" && param.len.none() && check.isEmpty())
-            "opaque_p"
-        else
-            "${param.type}$encoding${if (indirection.isNotEmpty() && types[param.type].let { it !is TypePlatform })
-                indirection.replace('_', '.')
-            else
-                indirection
-            }"
-
-        val paramType = if (forceINParam || indirection.isEmpty() || param.modifier == "const")
+        val hasConst = param.modifier == "const"
+        val type = getParamType(param, indirection, hasConst, check.any(),
+            if (param.len.contains("null-terminated") || (param.array != null && param.type == "char")) {
+                if (returns.type == "PFN_vkVoidFunction") "ASCII" else "UTF8"
+            } else ""
+        )
+        val paramType = if (forceINParam || indirection.isEmpty() || hasConst)
             "IN"
         else if ("false,true" == param.optional)
             "INOUT"
         else
             "OUT"
 
-        "$autoSize$check$nullable$const$type.$paramType(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
+        "$autoSize$check$nullable$type.$paramType(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
     }.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
@@ -388,25 +396,17 @@ ${templateTypes
                                 .count() > 1
                         })) && (member.indirection.isNotEmpty() || types[member.type]!!.let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })) "nullable.." else ""
 
-                        val const = if (member.modifier == "const") "const.." else ""
-
-                        val encoding = if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
-                        val type = if (member.type == "void" && member.indirection == "_p" && member.len.none())
-                            "opaque_p"
-                        else
-                            "${member.type}$encoding${if (member.indirection.isNotEmpty() && types[member.type].let { it !is TypePlatform })
-                                member.indirection.replace('_', '.')
-                            else
-                                member.indirection
-                            }"
-
+                        val hasConst = member.modifier == "const"
+                        val type = getParamType(member, member.indirection, hasConst, false,
+                            if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
+                        )
                         val memberType = when {
                             member.array != null                                 -> "array"
                             member.len.any() && types[member.type] is TypeStruct -> "buffer"
                             else                                                 -> "member"
                         }
 
-                        "$autoSize$nullable$const$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
+                        "$autoSize$nullable$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
                     }
                     .joinToString("\n$t")}
 }"""

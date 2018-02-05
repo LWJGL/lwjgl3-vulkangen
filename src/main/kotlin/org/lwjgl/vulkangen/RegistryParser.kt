@@ -165,7 +165,7 @@ private val String.indirection: String get() = if (this.isEmpty())
     this
 else {
     val (p, const_p) = INDIRECTION_REGEX.matchEntire(this)!!.destructured
-    "${p.indirection("_")}${if (const_p.isEmpty()) "" else const_p.indirection("_const_")}"
+    "${p.indirection(".")}${if (const_p.isEmpty()) "" else const_p.indirection(".const.")}"
 }
 
 private fun String.indirection(prefix: String) = this.length
