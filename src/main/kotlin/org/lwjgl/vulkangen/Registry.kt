@@ -343,8 +343,7 @@ ${templateTypes
         ${functionDoc.description}${if (functionDoc.seeAlso == null) "" else """
 
         ${functionDoc.seeAlso}"""}
-        $QUOTES3
-    """}useSystemCallConvention()
+        $QUOTES3"""}
 }"""
             }
             .let {
