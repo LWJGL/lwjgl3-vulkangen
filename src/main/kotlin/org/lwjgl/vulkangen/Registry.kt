@@ -330,11 +330,14 @@ ${templateTypes
             .filterIsInstance<TypeFuncpointer>()
             .joinToString("\n\n") {
                 val functionDoc = FUNCTION_DOC[it.name]
-                """val ${it.name} = "${it.name}".callback(
-    Module.VULKAN, ${getReturnType(it.proto)}, "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-    "${functionDoc?.shortDescription ?: ""}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = t)}
-) {
-    ${getJavaImports(types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
+                """val ${it.name} = Module.VULKAN.callback {
+    ${getReturnType(it.proto)}(
+        "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
+        "${functionDoc?.shortDescription ?: ""}"${getParams(it.proto, it.params, types, structs, forceIN = true, indent = "$t$t")},
+
+        nativeType = "${it.name}"
+    ) {
+        ${getJavaImports(types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
         $QUOTES3
         ${functionDoc.shortDescription}
 
@@ -344,6 +347,7 @@ ${templateTypes
 
         ${functionDoc.seeAlso}"""}
         $QUOTES3"""}
+    }
 }"""
             }
             .let {
