@@ -7,11 +7,10 @@ package org.lwjgl.vulkangen
 import org.asciidoctor.*
 import org.asciidoctor.ast.*
 import org.asciidoctor.converter.*
+import java.nio.charset.*
 import java.nio.file.*
 import java.util.*
-import java.util.function.*
-import java.util.function.Function.*
-import java.util.stream.*
+import kotlin.streams.*
 
 internal class FunctionDoc(
     val shortDescription: String,
@@ -88,21 +87,23 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     // Extension class documentation
 
-    val appendices = root.resolve("doc/specs/vulkan/appendices")
+    val appendices = root.resolve("appendices")
     // We parse extensions.txt to create a map of attributes to pass to asciidoctor.
     // The attributes are used in ifdef preprocessor directives in extensions.txt
     // to enable extensions.
-    fun parseExtensionsIDs(path: Path, regex: Regex) = Files
-        .lines(path)
-        .map { regex.find(it) }
-        .filter { it != null }
-        .map { it!!.groups[1]!!.value }
-        .collect(Collectors.toMap<String, String, Any>(identity(), Function { "" }))
-
-    val extensionIDs = parseExtensionsIDs(
-        appendices.resolve("extensions.txt"),
-        """^include::(VK_\w+)\.txt\[]""".toRegex()
-    )
+    val extensionIDs = """^include::(VK_\w+)\.txt\[]""".toRegex().let { regex ->
+        Files.lines(appendices.resolve("extensions.txt")).asSequence()
+            .mapNotNull {
+                val result = regex.find(it)
+                if (result == null) {
+                    null
+                } else {
+                    val (extension) = result.destructured
+                    if (DISABLED_EXTENSIONS.contains(extension)) null else extension
+                }
+            }
+            .associateBy { it }
+    }
     extensionIDs.keys
         .map { it.substring(3) }
         .associateTo(EXTENSION_TEMPLATES) {
@@ -112,6 +113,8 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     // TODO: As of 1.0.42 the attribs.txt include doesn't work
     val attribs = AttributesBuilder.attributes()
         .ignoreUndefinedAttributes(false)
+        .attribute("VK_VERSION_1_0")
+        .attribute("VK_VERSION_1_1")
         .attributes(extensionIDs)
         .apply {
             ATTRIBS.forEach { (key, value) ->
@@ -145,18 +148,9 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     // Enums, functions & structs
 
-    val document = root.resolve("doc/specs/vulkan/man").let { man ->
+    val document = root.resolve("man").let { man ->
         asciidoctor.load(
-            Files.lines(man.resolve("apispec.txt"))
-                .map {
-                    // Enable all extensions
-                    val match = "// not including (\\w+)".toRegex().matchEntire(it)
-                    if (match == null)
-                        it
-                    else
-                        "include::${match.groups[1]!!.value}.txt[]"
-                }
-                .collect(Collectors.joining("\n")),
+            String(Files.readAllBytes(man.resolve("apispec.txt")), StandardCharsets.UTF_8),
             OptionsBuilder.options()
                 .backend("plain")
                 .docType("manpage")
@@ -247,6 +241,7 @@ private val SECTION_XREFS = mapOf(
     "clears" to "the “Clear Commands” section",
     "clears-values" to "the “Clear Values” section",
     "copies" to "the “Copy Commands” section",
+    "debugging-object-types" to "the “{@code VkObjectType} and Vulkan Handle Relationship” table",
     "debug-report-object-types" to "the “{@code VkDebugReportObjectTypeEXT} and Vulkan Handle Relationship” table",
     "descriptorsets-combinedimagesampler" to "the “Combined Image Sampler” section",
     "descriptorsets-compatibility" to "the “Pipeline Layout Compatibility” section",

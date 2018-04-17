@@ -14,6 +14,12 @@ internal class VendorID(
     val comment: String
 )
 
+internal class Platform(
+    val name: String,
+    val protect: String,
+    val comment: String
+)
+
 internal class Tag(
     val name: String,
     val author: String,
@@ -49,22 +55,33 @@ internal class TypeHandle(
 
 internal class TypeEnum(name: String) : Type(name)
 
-internal class TypeFuncpointer(
-    val proto: Field,
+internal interface Function {
+    val proto: Field
     val params: List<Field>
-) : Type(proto.name)
+}
+
+internal class TypeFuncpointer(
+    override val proto: Field,
+    override val params: List<Field>
+) : Type(proto.name), Function
 
 internal class TypeStruct(
     val type: String, // struct or union
     name: String,
     val returnedonly: Boolean,
-    val members: List<Field>
+    val members: List<Field>,
+    val alias: String?
 ) : Type(name)
 
 internal class Enum(
     val name: String,
-    val bitpos: String?,
+    val alias: String?,
     val value: String?,
+    val bitpos: String?,
+    val extnumber: Int?,
+    val offset: String?,
+    val dir: String?,
+    val extends: String?,
     val comment: String?
 )
 
@@ -103,34 +120,29 @@ internal class ImplicitExternSyncParams(
 )
 
 internal class Command(
+    val name: String?,
+    val alias: String?,
     val successcodes: String?,
     val errorcodes: String?,
     val queues: String?,
     val renderpass: String?,
     val cmdbufferlevel: String?,
-    val proto: Field,
-    val params: List<Field>,
+    override val proto: Field,
+    override val params: List<Field>,
     val validity: Validity?,
     val implicitexternsyncparams: ImplicitExternSyncParams?
-)
+) : Function
 
 internal class TypeRef(val name: String)
-internal class EnumRef(
-    val name: String,
-    val value: String?,
-    val bitpos: String?,
-    val offset: String?,
-    val dir: String?,
-    val extends: String?
-)
 
 internal class CommandRef(val name: String)
 
 internal class Require(
     val comment: String?,
+    val feature: String?,
     val extension: String?,
     val types: List<TypeRef>?,
-    val enums: List<EnumRef>?,
+    val enums: List<Enum>?,
     val commands: List<CommandRef>?
 )
 
@@ -151,6 +163,7 @@ internal class Extension(
 
 internal class Registry(
     val vendorids: List<VendorID>,
+    val platforms: List<Platform>,
     val tags: List<Tag>,
     val types: List<Type>,
     val enums: List<Enums>,
@@ -225,6 +238,24 @@ internal class FieldConverter : Converter {
     override fun canConvert(type: Class<*>?): Boolean = type === Field::class.java
 }
 
+private class RegistryMap {
+
+    val bitmasks = HashMap<String, TypeBitmask>()
+    val handles = HashMap<String, TypeHandle>()
+    val structs = HashMap<String, TypeStruct>()
+
+}
+
+private val UnmarshallingContext.registryMap: RegistryMap
+    get() {
+        var map = this["registryMap"] as RegistryMap?
+        if (map == null) {
+            map = RegistryMap()
+            this.put("registryMap", map)
+        }
+        return map
+    }
+
 internal class TypeConverter : Converter {
     companion object {
         private val FIELD_CONVERTED = FieldConverter()
@@ -253,6 +284,20 @@ internal class TypeConverter : Converter {
         }
 
         return when (category) {
+            "define"      -> {
+                if (reader.getAttribute("name") != null) {
+                    TypeIgnored
+                } else {
+                    reader.moveDown()
+                    val name = reader.value
+                    reader.moveUp()
+                    if (name.startsWith("VK_")) {
+                        TypeIgnored
+                    } else {
+                        TypePlatform(name)
+                    }
+                }
+            }
             "basetype"    -> {
                 reader.moveDown()
                 val type = reader.value
@@ -267,31 +312,47 @@ internal class TypeConverter : Converter {
             "bitmask"     -> {
                 val requires = reader.getAttribute("requires")
 
-                reader.moveDown()
-                // VkFlags
-                reader.moveUp()
+                var name = reader.getAttribute("name")
+                val t = if (name == null) {
+                    reader.moveDown()
+                    // VkFlags
+                    reader.moveUp()
 
-                reader.moveDown()
-                val name = reader.value
-                reader.moveUp()
+                    reader.moveDown()
+                    name = reader.value
+                    reader.moveUp()
 
-                TypeBitmask(requires, name)
+                    TypeBitmask(requires, name)
+                } else {
+                    val ref = context.registryMap.bitmasks[reader.getAttribute("alias")]!!
+                    TypeBitmask(ref.requires, name)
+                }
+                context.registryMap.bitmasks[name] = t
+                t
             }
             "handle"      -> {
                 val parent = reader.getAttribute("parent")
 
-                reader.moveDown()
-                val type = reader.value
-                reader.moveUp()
+                var name = reader.getAttribute("name")
+                val t = if (name == null) {
+                    reader.moveDown()
+                    val type = reader.value
+                    reader.moveUp()
 
-                reader.moveDown()
-                val name = reader.value
-                reader.moveUp()
+                    reader.moveDown()
+                    name = reader.value
+                    reader.moveUp()
 
-                TypeHandle(parent, type, name)
+                    TypeHandle(parent, type, name)
+                } else {
+                    val ref = context.registryMap.handles[reader.getAttribute("alias")]!!
+                    TypeHandle(ref.parent, ref.type, name)
+                }
+                context.registryMap.handles[name] = t
+                t
             }
             "enum"        -> {
-                TypeEnum(reader.getAttribute("name"))
+                TypeEnum(reader.getAttribute("alias") ?: reader.getAttribute("name"))
             }
             "funcpointer" -> {
                 val proto = reader.let {
@@ -325,18 +386,27 @@ internal class TypeConverter : Converter {
             }
             "union",
             "struct"      -> {
+                val alias = reader.getAttribute("alias")
                 val name = reader.getAttribute("name")
-                val returnedonly = reader.getAttribute("returnedonly") != null
 
-                val members = ArrayList<Field>()
-                while (reader.hasMoreChildren()) {
-                    reader.moveDown()
-                    if (reader.nodeName == "member")
-                        members.add(FIELD_CONVERTED.unmarshal(reader, context) as Field)
-                    reader.moveUp()
+                val t = if (alias == null) {
+                    val returnedonly = reader.getAttribute("returnedonly") != null
+
+                    val members = ArrayList<Field>()
+                    while (reader.hasMoreChildren()) {
+                        reader.moveDown()
+                        if (reader.nodeName == "member")
+                            members.add(FIELD_CONVERTED.unmarshal(reader, context) as Field)
+                        reader.moveUp()
+                    }
+
+                    TypeStruct(category, name, returnedonly, members, null)
+                } else {
+                    val ref = context.registryMap.structs[alias]!!
+                    TypeStruct(ref.type, name, ref.returnedonly, ref.members, alias)
                 }
-
-                TypeStruct(category, name, returnedonly, members)
+                context.registryMap.structs[name] = t
+                t
             }
             else          -> TypeIgnored
         }
@@ -352,6 +422,13 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.alias("vendorid", it)
         xs.useAttributeFor(it, "name")
         xs.useAttributeFor(it, "id")
+        xs.useAttributeFor(it, "comment")
+    }
+
+    Platform::class.java.let {
+        xs.alias("platform", it)
+        xs.useAttributeFor(it, "name")
+        xs.useAttributeFor(it, "protect")
         xs.useAttributeFor(it, "comment")
     }
 
@@ -377,14 +454,22 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 
     Enum::class.java.let {
         xs.addImplicitCollection(Enums::class.java, "enums", "enum", it)
+        xs.addImplicitCollection(Require::class.java, "enums", "enum", it)
         xs.useAttributeFor(it, "name")
-        xs.useAttributeFor(it, "bitpos")
+        xs.useAttributeFor(it, "alias")
         xs.useAttributeFor(it, "value")
+        xs.useAttributeFor(it, "bitpos")
+        xs.useAttributeFor(it, "extnumber")
+        xs.useAttributeFor(it, "offset")
+        xs.useAttributeFor(it, "dir")
+        xs.useAttributeFor(it, "extends")
         xs.useAttributeFor(it, "comment")
     }
 
     Command::class.java.let {
         xs.alias("command", it)
+        xs.useAttributeFor(it, "name")
+        xs.useAttributeFor(it, "alias")
         xs.useAttributeFor(it, "successcodes")
         xs.useAttributeFor(it, "errorcodes")
         xs.useAttributeFor(it, "queues")
@@ -413,22 +498,13 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.addImplicitCollection(Feature::class.java, "requires", "require", it)
         xs.addImplicitCollection(Extension::class.java, "requires", "require", it)
         xs.useAttributeFor(it, "comment")
+        xs.useAttributeFor(it, "feature")
         xs.useAttributeFor(it, "extension")
     }
 
     TypeRef::class.java.let {
         xs.addImplicitCollection(Require::class.java, "types", "type", it)
         xs.useAttributeFor(it, "name")
-    }
-
-    EnumRef::class.java.let {
-        xs.addImplicitCollection(Require::class.java, "enums", "enum", it)
-        xs.useAttributeFor(it, "name")
-        xs.useAttributeFor(it, "value")
-        xs.useAttributeFor(it, "bitpos")
-        xs.useAttributeFor(it, "offset")
-        xs.useAttributeFor(it, "dir")
-        xs.useAttributeFor(it, "extends")
     }
 
     CommandRef::class.java.let {
