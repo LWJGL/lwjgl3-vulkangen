@@ -485,8 +485,11 @@ ${templateTypes.asSequence()
                             else                                                 -> "member"
                         }
 
-                        "$autoSize$nullable$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name)
-                                                                                     ?: ""}\"${if (member.array != null) ", size = ${member.array}" else ""})"
+                        "$autoSize$nullable$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${
+                        if (member.array != null) ", size = ${member.array}" else ""
+                        })${
+                        if (struct.returnedonly && (member.name == "sType" || member.name == "pNext")) ".mutable()" else ""
+                        }"
                     }
                     .joinToString("\n$t")}
 }"""
