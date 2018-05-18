@@ -211,7 +211,9 @@ private fun getDistinctTypes(
 private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> {
     val type = types[name]!!
     return when (type) {
-        is TypeStruct      -> type.members.asSequence().flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
+        is TypeStruct      -> type.members.asSequence()
+            .filter { it.type != name }
+            .flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
         is TypeFuncpointer -> getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
         else               -> sequenceOf(type)
     }
