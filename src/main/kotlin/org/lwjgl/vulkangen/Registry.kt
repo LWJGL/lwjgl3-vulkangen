@@ -431,7 +431,9 @@ ${templateTypes.asSequence()
             .joinToString("\n\n") { struct ->
                 val structDoc = STRUCT_DOC[struct.name]
 
-                """val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
+                """${
+                if (struct.members.any { it.type == struct.name }) "val _${struct.name} = ${struct.type}(Module.VULKAN, \"${struct.name}\")\n" else ""
+                }val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
                 if (struct.returnedonly) ", mutable = false" else ""
                 }${
                 if (struct.alias != null) ", alias = ${struct.alias}" else ""
@@ -480,7 +482,9 @@ ${templateTypes.asSequence()
                         val hasConst = member.modifier == "const"
                         val type = getParamType(member, member.indirection, hasConst, false,
                             if (member.len.contains("null-terminated") || (member.array != null && member.type == "char")) "UTF8" else ""
-                        )
+                        ).let {
+                            if (member.type == struct.name) "_$it" else it
+                        }
                         val memberType = when {
                             member.array != null                                 -> "array"
                             member.len.any() && types[member.type] is TypeStruct -> "buffer"
