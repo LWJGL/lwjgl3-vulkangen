@@ -352,42 +352,54 @@ private val CODE_BLOCK_HASH = "#".toRegex()
 private val CODE_BLOCK_ESCAPE_PATTERN = "^".toRegex(RegexOption.MULTILINE) // line starts
 private val CODE_BLOCK_TAB_PATTERN = "\t".toRegex() // tabs
 
-fun codeBlock(code: String) = """<code><pre>
-${code
+private val HTML_ESCAPE_PATTERN = """[<>]|&(?!(?:amp|gt|lt);)""".toRegex()
+
+private val String.htmlEscaped: String
+    get() = this.replace(HTML_ESCAPE_PATTERN) {
+        when (it.value) {
+            "<"  -> "&lt;"
+            ">"  -> "&gt;"
+            "&"  -> "&amp;"
+            else -> throw IllegalStateException()
+        }
+    }
+
+fun codeBlock(code: String, escape: Boolean = false) = """<pre><code>
+${(if (escape) code.htmlEscaped else code)
     .replace(CODE_BLOCK_TRIM_PATTERN, "") // ...trim
     .replace(CODE_BLOCK_COMMENT_PATTERN, "// $1") // ...replace block comments with line comments
     .replace(CODE_BLOCK_HASH, """\\#""") // ...escape hashes
     .replace(CODE_BLOCK_ESCAPE_PATTERN, "\uFFFF") // ...escape
     .replace(CODE_BLOCK_TAB_PATTERN, "    ") // ...replace with 4 spaces for consistent formatting.
-}</pre></code>"""
+}</code></pre>"""
 
 private val LATEX_MATH = """latexmath:\[(.+?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
-    """0 \leq L \leq 1""" to "0 &le L &le; 1",
+    """0 \leq L \leq 1""" to "0 &le; L &le; 1",
     """                                              \begin{aligned}
                                                 p_0(A_s,A_d) & = A_sA_d \\
                                                 p_1(A_s,A_d) & = A_s(1-A_d) \\
                                                 p_2(A_s,A_d) & = A_d(1-A_s) \\
                                               \end{aligned}""" to codeBlock("""
-p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; A<sub>s</sub>A<sub>d</sub> \\
-p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; A<sub>s</sub>(1 &minus; A<sub>d</sub>) \\
-p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; A<sub>d</sub>(1 &minus; A<sub>s</sub>) \\"""),
+p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) = A<sub>s</sub>A<sub>d</sub> \\
+p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) = A<sub>s</sub>(1 &minus; A<sub>d</sub>) \\
+p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = A<sub>d</sub>(1 &minus; A<sub>s</sub>) \\"""),
     """                                              \begin{aligned}
                                                 p_0(A_s,A_d) & = min(A_s,A_d) \\
                                                 p_1(A_s,A_d) & = max(A_s-A_d,0) \\
                                                 p_2(A_s,A_d) & = max(A_d-A_s,0) \\
                                               \end{aligned}""" to codeBlock("""
-p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>s</sub>, A<sub>d</sub>) \\
-p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; max(A<sub>s</sub> &minus; A<sub>d</sub>, 0) \\
-p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; max(A<sub>d</sub> &minus; A<sub>s</sub>, 0) \\"""),
+p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>s</sub>, A<sub>d</sub>) \\
+p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) = max(A<sub>s</sub> &minus; A<sub>d</sub>, 0) \\
+p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = max(A<sub>d</sub> &minus; A<sub>s</sub>, 0) \\"""),
     """                                              \begin{aligned}
                                                 p_0(A_s,A_d) & = max(A_s+A_d-1,0) \\
                                                 p_1(A_s,A_d) & = min(A_s,1-A_d) \\
                                                 p_2(A_s,A_d) & = min(A_d,1-A_s) \\
                                               \end{aligned}""" to codeBlock("""
-p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; max(A<sub>s</sub> + A<sub>d</sub> &minus; 1, 0) \\
-p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>s</sub>, 1 &minus; A<sub>d</sub>) \\
-p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) &equals; min(A<sub>d</sub>, 1 &minus; A<sub>s</sub>) \\"""),
+p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) = max(A<sub>s</sub> + A<sub>d</sub> &minus; 1, 0) \\
+p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>s</sub>, 1 &minus; A<sub>d</sub>) \\
+p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>d</sub>, 1 &minus; A<sub>s</sub>) \\"""),
     /*
     "a = 0.948" to codeBlock("a = 0.948"),
     "b = 0.052" to codeBlock("b = 0.052"),
@@ -572,11 +584,6 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         getLatexCode(it.groups[1]!!.value)
     }
     .replace(SIMPLE_NUMBER, "$1$2")
-    .replace(KEYWORD, "<b>$1</b>")
-    .replace(STRONG, "<b>$1</b>")
-    .replace(EMPHASIS, "<em>$1</em>")
-    .replace(SUPERSCRIPT, "<sup>$1</sup>")
-    .replace(SUBSCRIPT, "<sub>$1</sub>")
     .replace(EQUATION) { "<code>${it.groups[1]!!.value
         .replace(CODE2, "$1")
         .replace(EQUATION_ATTRIB) {
@@ -586,7 +593,13 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
             } else
                 it.value
         } // TODO: more?
+        .htmlEscaped
     }</code>" }
+    .replace(KEYWORD, "<b>$1</b>")
+    .replace(STRONG, "<b>$1</b>")
+    .replace(EMPHASIS, "<em>$1</em>")
+    .replace(SUPERSCRIPT, "<sup>$1</sup>")
+    .replace(SUBSCRIPT, "<sub>$1</sub>")
     .replace(STRUCT_OR_HANDLE) {
         val type = it.groups[1]!!.value
         if (structs.containsKey(type))
@@ -678,7 +691,7 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
             if (it.blocks.isNotEmpty())
                 throw IllegalStateException()
             when {
-                it.style == "source"    -> codeBlock(it.source)
+                it.style == "source"    -> codeBlock(it.source, escape = true)
                 it.style == "latexmath" -> getLatexCode(it.source)
                 else                    -> it.lines.joinToString(" ").replaceMarkup(structs)
             }
