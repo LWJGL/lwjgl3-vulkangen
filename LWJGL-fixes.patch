@@ -1,34 +1,83 @@
-From 195c24417eb9a017760182d42514b3e1fdd48a7c Mon Sep 17 00:00:00 2001
+From 68257f9a6935697c368aac506a943af6286b03a2 Mon Sep 17 00:00:00 2001
 From: Ioannis Tsakpinis <iotsakp@gmail.com>
-Date: Wed, 20 Sep 2017 13:33:00 +0300
+Date: Sat, 20 Jan 2018 16:01:09 +0200
 Subject: [PATCH] LWJGL fixes
 
 ---
- doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt     | 2 ++
- .../chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt  | 2 +-
- .../vulkan/chapters/VK_NVX_device_generated_commands/generation.txt | 2 +-
- .../vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt   | 2 +-
- doc/specs/vulkan/chapters/features.txt                              | 4 ++--
- doc/specs/vulkan/chapters/primsrast.txt                             | 2 +-
- src/spec/vk.xml                                                     | 6 +++---
- 7 files changed, 11 insertions(+), 9 deletions(-)
+ appendices/VK_EXT_debug_report.txt                 | 22 ----------------------
+ chapters/VK_KHR_display/display.txt                |  4 ++--
+ .../create_shared_swapchains.txt                   |  2 +-
+ chapters/VK_KHR_swapchain/wsi.txt                  | 10 +++++-----
+ .../generation.txt                                 |  2 +-
+ chapters/descriptorsets.txt                        |  2 +-
+ chapters/dispatch.txt                              |  8 ++++----
+ chapters/features.txt                              |  2 +-
+ chapters/pipelines.txt                             |  2 +-
+ chapters/resources.txt                             |  6 +++---
+ makeAllExts                                        | 10 +++++++++-
+ reflib.py                                          |  6 ++++++
+ xml/vk.xml                                         |  6 +++---
+ 13 files changed, 37 insertions(+), 45 deletions(-)
 
-diff --git a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
-index 4dcf770..37469fa 100755
---- a/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
-+++ b/doc/specs/vulkan/appendices/VK_AMD_negative_viewport_height.txt
-@@ -13,5 +13,7 @@ include::meta/VK_AMD_negative_viewport_height.txt[]
- This extension allows an application to specify a negative viewport height.
- The result is that the viewport transformation will flip along the y-axis.
+diff --git a/appendices/VK_EXT_debug_report.txt b/appendices/VK_EXT_debug_report.txt
+index 55f01bc9..4384c961 100644
+--- a/appendices/VK_EXT_debug_report.txt
++++ b/appendices/VK_EXT_debug_report.txt
+@@ -115,28 +115,6 @@ happens and the third will log warnings to stdout.
+     vkDestroyDebugReportCallbackEXT(instance, cb3);
+ ------------------------------------------------------------------------------
 
-+=== Version History
-+
-  * Revision 1, 2016-09-02 (Matthaeus Chajdas)
-    - Initial draft
-diff --git a/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt b/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
-index 49ea748..f9efe1d 100644
---- a/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
-+++ b/doc/specs/vulkan/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
+-[NOTE]
+-.Note
+-====
+-In the initial release of the `VK_EXT_debug_report` extension, the token
+-ename:VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT was used.
+-Starting in version 2 of the extension branch,
+-ename:VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT is used
+-instead for consistency with Vulkan naming rules.
+-The older enum is still available for backwards compatibility.
+-====
+-
+-[NOTE]
+-.Note
+-====
+-In the initial release of the `VK_EXT_debug_report` extension, the token
+-ename:VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT was used.
+-Starting in version 8 of the extension branch,
+-ename:VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT is used
+-instead for consistency with Vulkan naming rules.
+-The older enum is still available for backwards compatibility.
+-====
+-
+
+ === Issues
+
+diff --git a/chapters/VK_KHR_display/display.txt b/chapters/VK_KHR_display/display.txt
+index 0d80b535..51bc3bf7 100644
+--- a/chapters/VK_KHR_display/display.txt
++++ b/chapters/VK_KHR_display/display.txt
+@@ -78,7 +78,7 @@ include::../../api/structs/VkDisplayPropertiesKHR.txt[]
+     visible portion of the display, in millimeters.
+   * pname:physicalResolution describes the physical, native, or preferred
+     resolution of the display.
+-
+++
+ [NOTE]
+ .Note
+ ====
+@@ -98,7 +98,7 @@ should: return the maximum resolution supported.
+     self-refresh/internal buffering.
+     If this is true, the application can: submit persistent present
+     operations on swapchains created against this display.
+-
+++
+ [NOTE]
+ .Note
+ ====
+diff --git a/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt b/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
+index 888ff20e..0c4fd911 100644
+--- a/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
++++ b/chapters/VK_KHR_display_swapchain/create_shared_swapchains.txt
 @@ -23,7 +23,7 @@ include::../../api/protos/vkCreateSharedSwapchainsKHR.txt[]
    * pname:pSwapchains is a pointer to an array of sname:VkSwapchainKHR
      handles in which the created swapchain objects will be returned.
@@ -38,10 +87,56 @@ index 49ea748..f9efe1d 100644
  except that it takes an array of sname:VkSwapchainCreateInfoKHR structures,
  and returns an array of swapchain objects.
 
-diff --git a/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt b/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
-index 3b31259..c6c922d 100644
---- a/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
-+++ b/doc/specs/vulkan/chapters/VK_NVX_device_generated_commands/generation.txt
+diff --git a/chapters/VK_KHR_swapchain/wsi.txt b/chapters/VK_KHR_swapchain/wsi.txt
+index 3ac22a90..87d39f7b 100644
+--- a/chapters/VK_KHR_swapchain/wsi.txt
++++ b/chapters/VK_KHR_swapchain/wsi.txt
+@@ -127,7 +127,7 @@ include::../../api/structs/VkSwapchainCreateInfoKHR.txt[]
+     The behavior is platform-dependent if the image extent does not match
+     the surface's pname:currentExtent as returned by
+     fname:vkGetPhysicalDeviceSurfaceCapabilitiesKHR.
+-
+++
+ [NOTE]
+ .Note
+ ====
+@@ -177,7 +177,7 @@ Usage requirements.
+      allows more optimal presentation methods to be used on some platforms.
+   ** If set to ename:VK_FALSE, presentable images associated with the
+      swapchain will own all of the pixels they contain.
+-
+++
+ [NOTE]
+ .Note
+ ====
+@@ -192,20 +192,20 @@ effects that require them to run for all pixels in the presentable image.
+     Providing a valid pname:oldSwapchain may: aid in the resource reuse, and
+     also allows the application to still present any images that are already
+     acquired from it.
+-
+++
+ Upon calling fname:vkCreateSwapchainKHR with an pname:oldSwapchain that is
+ not dlink:VK_NULL_HANDLE, pname:oldSwapchain is retired -- even if creation
+ of the new swapchain fails.
+ The new swapchain is created in the non-retired state whether or not
+ pname:oldSwapchain is dlink:VK_NULL_HANDLE.
+-
+++
+ Upon calling fname:vkCreateSwapchainKHR with an pname:oldSwapchain that is
+ not dlink:VK_NULL_HANDLE, any images from pname:oldSwapchain that are not
+ acquired by the application may: be freed by the implementation, which may:
+ occur even if creation of the new swapchain fails.
+ The application can: destroy pname:oldSwapchain to free all memory
+ associated with pname:oldSwapchain.
+-
+++
+ [NOTE]
+ .Note
+ ====
+diff --git a/chapters/VK_NVX_device_generated_commands/generation.txt b/chapters/VK_NVX_device_generated_commands/generation.txt
+index 3b31259d..c6c922db 100644
+--- a/chapters/VK_NVX_device_generated_commands/generation.txt
++++ b/chapters/VK_NVX_device_generated_commands/generation.txt
 @@ -105,7 +105,7 @@ include::../../api/structs/VkCmdProcessCommandsInfoNVX.txt[]
      pname:sequencesCountBuffer where the count value is stored.
    * pname:sequencesIndexBuffer must: be set if
@@ -51,52 +146,158 @@ index 3b31259..c6c922d 100644
      provides the used sequence indices as ftext:uint32_t array.
      Otherwise it must: be dlink:VK_NULL_HANDLE.
    * pname:sequencesIndexOffset is the byte offset into
-diff --git a/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt b/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt
-index c5c09b5..e973277 100644
---- a/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt
-+++ b/doc/specs/vulkan/chapters/VK_NV_clip_space_w_scaling/vertexpostproc.txt
-@@ -25,7 +25,7 @@ include::../../api/structs/VkPipelineViewportWScalingStateCreateInfoNV.txt[]
-     sname:VkViewportWScalingNV structures which define the W scaling
-     parameters for the corresponding viewport.
-     If the viewport W scaling state is dynamic, this member is ignored.
--  * If no element of the pname:pDynamicStates member of
-+    If no element of the pname:pDynamicStates member of
-     sname::VkPipelineViewportStateCreateInfo::pname:pDynamicState is
-     ename:VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV, the
-     pname:pViewportScalings member of a
-diff --git a/doc/specs/vulkan/chapters/features.txt b/doc/specs/vulkan/chapters/features.txt
-index e839578..d8b1a7e 100644
---- a/doc/specs/vulkan/chapters/features.txt
-+++ b/doc/specs/vulkan/chapters/features.txt
-@@ -3403,8 +3403,8 @@ ifdef::VK_KHR_sampler_ycbcr_conversion[]
-     plane 1, and a 16-bit R component in each 16-bit word of plane 2.
-     The horizontal and vertical dimensions of the R and B planes are halved
-     relative to the image dimensions, and each R and B component is shared
--    with the G components for which latexmath:[\lfloor i_G \times 0.5\
--    rfloor = i_B = i_R] and latexmath:[\lfloor j_G \times 0.5 \rfloor = j_B
-+    with the G components for which latexmath:[\lfloor i_G \times 0.5
-+    \rfloor = i_B = i_R] and latexmath:[\lfloor j_G \times 0.5 \rfloor = j_B
-     = j_R].
-     The location of each plane when this image is in linear layout can be
-     determined via vkGetImageSubresourceLayout, using
-diff --git a/doc/specs/vulkan/chapters/primsrast.txt b/doc/specs/vulkan/chapters/primsrast.txt
-index c3efe4a..14c41f4 100644
---- a/doc/specs/vulkan/chapters/primsrast.txt
-+++ b/doc/specs/vulkan/chapters/primsrast.txt
-@@ -1125,7 +1125,7 @@ is guaranteed to remain distinct throughout polygon rasterization and in the
- depth buffer.
- All pairs of fragments generated by the rasterization of two polygons with
- otherwise identical vertices, but [eq]#pname:z~f~# values that differ by
--$r$, will have distinct depth values.
-+[eq]#r#, will have distinct depth values.
+diff --git a/chapters/descriptorsets.txt b/chapters/descriptorsets.txt
+index 21cb166f..25ad5616 100644
+--- a/chapters/descriptorsets.txt
++++ b/chapters/descriptorsets.txt
+@@ -1956,7 +1956,7 @@ ifdef::VK_VERSION_1_1,VK_KHR_maintenance1[]
+ If a call to fname:vkAllocateDescriptorSets would cause the total number of
+ descriptor sets allocated from the pool to exceed the value of
+ slink:VkDescriptorPoolCreateInfo::pname:maxSets used to create
+-pname:pAllocateInfo->pname:descriptorPool, then the allocation may: fail due
++pname:pAllocateInfo\->pname:descriptorPool, then the allocation may: fail due
+ to lack of space in the descriptor pool.
+ Similarly, the allocation may: fail due to lack of space if the call to
+ fname:vkAllocateDescriptorSets would cause the number of any given
+diff --git a/chapters/dispatch.txt b/chapters/dispatch.txt
+index 878f3057..53dc8799 100644
+--- a/chapters/dispatch.txt
++++ b/chapters/dispatch.txt
+@@ -166,12 +166,12 @@ ifdef::VK_VERSION_1_1[]
+   * [[VUID-vkCmdDispatch-commandBuffer-01845]]
+     If pname:commandBuffer is a protected command buffer, and any pipeline
+     stage in the sname:VkPipeline object bound to
+-    ename:VK_PIPELINE_POINT_COMPUTE writes to any image or buffer, that
++    ename:VK_PIPELINE_BIND_POINT_COMPUTE writes to any image or buffer, that
+     image or buffer must: not be an unprotected image or unprotected buffer.
+   * [[VUID-vkCmdDispatch-commandBuffer-01846]]
+     If pname:commandBuffer is a protected command buffer, and any pipeline
+     stage other than the compute pipeline stage in the sname:VkPipeline
+-    object bound to ename:VK_PIPELINE_POINT_COMPUTE reads from any image or
++    object bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE reads from any image or
+     buffer, the image or buffer must: not be a protected image or protected
+     buffer.
+ endif::VK_VERSION_1_1[]
+@@ -334,12 +334,12 @@ ifdef::VK_VERSION_1_1[]
+   * [[VUID-vkCmdDispatchIndirect-commandBuffer-01848]]
+     If pname:commandBuffer is a protected command buffer, and any pipeline
+     stage in the sname:VkPipeline object bound to
+-    ename:VK_PIPELINE_POINT_COMPUTE writes to any image or buffer, that
++    ename:VK_PIPELINE_BIND_POINT_COMPUTE writes to any image or buffer, that
+     image or buffer must: not be an unprotected image or unprotected buffer.
+   * [[VUID-vkCmdDispatchIndirect-commandBuffer-01849]]
+     If pname:commandBuffer is a protected command buffer, and any pipeline
+     stage other than the compute pipeline stage in the sname:VkPipeline
+-    object bound to ename:VK_PIPELINE_POINT_COMPUTE reads from any image or
++    object bound to ename:VK_PIPELINE_BIND_POINT_COMPUTE reads from any image or
+     buffer, the image or buffer must: not be a protected image or protected
+     buffer.
+ endif::VK_VERSION_1_1[]
+diff --git a/chapters/features.txt b/chapters/features.txt
+index fe1197a9..485630e2 100755
+--- a/chapters/features.txt
++++ b/chapters/features.txt
+@@ -6698,7 +6698,7 @@ endif::VK_KHR_external_memory_capabilities[]
+     buffer.
+   * ename:VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT specifies that handles
+     of this type can: be exported from Vulkan memory objects.
+-  * ename:VK_INTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT specifies that handles
++  * ename:VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT specifies that handles
+     of this type can: be imported as Vulkan memory objects.
 
- For fixed-point depth buffer representations, [eq]#r# is constant throughout
- the range of the entire depth buffer.
-diff --git a/src/spec/vk.xml b/src/spec/vk.xml
-index f4182d8..0e15d56 100644
---- a/src/spec/vk.xml
-+++ b/src/spec/vk.xml
-@@ -140,7 +140,7 @@ private version is maintained in the 1.0 branch of the member gitlab server.
+ Because their semantics in external APIs roughly align with that of an image
+diff --git a/chapters/pipelines.txt b/chapters/pipelines.txt
+index 6d546aad..d3ace5fd 100644
+--- a/chapters/pipelines.txt
++++ b/chapters/pipelines.txt
+@@ -986,7 +986,7 @@ ifdef::VK_NV_clip_space_w_scaling[]
+     pname:viewportScalingEnable set to ename:VK_TRUE
+ endif::VK_NV_clip_space_w_scaling[]
+ ifdef::VK_EXT_discard_rectangles[]
+-  * ename:VK_DYNAMIC_STATE_DISCARD_RECTANGLES_EXT specifies that the
++  * ename:VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT specifies that the
+     pname:pDiscardRectangles state in
+     slink:VkPipelineDiscardRectangleStateCreateInfoEXT will be ignored and
+     must: be set dynamically with flink:vkCmdSetDiscardRectangleEXT before
+diff --git a/chapters/resources.txt b/chapters/resources.txt
+index ac4fc7ab..99624fe8 100644
+--- a/chapters/resources.txt
++++ b/chapters/resources.txt
+@@ -2131,7 +2131,7 @@ pname:height {geq} 1 +
+ pname:depth {geq} 1 +
+ pname:arrayLayers = 1 +
+ pname:samples = 1 +
+-pname:flags includes ename:VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT +
++pname:flags includes ename:VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR +
+ pname:flags does not include ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT, ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, and ename:VK_IMAGE_CREATE_SPARSE_ALIASED_BIT |
+ pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D +
+ pname:levelCount = 1 +
+@@ -2144,7 +2144,7 @@ pname:height {geq} 1 +
+ pname:depth {geq} 1 +
+ pname:arrayLayers = 1 +
+ pname:samples = 1 +
+-pname:flags includes ename:VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT +
++pname:flags includes ename:VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR +
+ pname:flags does not include ename:VK_IMAGE_CREATE_SPARSE_BINDING_BIT, ename:VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT, and ename:VK_IMAGE_CREATE_SPARSE_ALIASED_BIT |
+ pname:viewType = ename:VK_IMAGE_VIEW_TYPE_2D_ARRAY +
+ pname:levelCount = 1 +
+@@ -2616,7 +2616,7 @@ ifdef::VK_VERSION_1_1,VK_KHR_maintenance1[]
+ When the sname:VkImageSubresourceRange structure is used to select a subset
+ of the slices of a 3D image's mip level in order to create a 2D or 2D array
+ image view of a 3D image created with
+-ename:VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT, pname:baseArrayLayer and
++ename:VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR, pname:baseArrayLayer and
+ pname:layerCount specify the first slice index and the number of slices to
+ include in the created image view.
+ Such an image view can: be used as a framebuffer attachment that refers only
+diff --git a/makeAllExts b/makeAllExts
+index 5d040885..bf970625 100755
+--- a/makeAllExts
++++ b/makeAllExts
+@@ -23,5 +23,13 @@
+ make config/extDependency.sh || exit
+ source config/extDependency.sh
+
++# Exclude extensions not needed in LWJGL
++allExts=${allExts//VK_KHR_android_surface/}
++allExts=${allExts//VK_KHR_mir_surface/}
++allExts=${allExts//VK_KHR_xcb_surface/}
++allExts=${allExts//VK_MVK_ios_surface/}
++allExts=${allExts//VK_NN_vi_surface/}
++allExts=${allExts//VK_ANDROID_external_memory_android_hardware_buffer/}
++
+ make clean_generated
+-make EXTENSIONS="$allExts" APITITLE="(with all published extensions)" $*
++make EXTENSIONS="$allExts" APITITLE="(with all published extensions)" -j 8 manhtml $*
+diff --git a/reflib.py b/reflib.py
+index e8a29c39..5d105fc1 100644
+--- a/reflib.py
++++ b/reflib.py
+@@ -245,6 +245,8 @@ def clampToBlock(line, minline, maxline):
+     else:
+         return line
+
++listItem = re.compile('^\s*[*]')
++
+ # Fill in missing fields in pageInfo structures, to the extent they can be
+ # inferred.
+ #   pageMap - dictionary of pageInfo structures
+@@ -302,6 +304,10 @@ def fixupRefs(pageMap, specFile, file):
+                 pi.param = nextPara(file, pi.include)
+                 if pi.body == None:
+                     pi.body = nextPara(file, pi.param)
++                    # TODO: This cannot handle wsi.txt :: refpage='VkSwapchainCreateInfoKHR'
++                    # There are empty lines within [NOTE] blocks
++                    while listItem.search(file[pi.body]):
++                        pi.body = nextPara(file, pi.body)
+             else:
+                 if pi.body == None:
+                     pi.body = nextPara(file, pi.include)
+diff --git a/xml/vk.xml b/xml/vk.xml
+index e9381e74..897f4ed7 100644
+--- a/xml/vk.xml
++++ b/xml/vk.xml
+@@ -189,7 +189,7 @@ server.
          <type requires="vk_platform" name="uint64_t"/>
          <type requires="vk_platform" name="int32_t"/>
          <type requires="vk_platform" name="size_t"/>
@@ -105,7 +306,7 @@ index f4182d8..0e15d56 100644
 
              <comment>Bitmask types</comment>
          <type                                             category="bitmask">typedef <type>VkFlags</type> <name>VkFramebufferCreateFlags</name>;</type>
-@@ -584,9 +584,9 @@ private version is maintained in the 1.0 branch of the member gitlab server.
+@@ -688,9 +688,9 @@ server.
          </type>
          <type category="struct" name="VkPhysicalDeviceMemoryProperties" returnedonly="true">
              <member><type>uint32_t</type>               <name>memoryTypeCount</name></member>
@@ -118,5 +319,5 @@ index f4182d8..0e15d56 100644
          <type category="struct" name="VkMemoryAllocateInfo">
              <member values="VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO"><type>VkStructureType</type> <name>sType</name></member>
 --
-2.14.1.windows.1
+2.16.1.windows.1
 
