@@ -8,12 +8,6 @@ import java.nio.charset.*
 import java.nio.file.*
 import java.util.*
 
-internal class VendorID(
-    val name: String,
-    val id: String,
-    val comment: String
-)
-
 internal class Platform(
     val name: String,
     val protect: String,
@@ -162,7 +156,6 @@ internal class Extension(
 )
 
 internal class Registry(
-    val vendorids: List<VendorID>,
     val platforms: List<Platform>,
     val tags: List<Tag>,
     val types: List<Type>,
@@ -417,13 +410,6 @@ internal class TypeConverter : Converter {
 
 internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     xs.alias("registry", Registry::class.java)
-
-    VendorID::class.java.let {
-        xs.alias("vendorid", it)
-        xs.useAttributeFor(it, "name")
-        xs.useAttributeFor(it, "id")
-        xs.useAttributeFor(it, "comment")
-    }
 
     Platform::class.java.let {
         xs.alias("platform", it)

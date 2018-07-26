@@ -91,8 +91,9 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     // We parse extensions.txt to create a map of attributes to pass to asciidoctor.
     // The attributes are used in ifdef preprocessor directives in extensions.txt
     // to enable extensions.
-    val extensionIDs = """^include::(VK_\w+)\.txt\[]""".toRegex().let { regex ->
-        Files.lines(appendices.resolve("extensions.txt")).asSequence()
+    val extensionIDs = """^include::../(VK_\w+)\.txt\[]""".toRegex().let { regex ->
+        (Files.lines(appendices.resolve("meta/current_extension_appendices.txt")).asSequence() +
+            Files.lines(appendices.resolve("meta/deprecated_extension_appendices.txt")).asSequence())
             .mapNotNull {
                 val result = regex.find(it)
                 if (result == null) {
@@ -134,17 +135,8 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
             .asMap()
     )
 
-    findNodes(extensions) {
-        it.nodeName == "section" && extensionIDs.containsKey(it.id)
-    }.forEach {
-        EXTENSION_DOC[it.id.substring(3)] = it.blocks.asSequence()
-            .filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
-            .map { nodeToJavaDoc(it, structs) }
-            .withIndex()
-            .sortedBy { if (it.index == 0) Int.MAX_VALUE else it.index }
-            .map { it.value }
-            .joinToString("\n\n$t$t")
-    }
+    buildExtensionDocumentation(extensions.blocks[1].blocks, extensionIDs, structs)
+    buildExtensionDocumentation(extensions.blocks[2].blocks, extensionIDs, structs)
 
     // Enums, functions & structs
 
@@ -181,6 +173,49 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     }
 
     asciidoctor.shutdown()
+}
+
+private fun buildExtensionDocumentation(
+    blocks: List<StructuralNode>,
+    extensionIDs: Map<String, String>,
+    structs: Map<String, TypeStruct>
+) {
+    var i = 0
+    while (i < blocks.size) {
+        // Find an extension
+        i = findFirstExtensionBlock(blocks, i, extensionIDs)
+        if (i == blocks.size) {
+            break
+        }
+
+        val firstBlock = blocks[i++]
+        val from = i
+
+        // Up to start of next extension
+        i = findFirstExtensionBlock(blocks, i, extensionIDs)
+
+        // Concat blocks
+        EXTENSION_DOC[firstBlock.id.substring(3)] =
+            // move metadata last
+            (firstBlock.blocks.asSequence().drop(1) +
+                blocks.listIterator(from).asSequence().take(i - from) +
+                firstBlock.blocks.asSequence().take(1)
+                )
+                .filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
+                .map { nodeToJavaDoc(it, structs) }
+                .joinToString("\n\n$t$t")
+    }
+}
+private fun findFirstExtensionBlock(blocks: List<StructuralNode>, startIndex: Int, extensionIDs: Map<String, String>): Int {
+    var i = startIndex
+    while (i < blocks.size) {
+        val block = blocks[i]
+        if (block.nodeName == "section" && extensionIDs.containsKey(block.id)) {
+            break
+        }
+        i++
+    }
+    return i
 }
 
 private fun addFunction(node: StructuralNode, structs: Map<String, TypeStruct>) {
