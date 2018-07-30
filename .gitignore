@@ -1,4 +1,5 @@
 target
-.idea/**/workspace.xml
+.idea/workspace.xml
+.idea/usage.statistics.xml
 .idea/libraries/Maven*.xml
 .idea/inspectionProfiles

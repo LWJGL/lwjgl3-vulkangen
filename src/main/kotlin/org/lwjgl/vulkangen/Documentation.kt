@@ -891,21 +891,6 @@ private fun getItemDescription(listItem: ListItem, description: String, structs:
     else
         description.replaceMarkup(structs)
 
-private fun findNodes(node: StructuralNode, predicate: (StructuralNode) -> Boolean): Sequence<StructuralNode> =
-    (
-        if (predicate(node))
-            sequenceOf(node)
-        else
-            emptySequence()
-    ) +
-    (
-        if (node.blocks == null)
-            emptySequence()
-        else
-            node.blocks.asSequence()
-                .flatMap { findNodes(it, predicate) }
-    )
-
 private fun printStructure(node: StructuralNode, indent: String = "") {
     System.err.println("$indent${node.level}. ${node.nodeName} ${node.title} ${node.attributes} ${node.javaClass}")
 
