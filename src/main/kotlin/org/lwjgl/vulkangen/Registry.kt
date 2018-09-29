@@ -568,7 +568,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
         featureEnums.removeAll(enumsSeen)
         if (featureEnums.isNotEmpty()) {
             enumsSeen.addAll(featureEnums)
-            writer.printEnums(featureEnums)
+            writer.printEnums(featureEnums, 0, enumRegistry)
         }
 
         feature.requires.asSequence()
@@ -657,7 +657,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
         $QUOTES3"""},
 
         ${it.value.asSequence()
-                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(extension.number, enumRegistry)}" }
+                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry)}" }
                             .joinToString(",\n$t$t")}
     )""")
                     }
@@ -670,7 +670,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
         extensionEnums.removeAll(enumsSeen)
         if (extensionEnums.isNotEmpty()) {
             enumsSeen.addAll(extensionEnums)
-            writer.printEnums(extensionEnums)
+            writer.printEnums(extensionEnums, extension.number, enumRegistry)
         }
 
         extension.requires.forEach { require ->
@@ -720,7 +720,7 @@ private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
     .distinct()
     .mapNotNull { enums[it] }
 
-private fun PrintWriter.printEnums(enums: List<Enums>) {
+private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enumRegistry: EnumRegistry) {
     enums.asSequence()
         .filter { block -> block.enums != null }
         .forEach { block ->
@@ -734,10 +734,7 @@ private fun PrintWriter.printEnums(enums: List<Enums>) {
         """.splitLargeLiteral()}$QUOTES3"""},
 
         ${block.enums!!.joinToString(",\n$t$t") {
-                if (it.bitpos != null)
-                    "\"${it.name.substring(3)}\".enum(${bitposAsHex(it.bitpos)})"
-                else
-                    "\"${it.name.substring(3)}\"..\"${it.value}\""
+                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extensionNumber, enumRegistry)}"
             }}
     )""")
         }
