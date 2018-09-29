@@ -295,6 +295,7 @@ private val SECTION_XREFS = mapOf(
     "descriptorsets-updates-consecutive" to "the “consecutive binding updates” section",
     "devsandqueues-priority" to "the “Queue Priority” section",
     "dispatch" to "the “Dispatching Commands” chapter",
+    "drawing-mesh-shading" to "the “Programmable Mesh Shading” section",
     "external-memory-handle-types-compatibility" to "External memory handle types compatibility",
     "features-formats-compatible-planes" to "the “Compatible formats of planes of multi-planar formats” section",
     "features-formats-requiring-sampler-ycbcr-conversion" to "the “Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views” table",
@@ -366,6 +367,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                 "superscript" -> "^${node.text}^"
                 "double"      -> "“${node.text}”"
                 "single"      -> "`${node.text}'"
+                "icon"        -> ""
                 else          -> {
                     System.err.println("lwjgl: type: ${node.type}")
                     System.err.println("lwjgl: text: ${node.text}")
