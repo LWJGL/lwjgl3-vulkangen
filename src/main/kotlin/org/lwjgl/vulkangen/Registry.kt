@@ -299,8 +299,9 @@ else {
         ) "nullable.." else ""
 
         val hasConst = param.modifier == "const"
+        val isString = param.len.contains("null-terminated") || (param.array != null && param.type == "char")
         val type = getParamType(param, indirection, hasConst, check.any(),
-            if (param.len.contains("null-terminated") || (param.array != null && param.type == "char")) {
+            if (isString) {
                 if (returns.type == "PFN_vkVoidFunction") "ASCII" else "UTF8"
             } else ""
         ).let {
@@ -310,14 +311,9 @@ else {
                 "_$it" // struct forward declaration
             }
         }
-        val paramType = if (forceINParam || indirection.isEmpty() || hasConst)
-            "IN"
-        else if ("false,true" == param.optional)
-            "INOUT"
-        else
-            "OUT"
+        val paramType = if ("false,true" == param.optional && (isString || nativeType is TypeStruct)) "Input.." else ""
 
-        "$autoSize$check$nullable$type.$paramType(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
+        "$autoSize$check$nullable$paramType$type(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
     }.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
@@ -485,15 +481,10 @@ ${templateTypes.asSequence()
                         ).let {
                             if (member.type == struct.name) "_$it" else it
                         }
-                        val memberType = when {
-                            member.array != null                                 -> "array"
-                            member.len.any() && types[member.type] is TypeStruct -> "buffer"
-                            else                                                 -> "member"
-                        }
 
-                        "$autoSize$nullable$type.$memberType(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${
-                        if (member.array != null) ", size = ${member.array}" else ""
-                        })${
+                        "$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\")${
+                        if (member.array != null) "[${member.array}]" else ""
+                        }${
                         if (struct.returnedonly && (member.name == "sType" || member.name == "pNext")) ".mutable()" else ""
                         }"
                     }
