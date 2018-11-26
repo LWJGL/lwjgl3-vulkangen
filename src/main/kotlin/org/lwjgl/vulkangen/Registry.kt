@@ -10,10 +10,10 @@ import kotlin.system.*
 
 internal val DISABLED_EXTENSIONS = setOf(
     "VK_KHR_android_surface",
-    "VK_KHR_mir_surface",
     "VK_KHR_xcb_surface",
     "VK_MVK_ios_surface",
     "VK_NN_vi_surface",
+    "VK_FUCHSIA_imagepipe_surface",
 
     "VK_ANDROID_external_memory_android_hardware_buffer"
 )
@@ -144,7 +144,7 @@ fun main(args: Array<String>) {
     val featureTypes = getDistinctTypes(registry.features.asSequence().flatMap { it.requires.asSequence() }, commands, types)
     generateTypes(root, "VKTypes", types, structs, featureTypes) {
         registry.tags.asSequence()
-            .map { "val ${it.name} = \"${it.name}\"" }
+            .map { "const val ${it.name} = \"${it.name}\"" }
             .joinToString("\n", postfix = "\n\n")
     }
 

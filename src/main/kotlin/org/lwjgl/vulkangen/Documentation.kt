@@ -43,7 +43,10 @@ internal val EXTENSION_DOC = HashMap<String, String>(64)
 private val ATTRIBS = mapOf(
     "sym1" to "✓",
     "sym2" to "†",
+    "reg" to "®",
+    "trade" to "™",
     "times" to "×",
+    "cdot" to "⋅",
     "plus" to "+",
     "geq" to "≥",
     "leq" to "≤",
@@ -57,15 +60,6 @@ private val ATTRIBS = mapOf(
     "land" to "∧",
     "lor" to "∨",
     "oplus" to "⊕",
-    "alpha" to "α",
-    "beta" to "β",
-    "gamma" to "γ",
-    "DeltaUpper" to "Δ",
-    "delta" to "δ",
-    "epsilon" to "ε",
-    "lambda" to "λ",
-    "rho" to "ρ",
-    "tau" to "τ",
     "lceil" to "⌈",
     "rceil" to "⌉",
     "lfloor" to "⌊",
@@ -73,7 +67,27 @@ private val ATTRIBS = mapOf(
     "vert" to "|",
     "partial" to "∂",
     "onehalf" to "½",
-    "onequarter" to "¼"
+    "onequarter" to "¼",
+    "ldots" to "…",
+    "forall" to "∀",
+    "sqrt" to "√",
+    "inf" to "∞",
+    "plusmn" to "±",
+    "alpha" to "α",
+    "beta" to "β",
+    "gamma" to "γ",
+    "DeltaUpper" to "Δ",
+    "delta" to "δ",
+    "epsilon" to "ε",
+    "eta" to "η",
+    "theta" to "θ",
+    "lambda" to "λ",
+    "pi" to "π",
+    "rho" to "ρ",
+    "sigma" to "σ",
+    "tau" to "τ",
+    "phi" to "ϕ",
+    "wbro" to ""
 )
 
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
@@ -466,7 +480,7 @@ p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>d</sub>, 1 &minus; A<sub
     """E = L^\frac{1}{2.6}""" to
         codeBlock("""E = L^<sup>1 / 2.6</sup>"""),*/
     """\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to "{@code ceil(rasterizationSamples / 32)}",
-    """codeSize \over 4""" to "{@code codeSize / 4}",
+    """\textrm{codeSize} \over 4""" to "{@code codeSize / 4}",
     """\frac{k}{2^m - 1}""" to "<code>k / (2<sup>m</sup> - 1)</code>",
 
     """m = \sqrt{ \left({{\partial z_f} \over {\partial x_f}}\right)^2
@@ -478,17 +492,15 @@ p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>d</sub>, 1 &minus; A<sub
        \right).""" to
         codeBlock("      m = max(abs(&part;z<sub>f</sub> / &part;x<sub>f</sub>), abs(&part;z<sub>f</sub> / &part;y<sub>f</sub>))"),
 
-    """o =
+    """\begin{aligned}
+o &= \mathrm{dbclamp}( m \times \mathtt{depthBiasSlopeFactor} + r \times \mathtt{depthBiasConstantFactor} ) \\
+\text{where} &\quad \mathrm{dbclamp}(x) =
 \begin{cases}
-    m \times depthBiasSlopeFactor +
-         r \times depthBiasConstantFactor  & depthBiasClamp = 0\ or\ NaN \\
-    \min(m \times depthBiasSlopeFactor +
-         r \times depthBiasConstantFactor,
-         depthBiasClamp)                   & depthBiasClamp > 0  \\
-    \max(m \times depthBiasSlopeFactor +
-         r \times depthBiasConstantFactor,
-         depthBiasClamp)                   & depthBiasClamp < 0  \\
-\end{cases}""" to
+    x                                 & \mathtt{depthBiasClamp} = 0 \ \text{or}\ \texttt{NaN} \\
+    \min(x, \mathtt{depthBiasClamp})  & \mathtt{depthBiasClamp} > 0 \\
+    \max(x, \mathtt{depthBiasClamp})  & \mathtt{depthBiasClamp} < 0 \\
+\end{cases}
+\end{aligned}""" to
         codeBlock("""
         m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor                     depthBiasClamp = 0 or NaN
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
@@ -564,7 +576,11 @@ E & =
 E = r &times; sqrt(L) for 0 &le; L &le; 1
     a &times; ln(L - b) + c for 1 &lt L""")*/,
     """\lfloor i_G \times 0.5 \rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
-    """\lfloor j_G \times 0.5 \rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>"
+    """\lfloor j_G \times 0.5 \rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>",
+    "\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(width / maxFragmentDensityTexelSize.width)}",
+    "\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(height / maxFragmentDensityTexelSize.height)}",
+    "\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(maxFramebufferWidth / minFragmentDensityTexelSize.width)}",
+    "\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}"
 )
 
 private val LATEX_REGISTRY_USED = HashSet<String>()
@@ -592,7 +608,8 @@ private val LINE_BREAK = """\n\s*""".toRegex()
 
 private val SIMPLE_NUMBER = """(?<=^|\s)`(\d+)`|code:(\d+)(?=\s|$)""".toRegex()
 private val KEYWORD = """(?<=^|\s)(must|should|may|can|cannot):(?=\s|$)""".toRegex()
-private val STRONG = """(?<=^|\W)\*+([^*]+)\*+(?=[\W]|$)""".toRegex()
+private val UNDEFINED = """(?<=^|\s)undefined:""".toRegex()
+private val STRONG = """(?<=^|\W)\*+([^*<]+)\*+(?=[\W]|$)""".toRegex()
 private val EMPHASIS = """(?<=^|\W)_([^_]+)_(?=[\W]|$)""".toRegex()
 private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
@@ -601,15 +618,16 @@ private val EQUATION_ATTRIB = """\{(\w+)}""".toRegex()
 private val STRUCT_OR_HANDLE = """s(?:name|link):(\w+)""".toRegex()
 private val STRUCT_FIELD = """::pname:(\w+)""".toRegex()
 private val CODE1 = """`([^`]+?)`""".toRegex()
-private val FUNCTION = """(?:fname|flink):vk(\w+)""".toRegex()
+private val FUNCTION = """(?:flink):vk(\w+)""".toRegex()
 private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
-private val CODE2 = """(?:pname|ptext|basetype|ename|elink|code):(\w+(?:[.]\w+)*)""".toRegex()
-private val CODE3 = """etext:([\w*]+)""".toRegex()
+private val CODE2 = """(?:fname|pname|ptext|basetype|ename|elink|tlink|code):(\w+(?:[.]\w+)*)""".toRegex()
+private val CODE3 = """(?:etext|ftext):([\w*]+)""".toRegex()
 private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+?)(?:,([^>]+))?>>""".toRegex()
 private val SPEC_LINK_RELATIVE = """(?:link:)?\{html_spec_relative}#([^\[]+?)\[([^]]*)]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
+private val FIXUP = """\\->""".toRegex()
 
 private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
     .replace(LINE_BREAK, " ")
@@ -623,8 +641,8 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     .replace(SIMPLE_NUMBER, "$1$2")
     .replace(EQUATION) { "<code>${it.groups[1]!!.value
         .replace(CODE2, "$1")
-        .replace(EQUATION_ATTRIB) {
-            val attrib = it.groups[1]!!.value
+        .replace(EQUATION_ATTRIB) { result ->
+            val attrib = result.groups[1]!!.value
             if (ATTRIBS.containsKey(attrib)) {
                 ATTRIBS[attrib]!!
             } else
@@ -633,6 +651,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         .htmlEscaped
     }</code>" }
     .replace(KEYWORD, "<b>$1</b>")
+    .replace(UNDEFINED, "undefined") // TODO: highlight or anything else?
     .replace(STRONG, "<b>$1</b>")
     .replace(EMPHASIS, "<em>$1</em>")
     .replace(SUPERSCRIPT, "<sup>$1</sup>")
@@ -645,8 +664,8 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
             "{@code $type}" // handle
     }
     .replace(STRUCT_FIELD, "{@code ::$1}")
-    .replace(CODE1) {
-        it.groups[1]!!.value.let {
+    .replace(CODE1) { result ->
+        result.groups[1]!!.value.let {
             if (it.startsWith("etext:")) {
                 it
             } else {
@@ -671,8 +690,8 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         else
             "##Vk$type"
     }
-    .replace(ENUM) {
-        val name = it.groups[1]!!.value
+    .replace(ENUM) { result ->
+        val name = result.groups[1]!!.value
         if (name.any { it in 'a'..'z' } && EXTENSION_TEMPLATES.containsKey(name)) {
             "##${EXTENSION_TEMPLATES[name]}" // link to extension class
         } else {
@@ -686,8 +705,8 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         val section = it.groups[1]!!
         """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#${section.value}">${it.groups[2]?.value ?: section.value}</a>"""
     }
-    .replace(SPEC_LINK_RELATIVE) {
-        val (section, text) = it.destructured
+    .replace(SPEC_LINK_RELATIVE) { result ->
+        val (section, text) = result.destructured
         """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#$section">${text.let {
             if (it.isEmpty() || it.startsWith("{html_spec_relative}#")) {
                 getSectionXREF(section)
@@ -696,6 +715,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         }}</a>"""
     }
     .replace(EXTENSION, "{@code $1}")
+    .replace(FIXUP, "-&gt;")
 
 private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) =
     (name.blocks[0] as Block).lines[0]
@@ -709,7 +729,7 @@ private fun containerToJavaDoc(node: StructuralNode, structs: Map<String, TypeSt
         if (node.title == null || node.title.isEmpty() || it.isEmpty() || it.startsWith("<h5>"))
             it
         else
-            "<h5>${node.title}</h5>\n$t$t$it".let {
+            "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t$it".let {
                 if (node.style == "NOTE") {
                     """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
         $indent</div>"""
@@ -749,7 +769,7 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
             .joinToString("\n$t$t$t$indent")}
         $indent</ul>"""
     } else if (it is Table) {
-        """${if (it.title == null) "" else "<h6>${it.title}</h6>\n$t$t"}<table class="lwjgl">
+        """${if (it.title == null) "" else "<h6>${it.title.replaceMarkup(structs)}</h6>\n$t$t"}<table class="lwjgl">
             ${sequenceOf(
             it.header to ("thead" to "th"),
             it.footer to ("tfoot" to "td"),
@@ -819,7 +839,7 @@ private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStru
     return if (links.isEmpty())
         null
     else
-        "<h5>${node.title}</h5>\n$t$t${links.replaceMarkup(structs)}"
+        "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t${links.replaceMarkup(structs)}"
 }
 
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
