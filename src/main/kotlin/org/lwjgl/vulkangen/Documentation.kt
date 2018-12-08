@@ -290,7 +290,6 @@ private val SECTION_XREFS = mapOf(
     "clears" to "the “Clear Commands” section",
     "clears-values" to "the “Clear Values” section",
     "copies" to "the “Copy Commands” section",
-    "debugging-object-types" to "the “{@code VkObjectType} and Vulkan Handle Relationship” table",
     "debug-report-object-types" to "the “{@code VkDebugReportObjectTypeEXT} and Vulkan Handle Relationship” table",
     "descriptorsets-combinedimagesampler" to "the “Combined Image Sampler” section",
     "descriptorsets-compatibility" to "the “Pipeline Layout Compatibility” section",
@@ -580,7 +579,8 @@ E = r &times; sqrt(L) for 0 &le; L &le; 1
     "\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(width / maxFragmentDensityTexelSize.width)}",
     "\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(height / maxFragmentDensityTexelSize.height)}",
     "\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(maxFramebufferWidth / minFragmentDensityTexelSize.width)}",
-    "\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}"
+    "\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}",
+    "\\pm\\infty" to "&plusmn;&infin;"
 )
 
 private val LATEX_REGISTRY_USED = HashSet<String>()
