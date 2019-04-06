@@ -9,13 +9,15 @@ import java.nio.file.*
 import kotlin.system.*
 
 internal val DISABLED_EXTENSIONS = setOf(
+    "VK_ANDROID_external_memory_android_hardware_buffer",
+    "VK_EXT_metal_surface",
+    "VK_FUCHSIA_imagepipe_surface",
+    "VK_GGP_frame_token",
+    "VK_GGP_stream_descriptor_surface",
     "VK_KHR_android_surface",
     "VK_KHR_xcb_surface",
     "VK_MVK_ios_surface",
-    "VK_NN_vi_surface",
-    "VK_FUCHSIA_imagepipe_surface",
-
-    "VK_ANDROID_external_memory_android_hardware_buffer"
+    "VK_NN_vi_surface"
 )
 
 private val ABBREVIATIONS = setOf(
@@ -686,14 +688,23 @@ private fun Enum.getEnumValue(extensionNumber: Int, enumRegistry: EnumRegistry):
     }
     offset != null -> {
         enumRegistry.enumMap[name] = this
-        ".\"${offsetAsEnum(extensionNumber, offset, dir)}\""
+        ".\"${offsetAsEnum(if (extensionNumber == 0 && extnumber != null) extnumber else extensionNumber, offset, dir)}\""
     }
     bitpos != null -> {
         enumRegistry.enumMap[name] = this
         "enum(${bitposAsHex(bitpos)})"
     }
     else           -> {
-        enumRegistry.enumMap[alias ?: name]!!.getEnumValue(extensionNumber, enumRegistry)
+        val value = enumRegistry.enumMap.getValue(alias ?: name).getEnumValue(extensionNumber, enumRegistry)
+        if (alias != null) {
+            // store the aliased name too, for alias chain cases
+            var ref = this
+            do {
+                ref = enumRegistry.enumMap.getValue(ref.alias!!)
+            } while (ref.alias != null)
+            enumRegistry.enumMap[name] = ref
+        }
+        value
     }
 }
 

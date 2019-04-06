@@ -314,8 +314,8 @@ private val SECTION_XREFS = mapOf(
     "extendingvulkan-layers" to "Layers",
     "extendingvulkan-layers-devicelayerdeprecation" to "Device Layer Deprecation",
     "external-memory-handle-types-compatibility" to "External memory handle types compatibility",
-    "features-formats-compatible-planes" to "Compatible formats of planes of multi-planar formats",
-    "features-formats-requiring-sampler-ycbcr-conversion" to "Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views",
+    "formats-compatible-planes" to "Compatible formats of planes of multi-planar formats",
+    "formats-requiring-sampler-ycbcr-conversion" to "Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views",
     "framebuffer-dsb" to "Dual-Source Blending",
     "fundamentals-fp10" to "Unsigned 10-Bit Floating-Point Numbers",
     "fundamentals-fp11" to "Unsigned 11-Bit Floating-Point Numbers",
@@ -385,6 +385,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
                 "double"      -> "“${node.text}”"
                 "single"      -> "`${node.text}'"
                 "icon"        -> ""
+                "image"       -> "<img src=\"https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/${node.target}${if (node.target.endsWith(".svg")) "?sanitize=true" else ""}\" alt=\"${node.attributes["alt"]}\">"
                 else          -> {
                     System.err.println("lwjgl: type: ${node.type}")
                     System.err.println("lwjgl: text: ${node.text}")
@@ -628,7 +629,7 @@ private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:fname|pname|ptext|basetype|ename|elink|tlink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val CODE3 = """(?:etext|ftext):([\w*]+)""".toRegex()
 private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
-private val SPEC_LINK = """<<([^,]+?)(?:,([^>]+))?>>""".toRegex()
+private val SPEC_LINK = """<<([^,]+?)(?:,([\s\S]+?))?>>""".toRegex()
 private val SPEC_LINK_RELATIVE = """(?:link:)?\{html_spec_relative}#([^\[]+?)\[([^]]*)]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 private val FIXUP = """\\->""".toRegex()
