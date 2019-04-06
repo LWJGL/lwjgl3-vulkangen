@@ -648,7 +648,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         .replace(EQUATION_ATTRIB) { result ->
             val attrib = result.groups[1]!!.value
             if (ATTRIBS.containsKey(attrib)) {
-                ATTRIBS[attrib]!!
+                ATTRIBS.getValue(attrib)
             } else
                 it.value
         } // TODO: more?
@@ -729,11 +729,11 @@ private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeS
 private fun containerToJavaDoc(node: StructuralNode, structs: Map<String, TypeStruct>, indent: String = ""): String =
     node.blocks.asSequence()
         .map { nodeToJavaDoc(it, structs, indent) }
-        .joinToString("\n\n$t$t$indent").let {
-        if (node.title == null || node.title.isEmpty() || it.isEmpty() || it.startsWith("<h5>"))
-            it
+        .joinToString("\n\n$t$t$indent").let { block ->
+        if (node.title == null || node.title.isEmpty() || block.isEmpty() || block.startsWith("<h5>"))
+            block
         else
-            "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t$it".let {
+            "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t$block".let {
                 if (node.style == "NOTE") {
                     """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
         $indent</div>"""
@@ -783,8 +783,8 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
             .map { (groups, cells) ->
                 val (group, cell) = cells
                 "<$group>${groups.asSequence()
-                    .map {
-                        "<tr>${it.cells.asSequence()
+                    .map { row ->
+                        "<tr>${row.cells.asSequence()
                             .map {
                                 "<$cell>${if (it.style == "asciidoc")
                                     nodeToJavaDoc(it.innerDocument, structs, indent) // TODO: untested
@@ -806,14 +806,19 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
     } else if (it is DescriptionList) {
         """<dl>
             ${it.items.asSequence()
-            .map {
-                if (it.terms.size != 1)
-                    throw IllegalStateException("${it.terms}")
+            .map { entry ->
+                if (entry.terms.size != 1) {
+                    printStructure(it)
+                    for (term in entry.terms) {
+                        println(term.text)
+                    }
+                    throw IllegalStateException("${entry.terms}")
+                }
 
-                """${it.terms[0].text.let { if (it.isNotEmpty()) "<dt>${it.replaceMarkup(structs)}</dt>\n$t$t$t$indent" else "" }}<dd>${if (it.description.blocks.isEmpty())
-                    it.description.text.replaceMarkup(structs)
+                """${entry.terms[0].text.let { if (it.isNotEmpty()) "<dt>${it.replaceMarkup(structs)}</dt>\n$t$t$t$indent" else "" }}<dd>${if (entry.description.blocks.isEmpty())
+                    entry.description.text.replaceMarkup(structs)
                 else
-                    containerToJavaDoc(it.description, structs, "$t$indent")
+                    containerToJavaDoc(entry.description, structs, "$t$indent")
                 }</dd>"""
             }
             .joinToString("\n\n$t$t$t$indent")}
@@ -853,56 +858,56 @@ private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:(?:sname|slink):(\w+)::)
 private val ESCAPE_REGEX = Regex(""""|\\#""")
 
 private fun nodeToParamJavaDoc(members: StructuralNode, structs: Map<String, TypeStruct>): Map<String, String> {
-    members.blocks.forEach {
-        if (it !is org.asciidoctor.ast.List) {
+    members.blocks.forEach { node ->
+        if (node !is org.asciidoctor.ast.List) {
             return@forEach
         }
 
-        return it.items.asSequence()
+        return node.items.asSequence()
             .filterIsInstance<ListItem>()
             .filter { it.text != null }
-            .flatMap {
-                val multi = MULTI_PARAM_DOC_REGEX.find(it.text)
+            .flatMap { item ->
+                val multi = MULTI_PARAM_DOC_REGEX.find(item.text)
                 if (multi != null) {
                     val first = multi.groups[1]!!.value
                     PARAM_REGEX.findAll(multi.value)
                         .map { it.groups[1]!!.value }
                         .mapIndexed { i, member ->
                             member to if (i == 0)
-                                getItemDescription(it, it.text.replaceMarkup(structs), structs)
+                                getItemDescription(item, item.text.replaceMarkup(structs), structs)
                             else
                                 "see {@code $first}"
                         }
                 } else {
                     try {
-                        val (When, struct, param, field, description) = PARAM_DOC_REGEX.matchEntire(it.text)!!.destructured
+                        val (When, struct, param, field, description) = PARAM_DOC_REGEX.matchEntire(item.text)!!.destructured
                         if (struct.isNotEmpty()) {
                             System.err.println("lwjgl: struct member cross reference: $struct::$param")
                         }
-                        sequenceOf(param to getItemDescription(it, if (When.isEmpty() && field.isEmpty()) description else it.text, structs))
+                        sequenceOf(param to getItemDescription(item, if (When.isEmpty() && field.isEmpty()) description else item.text, structs))
                     } catch (e: Exception) {
-                        println("FAILED AT: ${it.text}")
-                        printStructure(it)
+                        println("FAILED AT: ${item.text}")
+                        printStructure(item)
                         throw RuntimeException(e)
                     }
                 }
             }
-            .groupBy { it.first }
-            .map {
-                it.key to if (it.value.size == 1)
-                    it.value[0].second.let {
+            .groupBy { (param) -> param }
+            .map { (param, descriptions) ->
+                param to if (descriptions.size == 1)
+                    descriptions[0].second.let {
                         if (!it.startsWith("\"\""))
                             it.replace(ESCAPE_REGEX, """\\$0""")
                         else
                             it
                     }
                 else
-                    it.value.asSequence()
-                        .map {
-                            if (it.second.startsWith("\"\""))
-                                it.second.substring(2, it.second.length - 2)
+                    descriptions.asSequence()
+                        .map { (_, description) ->
+                            if (description.startsWith("\"\""))
+                                description.substring(2, description.length - 2)
                             else
-                                it.second
+                                description
                         }
                         .joinToString("\n\n$t$t", prefix = "\"\"", postfix = "\"\"")
             }
@@ -925,9 +930,9 @@ private fun printStructure(node: StructuralNode, indent: String = "") {
             printStructure(it, "$t$indent")
         }
     } else if (node is DescriptionList) {
-        node.items.forEach {
-            printStructure(it.description, "$t$indent")
-            it.terms.forEach {
+        node.items.forEach { entry ->
+            printStructure(entry.description, "$t$indent")
+            entry.terms.forEach {
                 printStructure(it, "$t$indent")
             }
         }

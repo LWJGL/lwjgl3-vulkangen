@@ -104,7 +104,7 @@ internal class Field(
     val optional: String? get() = attribs["optional"]
     val externsync: String? get() = attribs["externsync"]
     val noautovalidity: String? get() = attribs["noautovalidity"]
-    val validextensionstructs: String? get() = attribs["validextensionstructs"]
+    //val validextensionstructs: String? get() = attribs["validextensionstructs"]
 }
 
 internal class Validity
@@ -205,24 +205,24 @@ internal class FieldConverter : Converter {
         val name = reader.value
         reader.moveUp()
         val array = reader.value.trim().let {
-            if (it.isEmpty())
-                null
-            else if (it.startsWith('[')) {
-                if (reader.hasMoreChildren()) {
-                    try {
-                        reader.moveDown()
-                        "\"${reader.value}\""
-                    } finally {
-                        reader.moveUp()
-                        if (reader.hasMoreChildren() || reader.value != "]")
-                            throw IllegalStateException()
+            when {
+                it.isEmpty()       -> null
+                it.startsWith('[') ->
+                    when {
+                        reader.hasMoreChildren() ->
+                            try {
+                                reader.moveDown()
+                                "\"${reader.value}\""
+                            } finally {
+                                reader.moveUp()
+                                if (reader.hasMoreChildren() || reader.value != "]")
+                                    throw IllegalStateException()
+                            }
+                        it.endsWith(']')         -> it.substring(1, it.length - 1)
+                        else                     -> throw IllegalStateException()
                     }
-                } else if (it.endsWith(']'))
-                    it.substring(1, it.length - 1)
-                else
-                    throw IllegalStateException()
-            } else
-                throw IllegalStateException(it)
+                else               -> throw IllegalStateException(it)
+            }
         }
 
         return Field(modifier, type.toString(), indirection, name, array, attribs)

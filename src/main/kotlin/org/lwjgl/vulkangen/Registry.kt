@@ -184,15 +184,15 @@ private fun getDistinctTypes(
     commands: Map<String, Command>,
     types: Map<String, Type>
 ) = requires
-    .flatMap {
+    .flatMap { require ->
         // Get all top-level types
         sequenceOf(
-            if (it.types == null) emptySequence() else it.types.asSequence().map { it.name },
-            if (it.enums == null) emptySequence() else it.enums.asSequence().map { it.name },
-            if (it.commands == null) emptySequence() else it.commands.asSequence()
-                .map { commands[it.name]!! }
-                .flatMap {
-                    sequenceOf(it.proto.type) + it.params.asSequence().map { it.type }
+            if (require.types == null) emptySequence() else require.types.asSequence().map { it.name },
+            if (require.enums == null) emptySequence() else require.enums.asSequence().map { it.name },
+            if (require.commands == null) emptySequence() else require.commands.asSequence()
+                .map { commands.getValue(it.name) }
+                .flatMap { cmd ->
+                    sequenceOf(cmd.proto.type) + cmd.params.asSequence().map { it.type }
                 }
         )
             .flatten()
@@ -209,7 +209,7 @@ private fun getDistinctTypes(
     .toSet()
 
 private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> {
-    val type = types[name]!!
+    val type = types.getValue(name)
     return when (type) {
         is TypeStruct      -> type.members.asSequence()
             .filter { it.type != name }
@@ -283,7 +283,7 @@ else {
                 it
         }
 
-        val nativeType = types[param.type]!!
+        val nativeType = types.getValue(param.type)
         val forceINParam = forceIN
                            /* TODO: happens to work nicely atm, revisit */
                            || (nativeType is TypeSystem && param.type.any(Character::isLowerCase))
@@ -372,9 +372,9 @@ ${templateTypes.asSequence()
 
 ${templateTypes.asSequence()
             .filterIsInstance<TypeFuncpointer>()
-            .joinToString("\n\n") {
+            .joinToString("\n\n") { fp ->
                 // detect necessary struct forward declarations
-                val structTypes = it.params.asSequence()
+                val structTypes = fp.params.asSequence()
                     .mapNotNull {
                         val type = types[it.type]
                         if (type is TypeStruct && !forwardDeclarations.contains(type)) {
@@ -394,15 +394,15 @@ ${templateTypes.asSequence()
                         }
                     }
 
-                val functionDoc = FUNCTION_DOC[it.name]
-                """${structTypes}val ${it.name} = Module.VULKAN.callback {
-    ${getReturnType(it.proto)}(
-        "${it.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-        "${functionDoc?.shortDescription ?: ""}"${getParams(it, types, structs, forceIN = true, indent = "$t$t")},
+                val functionDoc = FUNCTION_DOC[fp.name]
+                """${structTypes}val ${fp.name} = Module.VULKAN.callback {
+    ${getReturnType(fp.proto)}(
+        "${fp.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
+        "${functionDoc?.shortDescription ?: ""}"${getParams(fp, types, structs, forceIN = true, indent = "$t$t")},
 
-        nativeType = "${it.name}"
+        nativeType = "${fp.name}"
     ) {
-        ${getJavaImports(types, sequenceOf(it.proto) + it.params.asSequence())}${if (functionDoc == null) "" else """documentation =
+        ${getJavaImports(types, sequenceOf(fp.proto) + fp.params.asSequence())}${if (functionDoc == null) "" else """documentation =
         $QUOTES3
         ${functionDoc.shortDescription}
 
@@ -473,7 +473,7 @@ ${templateTypes.asSequence()
                                 struct.members.asSequence()
                                     .filter { it.len.contains(len) }
                                     .count() > 1
-                            })) && (member.indirection.isNotEmpty() || types[member.type]!!.let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })) "nullable.." else ""
+                            })) && (member.indirection.isNotEmpty() || types.getValue(member.type).let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })) "nullable.." else ""
 
                         val hasConst = member.modifier == "const"
                         val type = getParamType(member, member.indirection, hasConst, false,
@@ -512,11 +512,11 @@ private fun generateFeature(
         writer.print(HEADER)
         writer.print("""package vulkan.templates
 
-import org.lwjgl.generator.*${distinctTypes
+import org.lwjgl.generator.*${distinctTypes.asSequence()
             .filterIsInstance<TypeSystem>()
             .map { it.requires }
             .distinct()
-            .map { "\nimport ${IMPORTS[it]!!.replace("org.lwjgl.system.", "core.")}" }
+            .map { "\nimport ${IMPORTS.getValue(it).replace("org.lwjgl.system.", "core.")}" }
             .distinct()
             .joinToString()
         }
@@ -534,18 +534,22 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
                 enums.asSequence()
                     .filter { it.extends != null && (it.value == null || !it.value.startsWith("VK_")) }
                     .groupBy { it.extends!! }
-                    .forEach {
-                        val extends = it.value.firstOrNull { it.extends != null }?.extends
-                        val enumDoc = ENUM_DOC[it.key]
+                    .forEach { (enumName, enumList) ->
+                        val extends = enumList.firstOrNull { it.extends != null }?.extends
+                        val enumDoc = ENUM_DOC[enumName]
                         writer.println("""
     EnumConstant(
-        ${if (extends != null) "\"Extends {@code ${it.key}}.\"" else if (enumDoc == null) "\"${it.key}\"" else """"$QUOTES3
+        ${when {
+                            extends != null -> "\"Extends {@code $enumName}.\""
+                            enumDoc == null -> "\"$enumName\""
+                            else            -> """"$QUOTES3
         ${enumDoc.shortDescription}${
-                        if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-                        if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
-        $QUOTES3"""},
+                            if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
+                            if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
+        $QUOTES3"""
+                        }},
 
-        ${it.value.asSequence()
+        ${enumList.asSequence()
                             .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry)}" }
                             .joinToString(",\n$t$t")}
     )""")
@@ -592,11 +596,11 @@ private fun generateExtension(
         writer.print(HEADER)
         writer.print("""package vulkan.templates
 
-import org.lwjgl.generator.*${distinctTypes
+import org.lwjgl.generator.*${distinctTypes.asSequence()
             .filterIsInstance<TypeSystem>()
             .map { it.requires }
             .distinct()
-            .map { "\nimport ${IMPORTS[it]!!.replace("org.lwjgl.system.", "core.")}" }
+            .map { "\nimport ${IMPORTS.getValue(it).replace("org.lwjgl.system.", "core.")}" }
             .distinct()
             .joinToString()
         }
@@ -615,9 +619,9 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
                 enums.asSequence()
                     .filter { it.value == null || !it.value.startsWith("VK_") }
                     .groupBy { it.extends ?: it.name }
-                    .forEach nextEnumList@{
-                        if (it.value.size == 1) {
-                            val enum = it.value.first()
+                    .forEach nextEnumList@{ (enumName, enumList) ->
+                        if (enumList.size == 1) {
+                            val enum = enumList.first()
                             if (enum.name.endsWith("_EXTENSION_NAME")) {
                                 writer.println("""
     StringConstant(
@@ -637,17 +641,20 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
                             }
                         }
 
-                        val extends = it.value.firstOrNull { it.extends != null }?.extends
-                        val enumDoc = ENUM_DOC[it.key]
+                        val extends = enumList.firstOrNull { it.extends != null }?.extends
+                        val enumDoc = ENUM_DOC[enumName]
                         writer.println("""
     EnumConstant(
-        ${if (extends != null) "\"Extends {@code ${it.key}}.\"" else if (enumDoc == null) "\"${it.key}\"" else """"$QUOTES3
+        ${when {
+                            extends != null -> "\"Extends {@code $enumName}.\""
+                            enumDoc == null -> "\"$enumName\""
+                            else -> """"$QUOTES3
         ${enumDoc.shortDescription}${
                         if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
                         if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
-        $QUOTES3"""},
+        $QUOTES3"""}},
 
-        ${it.value.asSequence()
+        ${enumList.asSequence()
                             .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry)}" }
                             .joinToString(",\n$t$t")}
     )""")
@@ -751,15 +758,18 @@ private fun PrintWriter.printCommands(
         }
     }
 
-    require.commands.forEach {
-        val cmd = commands[it.name]!!
-        val name = it.name.substring(2)
+    require.commands.forEach { commandRef ->
+        val cmd = commands.getValue(commandRef.name)
+        val name = commandRef.name.substring(2)
         val functionDoc = FUNCTION_DOC[name]
 
         print("\n$t")
         // If we don't have a dispatchable handle, mark ICD-global
-        if (it.name == "vkGetInstanceProcAddr" || cmd.params.none { it.indirection.isEmpty() && types[it.type]!!.let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" } })
+        if (commandRef.name == "vkGetInstanceProcAddr" || cmd.params.none { param ->
+                param.indirection.isEmpty() && types.getValue(param.type).let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" }
+            }) {
             print("GlobalCommand..")
+        }
         if (dependency != null) {
             print("DependsOn(\"$dependency\")..")
         }
