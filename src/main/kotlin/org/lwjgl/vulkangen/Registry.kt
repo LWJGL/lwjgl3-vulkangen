@@ -348,6 +348,12 @@ private fun generateTypes(
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
         val forwardDeclarations = HashSet<TypeStruct>()
+        val structDefinitions = HashSet<String>()
+
+        val structInTemplate = templateTypes.asSequence()
+            .filterIsInstance<TypeStruct>()
+            .map { it.name }
+            .toHashSet()
 
         writer.print(HEADER)
         writer.print("""package vulkan
@@ -427,15 +433,28 @@ $it
 ${templateTypes.asSequence()
             .filterIsInstance<TypeStruct>()
             .joinToString("\n\n") { struct ->
+                structDefinitions.add(struct.name)
+
+                var aliasForwardDecl: String? = null
+                var alias: String? = null
+                struct.alias.let {
+                    if (it != null) {
+                        if (!structDefinitions.contains(it) && forwardDeclarations.none { decl -> decl.name == it } && structInTemplate.contains(it)) {
+                            aliasForwardDecl = "val _$it = ${struct.type}(Module.VULKAN, \"${struct.alias}\")\n"
+                            alias = ", alias = _$it"
+                        } else {
+                            alias = ", alias = $it"
+                        }
+                    }
+                }
+
                 val structDoc = STRUCT_DOC[struct.name]
 
-                """${
+                """${aliasForwardDecl ?: ""}${
                 if (struct.members.any { it.type == struct.name }) "val _${struct.name} = ${struct.type}(Module.VULKAN, \"${struct.name}\")\n" else ""
                 }val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
                 if (struct.returnedonly) ", mutable = false" else ""
-                }${
-                if (struct.alias != null) ", alias = ${struct.alias}" else ""
-                }) {
+                }${alias ?: ""}) {
     ${getJavaImports(types, struct.members.asSequence())}${if (structDoc == null) {
                     if (struct.alias == null) "" else """documentation = "See ##${struct.alias}."
 
