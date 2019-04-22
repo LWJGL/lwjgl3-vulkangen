@@ -131,6 +131,9 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         .attribute("VK_VERSION_1_0")
         .attribute("VK_VERSION_1_1")
         .attributes(extensionIDs)
+        .attribute("chapters", "../chapters")
+        .attribute("generated", "../gen")
+        .attribute("images", "images")
         .apply {
             ATTRIBS.forEach { (key, value) ->
                 attribute(key, value)
@@ -628,11 +631,11 @@ private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:fname|pname|ptext|basetype|ename|elink|tlink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val CODE3 = """(?:etext|ftext):([\w*]+)""".toRegex()
-private val LINK = """(https?://.+?)\[([^]]+)]""".toRegex()
+private val LINK = """(?:link:)?(https?://.+?)\[([^]]*?)]""".toRegex()
 private val SPEC_LINK = """<<([^,]+?)(?:,([\s\S]+?))?>>""".toRegex()
-private val SPEC_LINK_RELATIVE = """(?:link:)?\{html_spec_relative}#([^\[]+?)\[([^]]*)]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
-private val FIXUP = """\\->""".toRegex()
+private val FIX_ARROWS = """\\->""".toRegex()
+private val FIX_INVALID_VUIDs = """\[\[VUID-\{refpage}.+?]]\s*""".toRegex()
 
 private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
     .replace(LINE_BREAK, " ")
@@ -674,9 +677,18 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
             if (it.startsWith("etext:")) {
                 it
             } else {
-                val m = SPEC_LINK.find(it) ?: SPEC_LINK_RELATIVE.find(it)
-                if (m != null) {
-                    val extension = m.groups[1]!!.value
+                val extension =
+                    SPEC_LINK.find(it)?.run { groups[1]!!.value } ?:
+                    LINK.find(it)?.run {
+                        val (url, description) = destructured
+                        (if (description.isNotEmpty()) description else url).run {
+                            if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#"))
+                                substring("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#".length)
+                            else
+                                null
+                        }
+                    }
+                if (extension != null) {
                     if (!extension.startsWith("VK_")) {
                         throw IllegalStateException()
                     }
@@ -705,22 +717,24 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     }
     .replace(CODE2, "{@code $1}")
     .replace(CODE3, "{@code $1}")
-    .replace(LINK, """<a target="_blank" href="$1">$2</a>""")
-    .replace(SPEC_LINK) {
-        val section = it.groups[1]!!
-        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#${section.value}">${it.groups[2]?.value ?: section.value}</a>"""
-    }
-    .replace(SPEC_LINK_RELATIVE) { result ->
-        val (section, text) = result.destructured
-        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html\#$section">${text.let {
-            if (it.isEmpty() || it.startsWith("{html_spec_relative}#")) {
-                getSectionXREF(section)
-            } else
-                it
+    .replace(LINK) { result ->
+        val (url, description) = result.destructured
+        """<a target="_blank" href="${url
+            .replace("#", "\\#")
+        }">${(if (description.isNotEmpty()) description else url).run {
+            if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#"))
+                getSectionXREF(substring("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#".length))
+            else
+                this
         }}</a>"""
     }
+    .replace(SPEC_LINK) {
+        val section = it.groups[1]!!
+        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html\#${section.value}">${it.groups[2]?.value ?: section.value}</a>"""
+    }
     .replace(EXTENSION, "{@code $1}")
-    .replace(FIXUP, "-&gt;")
+    .replace(FIX_ARROWS, "-&gt;")
+    .replace(FIX_INVALID_VUIDs, "")
 
 private fun getShortDescription(name: StructuralNode, structs: Map<String, TypeStruct>) =
     (name.blocks[0] as Block).lines[0]
