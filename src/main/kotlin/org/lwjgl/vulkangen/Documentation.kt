@@ -318,6 +318,7 @@ private val SECTION_XREFS = mapOf(
     "extendingvulkan-layers-devicelayerdeprecation" to "Device Layer Deprecation",
     "external-memory-handle-types-compatibility" to "External memory handle types compatibility",
     "formats-compatible-planes" to "Compatible formats of planes of multi-planar formats",
+    "formats-numericformat" to "Interpretation of Numeric Format",
     "formats-requiring-sampler-ycbcr-conversion" to "Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views",
     "framebuffer-dsb" to "Dual-Source Blending",
     "fundamentals-fp10" to "Unsigned 10-Bit Floating-Point Numbers",
@@ -433,7 +434,6 @@ ${(if (escape) code.htmlEscaped else code)
 
 private val LATEX_MATH = """latexmath:\[(.+?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
 private val LATEX_REGISTRY = mapOf(
-    """0 \leq L \leq 1""" to "0 &le; L &le; 1",
     """                                              \begin{aligned}
                                                 p_0(A_s,A_d) & = A_sA_d \\
                                                 p_1(A_s,A_d) & = A_s(1-A_d) \\
