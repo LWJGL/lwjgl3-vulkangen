@@ -321,6 +321,7 @@ else {
 
 private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>) = fields
     .mapNotNull {
+        // TODO: find extension that defines the VK_MAX_ value, not everything is in VK10 (see VkPhysicalDeviceDriverPropertiesKHR)
         if (it.array != null && it.array.startsWith("\"VK_MAX_"))
             "static org.lwjgl.vulkan.VK10.*"
         else {
@@ -481,10 +482,10 @@ ${templateTypes.asSequence()
                                         .map { "\"${it.name}\"" }
                                         .joinToString(", ")
 
-                                    if (member.optional != null || members.all { it.optional != null })
+                                    if (member.optional != null || members.all { it.optional != null } || members.any { it.noautovalidity != null })
                                         "AutoSize($references, optional = true).."
-                                    else if (members.asSequence().filter { it.noautovalidity != null }.count() > 1)
-                                        "AutoSize($references, atLeastOne = true).."
+                                    //else if (members.count { it.noautovalidity != null } > 1)
+                                        //"AutoSize($references, atLeastOne = true).."
                                     else
                                         "AutoSize($references).."
                                 }
@@ -544,7 +545,7 @@ import org.lwjgl.generator.*${distinctTypes.asSequence()
 import vulkan.*
 
 val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK", binding = VK_BINDING_INSTANCE) {
-    documentation =
+    ${if (feature.number != "1.0") /* TODO: */"extends = VK10\n    " else ""}documentation =
         $QUOTES3
         The core Vulkan ${feature.number} functionality.
         $QUOTES3
@@ -779,6 +780,9 @@ private fun PrintWriter.printCommands(
         return
     }
 
+    // TODO: multiple require blocks may include the same command
+    //       In that case, the DependsOn modifier must be a logical OR of the corresponding requires
+    //       Output command only once of course.
     val dependency = require.extension ?: require.feature.let {
         if (it == null) {
             null
