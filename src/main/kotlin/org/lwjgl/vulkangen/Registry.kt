@@ -72,29 +72,34 @@ private class EnumRegistry(enumsList: List<Enums>) {
 }
 
 fun main(args: Array<String>) {
-    if (args.size != 2)
-        throw IllegalArgumentException("Usage: VulkanSpecKt <vulkan-docs-path> <lwjgl3-path>")
+    require(args.size == 2) {
+        "Usage: VulkanSpecKt <vulkan-docs-path> <lwjgl3-path>"
+    }
 
     val vulkanDocs = Paths.get(args[0])
     val registry = vulkanDocs.let {
-        if (!Files.isDirectory(it))
-            throw IllegalArgumentException("Invalid Vulkan-Docs repository path specified: $it")
+        require(Files.isDirectory(it)) {
+            "Invalid Vulkan-Docs repository path specified: $it"
+        }
 
         val registryPath = it.resolve("xml/vk.xml")
-        if (!Files.isRegularFile(registryPath))
-            throw IllegalArgumentException("The path specified does not contain the Vulkan-Docs repository: $it")
+        require(Files.isRegularFile(registryPath)) {
+            "The path specified does not contain the Vulkan-Docs repository: $it"
+        }
 
         parse(registryPath)
     }
 
     val root = args[1].let {
         val lwjgl3 = Paths.get(it)
-        if (!Files.isDirectory(lwjgl3))
-            throw IllegalArgumentException("Invalid lwjgl3 repository path specified: $it")
+        require(Files.isDirectory(lwjgl3)) {
+            "Invalid lwjgl3 repository path specified: $it"
+        }
 
         val root = lwjgl3.resolve("modules/lwjgl/vulkan/src/templates/kotlin/vulkan")
-        if (!Files.isDirectory(root))
-            throw IllegalArgumentException("The path specified does not contain the lwjgl3 repository: $it")
+        require(Files.isDirectory(root)) {
+            "The path specified does not contain the lwjgl3 repository: $it"
+        }
 
         Files.createDirectories(root.resolve("templates"))
 
@@ -138,7 +143,7 @@ fun main(args: Array<String>) {
         convert(vulkanDocs, structs)
     } catch (e: Exception) {
         e.printStackTrace()
-        System.exit(-1)
+        exitProcess(-1)
     }
 
     // TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
@@ -210,15 +215,12 @@ private fun getDistinctTypes(
     }
     .toSet()
 
-private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> {
-    val type = types.getValue(name)
-    return when (type) {
-        is TypeStruct      -> type.members.asSequence()
-            .filter { it.type != name }
-            .flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
-        is TypeFuncpointer -> getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
-        else               -> sequenceOf(type)
-    }
+private fun getDistinctTypes(name: String, types: Map<String, Type>): Sequence<Type> = when (val type = types.getValue(name)) {
+    is TypeStruct      -> type.members.asSequence()
+        .filter { it.type != name }
+        .flatMap { getDistinctTypes(it.type, types) } + sequenceOf(type)
+    is TypeFuncpointer -> getDistinctTypes(type.proto.type, types) + sequenceOf(type) + type.params.asSequence().flatMap { getDistinctTypes(it.type, types) }
+    else               -> sequenceOf(type)
 }
 
 private fun getParamType(param: Field, indirection: String, hasConst: Boolean, hasCheck: Boolean, encoding: String) =

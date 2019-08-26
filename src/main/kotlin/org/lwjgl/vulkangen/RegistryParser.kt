@@ -189,7 +189,7 @@ internal class FieldConverter : Converter {
     override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any {
         val attribs = reader.attributeNames.asSequence()
             .map(Any?::toString)
-            .associateTo(HashMap()) { it to reader.getAttribute(it) }
+            .associateWithTo(HashMap()) { reader.getAttribute(it) }
 
         val modifier = reader.value.trim()
 
@@ -215,8 +215,7 @@ internal class FieldConverter : Converter {
                                 "\"${reader.value}\""
                             } finally {
                                 reader.moveUp()
-                                if (reader.hasMoreChildren() || reader.value != "]")
-                                    throw IllegalStateException()
+                                check(!reader.hasMoreChildren() && reader.value == "]")
                             }
                         it.endsWith(']')         -> it.substring(1, it.length - 1)
                         else                     -> throw IllegalStateException()

@@ -121,9 +121,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     }
     extensionIDs.keys
         .map { it.substring(3) }
-        .associateTo(EXTENSION_TEMPLATES) {
-            it to it.template
-        }
+        .associateWithTo(EXTENSION_TEMPLATES) { it.template }
 
     // TODO: As of 1.0.42 the attribs.txt include doesn't work
     val attribs = AttributesBuilder.attributes()
@@ -689,9 +687,7 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
                         }
                     }
                 if (extension != null) {
-                    if (!extension.startsWith("VK_")) {
-                        throw IllegalStateException()
-                    }
+                    check(extension.startsWith("VK_"))
                     "{@link ${extension.substring(3).template} $extension}"
                 } else {
                     "{@code $it}"
@@ -764,8 +760,7 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
         if (it.lines.isEmpty())
             containerToJavaDoc(it, structs, indent)
         else {
-            if (it.blocks.isNotEmpty())
-                throw IllegalStateException()
+            check(it.blocks.isEmpty())
             when {
                 it.style == "source"    -> codeBlock(it.source, escape = true)
                 it.style == "latexmath" -> getLatexCode(it.source)

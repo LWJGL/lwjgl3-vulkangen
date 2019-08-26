@@ -27,39 +27,39 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.3.11" level="project" />
-    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.3.11" level="project" />
-    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.11" level="project" />
-    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.11" level="project" />
+    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.3.50" level="project" />
+    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.3.50" level="project" />
     <orderEntry type="library" name="Maven: org.jetbrains:annotations:13.0" level="project" />
-    <orderEntry type="library" name="Maven: com.thoughtworks.xstream:xstream:1.4.10" level="project" />
+    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.50" level="project" />
+    <orderEntry type="library" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.50" level="project" />
+    <orderEntry type="library" name="Maven: com.thoughtworks.xstream:xstream:1.4.11.1" level="project" />
     <orderEntry type="library" name="Maven: xmlpull:xmlpull:1.1.3.1" level="project" />
     <orderEntry type="library" name="Maven: xpp3:xpp3_min:1.1.4c" level="project" />
     <orderEntry type="library" name="Maven: org.ogce:xpp3:1.1.6" level="project" />
     <orderEntry type="library" name="Maven: junit:junit:4.7" level="project" />
     <orderEntry type="library" name="Maven: jakarta-regexp:jakarta-regexp:1.4" level="project" />
-    <orderEntry type="library" name="Maven: org.asciidoctor:asciidoctorj:1.6.0-alpha.6" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby:jruby:9.1.12.0" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby:jruby-core:9.1.12.0" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jnr-netdb:1.1.6" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jnr-enxio:0.16" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jnr-x86asm:1.0.2" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jnr-unixsocket:0.17" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jnr-posix:3.0.41" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jnr-constants:0.9.9" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jffi:1.2.16" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.github.jnr:jffi:native:1.2.16" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby.joni:joni:2.1.11" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby.extras:bytelist:1.0.15" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby.jcodings:jcodings:1.0.18" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby:dirgra:0.3" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.headius:invokebinder:1.7" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.headius:options:1.4" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.headius:unsafe-fences:1.0" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.jcraft:jzlib:1.1.3" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.martiansoftware:nailgun-server:0.9.1" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: joda-time:joda-time:2.8.2" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: org.jruby:jruby-stdlib:9.1.12.0" level="project" />
-    <orderEntry type="library" scope="RUNTIME" name="Maven: com.beust:jcommander:1.35" level="project" />
+    <orderEntry type="library" name="Maven: org.asciidoctor:asciidoctorj:1.6.2" level="project" />
+    <orderEntry type="library" name="Maven: org.asciidoctor:asciidoctorj-api:1.6.2" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby:jruby:9.2.6.0" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby:jruby-core:9.2.6.0" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jnr-netdb:1.1.6" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jnr-enxio:0.19" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jnr-unixsocket:0.20" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jnr-posix:3.0.49" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jnr-constants:0.9.12" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jffi:1.2.18" level="project" />
+    <orderEntry type="library" name="Maven: com.github.jnr:jffi:native:1.2.18" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby.joni:joni:2.1.25" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby.jcodings:jcodings:1.0.41" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby:dirgra:0.3" level="project" />
+    <orderEntry type="library" name="Maven: com.headius:invokebinder:1.11" level="project" />
+    <orderEntry type="library" name="Maven: com.headius:options:1.4" level="project" />
+    <orderEntry type="library" name="Maven: com.jcraft:jzlib:1.1.3" level="project" />
+    <orderEntry type="library" name="Maven: com.martiansoftware:nailgun-server:0.9.1" level="project" />
+    <orderEntry type="library" name="Maven: joda-time:joda-time:2.9.9" level="project" />
+    <orderEntry type="library" name="Maven: com.headius:modulator:1.0" level="project" />
+    <orderEntry type="library" name="Maven: com.headius:backport9:1.1" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby:jruby-stdlib:9.2.6.0" level="project" />
+    <orderEntry type="library" name="Maven: com.beust:jcommander:1.35" level="project" />
   </component>
 </module>

@@ -25,7 +25,7 @@ internal fun String.splitLargeLiteral(): String {
 
     var batchStart = 0
     var batchBytes = 0
-    for (batchEnd in 0 until this.length) {
+    for (batchEnd in this.indices) {
         batchBytes += this[batchEnd].modifiedUTF8Length
         if (0xFFFF < batchBytes) {
             builder.append(this, batchStart, batchEnd)
