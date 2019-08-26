@@ -132,6 +132,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         .attribute("chapters", "../chapters")
         .attribute("generated", "../gen")
         .attribute("images", "images")
+        .attribute("spirv", "https://htmlpreview.github.io/?https://github.com/KhronosGroup/SPIRV-Registry/blob/master/extensions")
         .apply {
             ATTRIBS.forEach { (key, value) ->
                 attribute(key, value)
@@ -277,8 +278,8 @@ private fun addEnum(node: StructuralNode, structs: Map<String, TypeStruct>) {
     try {
         ENUM_DOC[enum] = EnumDoc(
             (node.blocks[0].blocks[0] as Block).source.replaceMarkup(structs),
-            containerToJavaDoc(node.blocks[2], structs),
-            containerToJavaDoc(node.blocks[3], structs)
+            node.blocks.firstOrNull { it.title == "Description" }?.let { containerToJavaDoc(it, structs) } ?: "",
+            node.blocks.firstOrNull { it.title == "See Also" }?.let { containerToJavaDoc(it, structs) } ?: ""
         )
     } catch (e: Exception) {
         System.err.println("Failed while parsing: $enum")
@@ -586,7 +587,8 @@ E = r &times; sqrt(L) for 0 &le; L &le; 1
     "\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(height / maxFragmentDensityTexelSize.height)}",
     "\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(maxFramebufferWidth / minFragmentDensityTexelSize.width)}",
     "\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}",
-    "\\pm\\infty" to "&plusmn;&infin;"
+    "\\pm\\infty" to "&plusmn;&infin;",
+    "s = {WorkGroupSize.x * WorkGroupSize.y * WorkgroupSize.z <= SubgroupSize * maxComputeWorkgroupSubgroups }" to "<code>s = {WorkGroupSize.x * WorkGroupSize.y * WorkgroupSize.z &le; SubgroupSize * maxComputeWorkgroupSubgroups }</code>"
 )
 
 private val LATEX_REGISTRY_USED = HashSet<String>()
@@ -595,7 +597,7 @@ private fun getLatexCode(source: String): String {
     //val code = LATEX_REGISTRY[source] ?: throw IllegalStateException("Missing LaTeX equation:\n$source")
     val code = LATEX_REGISTRY[source] ?: LATEX_REGISTRY[source.replace("\\s+".toRegex(), " ")]
     if (code == null) {
-        System.err.println(source)
+        System.err.println("lwjgl: Missing LateX equation:\n$source")
         return source
     }
     LATEX_REGISTRY_USED.add(source)
@@ -612,6 +614,7 @@ fun printUnusedLatexEquations() {
 
 private val LINE_BREAK = """\n\s*""".toRegex()
 
+private val SPIRV_LINKS = """\{spirv}""".toRegex() // asciidoctor isn't replacing the attribute is many places
 private val SIMPLE_NUMBER = """(?<=^|\s)`(\d+)`|code:(\d+)(?=\s|$)""".toRegex()
 private val KEYWORD = """(?<=^|\s)(must|should|may|can|cannot):(?=\s|$)""".toRegex()
 private val UNDEFINED = """(?<=^|\s)undefined:""".toRegex()
@@ -629,13 +632,14 @@ private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:fname|pname|ptext|basetype|ename|elink|tlink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val CODE3 = """(?:etext|ftext):([\w*]+)""".toRegex()
-private val LINK = """(?:link:)?(https?://.+?)\[([^]]*?)]""".toRegex()
+private val LINK = """(?:link:)?(https?://.+?)\[([^]]*?)\^?]""".toRegex()
 private val SPEC_LINK = """<<([^,]+?)(?:,([\s\S]+?))?>>""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 private val FIX_ARROWS = """\\->""".toRegex()
 private val FIX_INVALID_VUIDs = """\[\[VUID-\{refpage}.+?]]\s*""".toRegex()
 
 private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
+    .replace(SPIRV_LINKS, "https://htmlpreview.github.io/?https://github.com/KhronosGroup/SPIRV-Registry/blob/master/extensions")
     .replace(LINE_BREAK, " ")
     .replace(LATEX_MATH) {
         // These will likely be replaced to reduce HTML load times.
@@ -660,8 +664,6 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
     .replace(UNDEFINED, "undefined") // TODO: highlight or anything else?
     .replace(STRONG, "<b>$1</b>")
     .replace(EMPHASIS, "<em>$1</em>")
-    .replace(SUPERSCRIPT, "<sup>$1</sup>")
-    .replace(SUBSCRIPT, "<sub>$1</sub>")
     .replace(STRUCT_OR_HANDLE) {
         val type = it.groups[1]!!.value
         if (structs.containsKey(type))
@@ -728,6 +730,8 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         val section = it.groups[1]!!
         """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html\#${section.value}">${it.groups[2]?.value ?: section.value}</a>"""
     }
+    .replace(SUPERSCRIPT, "<sup>$1</sup>")
+    .replace(SUBSCRIPT, "<sub>$1</sub>")
     .replace(EXTENSION, "{@code $1}")
     .replace(FIX_ARROWS, "-&gt;")
     .replace(FIX_INVALID_VUIDs, "")
