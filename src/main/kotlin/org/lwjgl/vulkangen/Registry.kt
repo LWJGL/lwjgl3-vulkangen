@@ -10,7 +10,6 @@ import kotlin.system.*
 
 internal val DISABLED_EXTENSIONS = setOf(
     "VK_ANDROID_external_memory_android_hardware_buffer",
-    "VK_EXT_metal_surface",
     "VK_FUCHSIA_imagepipe_surface",
     "VK_GGP_frame_token",
     "VK_GGP_stream_descriptor_surface",
@@ -364,6 +363,7 @@ private fun generateTypes(
 import org.lwjgl.generator.*${if (templateTypes.any { it is TypeSystem }) """
 //import core.android.*
 import core.linux.*
+import core.macos.*
 import core.windows.*""" else ""}
 
 ${if (custom != null) custom() else ""}// Handle types
