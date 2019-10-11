@@ -41,10 +41,13 @@ internal val EXTENSION_TEMPLATES = HashMap<String, String>(64)
 internal val EXTENSION_DOC = HashMap<String, String>(64)
 
 private val ATTRIBS = mapOf(
+    // Special symbols - not used in [eq] spans
     "sym1" to "✓",
     "sym2" to "†",
     "reg" to "®",
     "trade" to "™",
+
+    // Math operators and logic symbols
     "times" to "×",
     "cdot" to "⋅",
     "plus" to "+",
@@ -73,6 +76,8 @@ private val ATTRIBS = mapOf(
     "sqrt" to "√",
     "inf" to "∞",
     "plusmn" to "±",
+
+    // Greek letters
     "alpha" to "α",
     "beta" to "β",
     "gamma" to "γ",
@@ -87,7 +92,13 @@ private val ATTRIBS = mapOf(
     "sigma" to "σ",
     "tau" to "τ",
     "phi" to "ϕ",
-    "wbro" to ""
+
+    // Word break opportunity tag for HTML
+    "wbro" to "",
+
+    // Placeholders for host synchronization block text
+    "externsynctitle" to "Host Synchronization",
+    "externsyncprefix" to "Host access to"
 )
 
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
@@ -105,9 +116,9 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
     // We parse extensions.txt to create a map of attributes to pass to asciidoctor.
     // The attributes are used in ifdef preprocessor directives in extensions.txt
     // to enable extensions.
-    val extensionIDs = """^include::../(VK_\w+)\.txt\[]""".toRegex().let { regex ->
-        (Files.lines(appendices.resolve("meta/current_extension_appendices.txt")).asSequence() +
-            Files.lines(appendices.resolve("meta/deprecated_extension_appendices.txt")).asSequence())
+    val extensionIDs = """^include::\{appendices}/(VK_\w+)\.txt\[]""".toRegex().let { regex ->
+        (Files.lines(root.resolve("gen/meta/current_extension_appendices.txt")).asSequence() +
+            Files.lines(root.resolve("gen/meta/deprecated_extension_appendices.txt")).asSequence())
             .mapNotNull {
                 val result = regex.find(it)
                 if (result == null) {
@@ -129,6 +140,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         .attribute("VK_VERSION_1_0")
         .attribute("VK_VERSION_1_1")
         .attributes(extensionIDs)
+        .attribute("appendices", "../../appendices")
         .attribute("chapters", "../chapters")
         .attribute("generated", "../gen")
         .attribute("images", "images")

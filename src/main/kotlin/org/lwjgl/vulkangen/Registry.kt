@@ -75,7 +75,7 @@ fun main(args: Array<String>) {
         "Usage: VulkanSpecKt <vulkan-docs-path> <lwjgl3-path>"
     }
 
-    val vulkanDocs = Paths.get(args[0])
+    val vulkanDocs = Paths.get(args[0]).toAbsolutePath().normalize()
     val registry = vulkanDocs.let {
         require(Files.isDirectory(it)) {
             "Invalid Vulkan-Docs repository path specified: $it"
