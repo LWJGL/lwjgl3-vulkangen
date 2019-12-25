@@ -154,13 +154,28 @@ fun main(args: Array<String>) {
             .joinToString("\n", postfix = "\n\n")
     }
 
+    val extensions = registry.extensions.asSequence()
+        .filter { it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
+
+    registry.features.forEach { feature ->
+        feature.requires.forEach { requires ->
+            requires.enums?.forEach { enum ->
+                enumRegistry.enumMap.putIfAbsent(enum.name, enum)
+            }
+        }
+    }
+    extensions.forEach { extension ->
+        extension.requires.forEach { requires ->
+            requires.enums?.forEach { enum ->
+                enumRegistry.enumMap.putIfAbsent(enum.name, enum)
+            }
+        }
+    }
+
     val enumsSeen = HashSet<Enums>()
     registry.features.forEach { feature ->
         generateFeature(root, types, enumRegistry, structs, commands, feature, enumsSeen)
     }
-
-    val extensions = registry.extensions.asSequence()
-        .filter { it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
 
     val extensionTypes = getDistinctTypes(extensions.flatMap { it.requires.asSequence() }, commands, types)
         .toMutableSet()
@@ -323,7 +338,7 @@ else {
 private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>) = fields
     .mapNotNull {
         // TODO: find extension that defines the VK_MAX_ value, not everything is in VK10 (see VkPhysicalDeviceDriverPropertiesKHR)
-        if (it.array != null && it.array.startsWith("\"VK_MAX_"))
+        if (it.array != null && (it.array.startsWith("\"VK_MAX_") || it.array == "VK_UUID_SIZE"))
             "static org.lwjgl.vulkan.VK10.*"
         else {
             val type = types[it.type]
@@ -704,30 +719,10 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
 }
 
 private fun Enum.getEnumValue(extensionNumber: Int, enumRegistry: EnumRegistry): String = when {
-    value != null  -> {
-        enumRegistry.enumMap[name] = this
-        ".\"${value.replace("U", "")}\""
-    }
-    offset != null -> {
-        enumRegistry.enumMap[name] = this
-        ".\"${offsetAsEnum(if (extensionNumber == 0 && extnumber != null) extnumber else extensionNumber, offset, dir)}\""
-    }
-    bitpos != null -> {
-        enumRegistry.enumMap[name] = this
-        "enum(${bitposAsHex(bitpos)})"
-    }
-    else           -> {
-        val value = enumRegistry.enumMap.getValue(alias ?: name).getEnumValue(extensionNumber, enumRegistry)
-        if (alias != null) {
-            // store the aliased name too, for alias chain cases
-            var ref = this
-            do {
-                ref = enumRegistry.enumMap.getValue(ref.alias!!)
-            } while (ref.alias != null)
-            enumRegistry.enumMap[name] = ref
-        }
-        value
-    }
+    value != null  -> ".\"${value.replace("U", "")}\""
+    offset != null -> ".\"${offsetAsEnum(if (extensionNumber == 0 && extnumber != null) extnumber else extensionNumber, offset, dir)}\""
+    bitpos != null -> "enum(${bitposAsHex(bitpos)})"
+    else           -> enumRegistry.enumMap.getValue(alias ?: name).getEnumValue(extensionNumber, enumRegistry)
 }
 
 private fun offsetAsEnum(extensionNumber: Int, offset: String, dir: String?) =

@@ -44,6 +44,7 @@ private val ATTRIBS = mapOf(
     // Special symbols - not used in [eq] spans
     "sym1" to "✓",
     "sym2" to "†",
+    ":sym3:" to "‡",
     "reg" to "®",
     "trade" to "™",
 
@@ -522,7 +523,7 @@ o &= \mathrm{dbclamp}( m \times \mathtt{depthBiasSlopeFactor} + r \times \mathtt
         codeBlock("""
         m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor                     depthBiasClamp = 0 or NaN
 o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
-    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0""")
+    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
 
     /*"""\begin{aligned}
 E & =
@@ -533,7 +534,7 @@ E & =
 \end{aligned}""" to
         codeBlock("""
 E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 1
-    12.92  &times; L for 0 &le; L &lt 0.0031308"""),
+    12.92  &times; L for 0 &le; L &lt 0.0031308"""),*/
 
     """\begin{aligned}
 E & =
@@ -544,9 +545,9 @@ E & =
 \end{aligned}""" to
         codeBlock("""
 E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0030186 &le; L &le; 1
-    12.92  &times; L for 0 &le; L &lt 0.0030186"""),
+    12.92  &times; L for 0 &le; L &lt; 0.0030186"""),
 
-    """\begin{aligned}
+    /*"""\begin{aligned}
 E & =
   \begin{cases}
     1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 7.5913 \\
@@ -592,7 +593,7 @@ E & =
   \end{cases}
 \end{aligned}""" to codeBlock("""
 E = r &times; sqrt(L) for 0 &le; L &le; 1
-    a &times; ln(L - b) + c for 1 &lt L""")*/,
+    a &times; ln(L - b) + c for 1 &lt L""")*/
     """\lfloor i_G \times 0.5 \rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
     """\lfloor j_G \times 0.5 \rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>",
     "\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(width / maxFragmentDensityTexelSize.width)}",
@@ -777,10 +778,10 @@ private fun nodeToJavaDoc(it: StructuralNode, structs: Map<String, TypeStruct>, 
             containerToJavaDoc(it, structs, indent)
         else {
             check(it.blocks.isEmpty())
-            when {
-                it.style == "source"    -> codeBlock(it.source, escape = true)
-                it.style == "latexmath" -> getLatexCode(it.source)
-                else                    -> it.lines.joinToString(" ").replaceMarkup(structs)
+            when (it.style) {
+                "source"    -> codeBlock(it.source, escape = true)
+                "latexmath" -> getLatexCode(it.source)
+                else        -> it.lines.joinToString(" ").replaceMarkup(structs)
             }
         }
     } else if (it is org.asciidoctor.ast.List) {

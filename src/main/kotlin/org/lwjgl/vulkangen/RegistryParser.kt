@@ -152,6 +152,11 @@ internal class Extension(
     val number: Int,
     val type: String,
     val supported: String,
+    val requiresCore: String?,
+    val platform: String?,
+    val promotedto: String?,
+    val deprecatedby: String?,
+    val obsoletedby: String?,
     val requires: List<Require>
 )
 
@@ -503,6 +508,11 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.useAttributeFor(it, "number")
         xs.useAttributeFor(it, "type")
         xs.useAttributeFor(it, "supported")
+        xs.useAttributeFor(it, "requiresCore")
+        xs.useAttributeFor(it, "platform")
+        xs.useAttributeFor(it, "promotedto")
+        xs.useAttributeFor(it, "deprecatedby")
+        xs.useAttributeFor(it, "obsoletedby")
     }
 
     xs
