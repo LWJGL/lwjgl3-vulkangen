@@ -6,7 +6,6 @@ import com.thoughtworks.xstream.io.*
 import com.thoughtworks.xstream.io.xml.*
 import java.nio.charset.*
 import java.nio.file.*
-import java.util.*
 
 internal class Platform(
     val name: String,
@@ -94,6 +93,7 @@ internal class Field(
     val type: String,
     val indirection: String,
     val name: String,
+    val bits: Int?,
     val array: String?,
     val attribs: MutableMap<String, String>
 ) {
@@ -129,7 +129,7 @@ internal class Command(
 
 internal class TypeRef(val name: String)
 
-internal class CommandRef(val name: String)
+internal data class CommandRef(val name: String)
 
 internal class Require(
     val comment: String?,
@@ -160,6 +160,24 @@ internal class Extension(
     val requires: List<Require>
 )
 
+internal class Enable(
+    val version: String?,
+    val extension: String?,
+    val struct: String?,
+    val feature: String?,
+    val requires: String?
+)
+
+internal class SPIRVExtension(
+    val name: String,
+    val enables: List<Enable>
+)
+
+internal class SPIRVCapability(
+    val name: String,
+    val enables: List<Enable>
+)
+
 internal class Registry(
     val platforms: List<Platform>,
     val tags: List<Tag>,
@@ -167,7 +185,9 @@ internal class Registry(
     val enums: List<Enums>,
     val commands: List<Command>,
     val features: List<Feature>,
-    val extensions: List<Extension>
+    val extensions: List<Extension>,
+    val spirvextensions: List<SPIRVExtension>,
+    val spirvcapabilities: List<SPIRVCapability>
 )
 
 private val INDIRECTION_REGEX = Regex("""([*]+)(?:\s+const\s*([*]+))?""")
@@ -199,7 +219,7 @@ internal class FieldConverter : Converter {
         val modifier = reader.value.trim()
 
         if (!reader.hasMoreChildren())
-            return Field("", "N/A", "", modifier, null, attribs)
+            return Field("", "N/A", "", modifier, null, null, attribs)
 
         val type = StringBuilder()
         reader.moveDown()
@@ -209,27 +229,32 @@ internal class FieldConverter : Converter {
         reader.moveDown()
         val name = reader.value
         reader.moveUp()
-        val array = reader.value.trim().let {
+
+        var bits: Int? = null
+        var array: String? = null
+        reader.value.trim().let {
             when {
-                it.isEmpty()       -> null
+                it.isEmpty()       -> {}
+                it.startsWith(':') -> {
+                    bits = it.substring(1).toInt()
+                    check(!reader.hasMoreChildren())
+                }
                 it.startsWith('[') ->
                     when {
-                        reader.hasMoreChildren() ->
-                            try {
-                                reader.moveDown()
-                                "\"${reader.value}\""
-                            } finally {
-                                reader.moveUp()
-                                check(!reader.hasMoreChildren() && reader.value == "]")
-                            }
-                        it.endsWith(']')         -> it.substring(1, it.length - 1)
+                        reader.hasMoreChildren() -> {
+                            reader.moveDown()
+                            array = "\"${reader.value}\""
+                            reader.moveUp()
+                            check(!reader.hasMoreChildren() && reader.value == "]")
+                        }
+                        it.endsWith(']')         -> array = it.substring(1, it.length - 1)
                         else                     -> throw IllegalStateException()
                     }
                 else               -> throw IllegalStateException(it)
             }
         }
 
-        return Field(modifier, type.toString(), indirection, name, array, attribs)
+        return Field(modifier, type.toString(), indirection, name, bits, array, attribs)
     }
 
     override fun canConvert(type: Class<*>?): Boolean = type === Field::class.java
@@ -297,10 +322,17 @@ internal class TypeConverter : Converter {
             }
             "basetype"    -> {
                 reader.moveDown()
-                val type = reader.value
-                reader.moveUp()
+                val type = if (reader.nodeName == "type") {
+                    try {
+                        reader.value
+                    } finally {
+                        reader.moveUp()
+                        reader.moveDown()
+                    }
+                } else {
+                    "opaque"
+                }
 
-                reader.moveDown()
                 val name = reader.value
                 reader.moveUp()
 
@@ -358,7 +390,7 @@ internal class TypeConverter : Converter {
                     val name = it.value
                     it.moveUp()
 
-                    Field(modifier, type, indirection.indirection, name, null, HashMap())
+                    Field(modifier, type, indirection.indirection, name, null, null, HashMap())
                 }
 
                 if (proto.name == "PFN_vkVoidFunction")
@@ -375,7 +407,7 @@ internal class TypeConverter : Converter {
 
                         val (indirection, paramName) = FUNC_POINTER_PARAM_NAME_REGEX.find(reader.value)!!.destructured
 
-                        params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, HashMap()))
+                        params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, null, HashMap()))
                     }
 
                     TypeFuncpointer(proto, params)
@@ -513,6 +545,26 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.useAttributeFor(it, "promotedto")
         xs.useAttributeFor(it, "deprecatedby")
         xs.useAttributeFor(it, "obsoletedby")
+    }
+
+    Enable::class.java.let {
+        xs.addImplicitCollection(SPIRVExtension::class.java, "enables", "enable", it)
+        xs.addImplicitCollection(SPIRVCapability::class.java, "enables", "enable", it)
+        xs.useAttributeFor(it, "version")
+        xs.useAttributeFor(it, "extension")
+        xs.useAttributeFor(it, "struct")
+        xs.useAttributeFor(it, "feature")
+        xs.useAttributeFor(it, "requires")
+    }
+
+    SPIRVExtension::class.java.let {
+        xs.alias("spirvextension", it)
+        xs.useAttributeFor(it, "name")
+    }
+
+    SPIRVCapability::class.java.let {
+        xs.alias("spirvcapability", it)
+        xs.useAttributeFor(it, "name")
     }
 
     xs

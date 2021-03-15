@@ -10,13 +10,15 @@ import kotlin.system.*
 
 internal val DISABLED_EXTENSIONS = setOf(
     "VK_ANDROID_external_memory_android_hardware_buffer",
+    "VK_EXT_directfb_surface",
     "VK_FUCHSIA_imagepipe_surface",
     "VK_GGP_frame_token",
     "VK_GGP_stream_descriptor_surface",
     "VK_KHR_android_surface",
     "VK_KHR_xcb_surface",
     "VK_MVK_ios_surface",
-    "VK_NN_vi_surface"
+    "VK_NN_vi_surface",
+    "VK_QNX_screen_surface",
 )
 
 private val ABBREVIATIONS = setOf(
@@ -63,8 +65,7 @@ internal class LWJGLWriter(out: Writer) : PrintWriter(out) {
 }
 
 private class EnumRegistry(enumsList: List<Enums>) {
-    val enums = enumsList.asSequence()
-        .associateBy { it.name }
+    val enums = enumsList.associateBy { it.name }
     val enumMap = enums.values.asSequence()
         .flatMap { it.enums?.asSequence() ?: emptySequence() }
         .associateByTo(HashMap()) { it.name }
@@ -105,8 +106,7 @@ fun main(args: Array<String>) {
         root
     }
 
-    val types = registry.types.asSequence()
-        .associateBy(Type::name)
+    val types = registry.types.associateBy(Type::name)
 
     val structs = registry.types.asSequence()
         .filterIsInstance<TypeStruct>()
@@ -114,10 +114,9 @@ fun main(args: Array<String>) {
 
     val enumRegistry = EnumRegistry(registry.enums)
 
-    val commands = registry.commands.asSequence()
-        .associateByTo(HashMap<String, Command>()) {
-            it.name ?: it.proto.name
-        }
+    val commands = registry.commands.associateByTo(HashMap()) {
+        it.name ?: it.proto.name
+    }
 
     registry.commands.asSequence()
         .filter { it.name != null }
@@ -263,22 +262,28 @@ private fun getCheck(param: Field, indirection: String, structs: Map<String, Typ
             if (!forceIN && param.modifier != "const" && !structs.containsKey(param.type)) // output, non-struct
                 return "Check(1).."
         } else {
-            // TODO: support more? this currently only supports "struct.member"
-            val customExpression = param.len.firstOrNull { it.contains("::") }
+            // TODO: support more? this currently only supports "struct->member"
+            val customExpression = param.len.firstOrNull { it.contains("->") }
             if (customExpression != null)
-                return "Check(\"${customExpression.substringBefore(':')}.${customExpression.substringAfterLast(':')}()\").."
+                return "Check(\"${customExpression.substringBefore("->")}.${customExpression.substringAfterLast("->")}()\").."
         }
     }
     return ""
 }
 
-private fun getParams(function: Function, types: Map<String, Type>, structs: Map<String, TypeStruct>, forceIN: Boolean = false, indent: String = "$t$t"): String = if (function.params.isEmpty())
+private fun getParams(
+    function: Function,
+    functionDoc: FunctionDoc?,
+    types: Map<String, Type>,
+    structs: Map<String, TypeStruct>,
+    forceIN: Boolean = false,
+    indent: String = "$t$t"
+): String = if (function.params.isEmpty())
     ""
 else {
     val returns = function.proto
     val params = function.params
 
-    val functionDoc = FUNCTION_DOC[returns.name.let { if (it.startsWith("PFN_vk")) it else it.substring(2) }]
     params.asSequence().map { param ->
         val autoSize = params.asSequence()
             .filter { it.len.contains(param.name) }
@@ -309,7 +314,7 @@ else {
                            || param.externsync != null
         val check = getCheck(param, indirection, structs, forceINParam)
 
-        val nullable = if ((indirection.isNotEmpty() || nativeType is TypeFuncpointer) && (
+        val nullable = if ((indirection.isNotEmpty() || nativeType is TypeFuncpointer/* || (nativeType is TypeHandle && nativeType.type == "VK_DEFINE_HANDLE")*//* || nativeType is TypePlatform*/) && (
                 // the parameter is optional
                 "true" == param.optional ||
                 // the AutoSize param is optional
@@ -337,8 +342,7 @@ else {
 
 private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>) = fields
     .mapNotNull {
-        // TODO: find extension that defines the VK_MAX_ value, not everything is in VK10 (see VkPhysicalDeviceDriverPropertiesKHR)
-        if (it.array != null && (it.array.startsWith("\"VK_MAX_") || it.array == "VK_UUID_SIZE"))
+        if (it.array != null && (it.array.startsWith("\"VK_MAX_") || it.array == "\"VK_UUID_SIZE\""))
             "static org.lwjgl.vulkan.VK10.*"
         else {
             val type = types[it.type]
@@ -424,7 +428,7 @@ ${templateTypes.asSequence()
                 """${structTypes}val ${fp.name} = Module.VULKAN.callback {
     ${getReturnType(fp.proto)}(
         "${fp.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
-        "${functionDoc?.shortDescription ?: ""}"${getParams(fp, types, structs, forceIN = true, indent = "$t$t")},
+        "${functionDoc?.shortDescription ?: ""}"${getParams(fp, FUNCTION_DOC[fp.proto.name], types, structs, forceIN = true, indent = "$t$t")},
 
         nativeType = "${fp.name}"
     ) {
@@ -521,7 +525,7 @@ ${templateTypes.asSequence()
                             if (member.type == struct.name) "_$it" else it
                         }
 
-                        "$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\")${
+                        "$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
                         if (member.array != null) "[${member.array}]" else ""
                         }${
                         if (struct.returnedonly && (member.name == "sType" || member.name == "pNext")) ".mutable()" else ""
@@ -609,7 +613,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
             .forEach {
                 if (it.commands != null) {
                     writer.println("\n$t// ${it.comment}")
-                    writer.printCommands(it, types, structs, commands)
+                    writer.printCommands(it.commands.asSequence().map { commandRef -> commandRef.name }, types, structs, commands)
                 }
             }
 
@@ -617,6 +621,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
     }
 }
 
+private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
 private fun generateExtension(
     root: Path,
     types: Map<String, Type>,
@@ -710,9 +715,38 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
             writer.printEnums(extensionEnums, extension.number, enumRegistry)
         }
 
+        // Merge multiple dependencies (in different <require>) for the same command
+        val dependencies = HashMap<String, String>()
         extension.requires.forEach { require ->
-            writer.printCommands(require, types, structs, commands)
+            val dependency = require.extension ?: require.feature.let {
+                if (it == null) {
+                    null
+                } else {
+                    val (major, minor) = VK_VERSION_REGEX.find(it)!!.destructured
+                    "Vulkan$major$minor"
+                }
+            }
+            if (dependency != null && require.commands != null) {
+                require.commands.forEach { commandRef ->
+                    dependencies.merge(commandRef.name, dependency) { current, dependency ->
+                        when {
+                            current.startsWith("ext.contains") -> """$current || ext.contains("$dependency")"""
+                            else                               -> """ext.contains("$current") || ext.contains("$dependency")"""
+                        }
+                    }
+                }
+            }
         }
+
+        writer.printCommands(
+            extension.requires.asSequence()
+                .filter { it.commands != null }
+                .flatMap { it.commands!!.asSequence() }
+                .map { it.name }
+                .distinct(),
+            types, structs, commands,
+            dependencies
+        )
 
         writer.print("}")
     }
@@ -766,44 +800,36 @@ private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enu
         }
 }
 
-private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
 private fun PrintWriter.printCommands(
-    require: Require,
+    commandRefs: Sequence<String>,
     types: Map<String, Type>,
     structs: Map<String, TypeStruct>,
-    commands: Map<String, Command>
+    commands: Map<String, Command>,
+    dependencies: Map<String, String>? = null
 ) {
-    if (require.commands == null) {
-        return
-    }
-
-    // TODO: multiple require blocks may include the same command
-    //       In that case, the DependsOn modifier must be a logical OR of the corresponding requires
-    //       Output command only once of course.
-    val dependency = require.extension ?: require.feature.let {
-        if (it == null) {
-            null
-        } else {
-            val (major, minor) = VK_VERSION_REGEX.find(it)!!.destructured
-            "Vulkan$major$minor"
-        }
-    }
-
-    require.commands.forEach { commandRef ->
-        val cmd = commands.getValue(commandRef.name)
-        val name = commandRef.name.substring(2)
-        val functionDoc = FUNCTION_DOC[name]
+    commandRefs.forEach { commandRef ->
+        val cmd = commands.getValue(commandRef)
+        val name = commandRef.substring(2)
 
         print("\n$t")
         // If we don't have a dispatchable handle, mark ICD-global
-        if (commandRef.name == "vkGetInstanceProcAddr" || cmd.params.none { param ->
-                param.indirection.isEmpty() && types.getValue(param.type).let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" }
+        if (commandRef == "vkGetInstanceProcAddr" || cmd.params.none { param ->
+                param.indirection.isEmpty() && types.getValue(param.type).let { it is TypeHandle && it.type == "VK_DEFINE_HANDLE" }/* && param.optional != "true"*/
             }) {
             print("GlobalCommand..")
         }
-        if (dependency != null) {
-            print("DependsOn(\"$dependency\")..")
+
+        dependencies?.get(commandRef).let {
+            if (it != null) {
+                print(if (it.startsWith("ext.contains"))
+                    "DependsOn(\"\"\"$it\"\"\").."
+                else
+                    "DependsOn(\"$it\").."
+                )
+            }
         }
+
+        val functionDoc = FUNCTION_DOC[name]
         println("""${getReturnType(cmd.proto)}(
         "$name",
         ${if (functionDoc == null) {
@@ -819,7 +845,10 @@ private fun PrintWriter.printCommands(
         ${functionDoc.seeAlso}"""}
         $QUOTES3"""
         }${getParams(
-            cmd, types, structs,
+            cmd,
+            functionDoc ?: cmd.alias.let { if (it != null) FUNCTION_DOC[it.substring(2)] else null },
+            types, 
+            structs,
             // workaround: const missing from VK_EXT_debug_marker struct params
             forceIN = cmd.cmdbufferlevel != null
         )}

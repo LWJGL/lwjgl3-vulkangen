@@ -41,12 +41,22 @@ internal val EXTENSION_TEMPLATES = HashMap<String, String>(64)
 internal val EXTENSION_DOC = HashMap<String, String>(64)
 
 private val ATTRIBS = mapOf(
+    "spirv" to "https://htmlpreview.github.io/?https://github.com/KhronosGroup/SPIRV-Registry/blob/master/extensions",
+    "anchor-prefix" to "",
+
+    // Macro just to avoid typing the messy expression many times.
+    // \' doesn't work in title, captions, link text, etc.
+    "YCbCr" to "Y′C~B~C~R~",
+    "RGBprime" to "R′G′B′",
+    "prime" to "′",
+
     // Special symbols - not used in [eq] spans
     "sym1" to "✓",
     "sym2" to "†",
-    ":sym3:" to "‡",
+    "sym3" to "‡",
     "reg" to "®",
     "trade" to "™",
+    "harr" to "↔",
 
     // Math operators and logic symbols
     "times" to "×",
@@ -99,7 +109,21 @@ private val ATTRIBS = mapOf(
 
     // Placeholders for host synchronization block text
     "externsynctitle" to "Host Synchronization",
-    "externsyncprefix" to "Host access to"
+    "externsyncprefix" to "Host access to",
+
+    // macros are not case-sensitive but are defined as such for readability
+    "ExecutionModel" to "<code>Execution Model</code>",
+    "ExecutionMode" to "<code>Execution Mode</code>",
+    "StorageClass" to "<code>Storage Class</code>",
+
+    // Human-readable names for XML 'specialuse' attributes, used in
+    // chapters/extensions.txt for the <<extendingvulkan-specialuse-table>> table
+    // as well as in some extension appendices.
+    "cadsupport" to "CAD support",
+    "d3demulation" to "D3D support",
+    "devtools" to "Developer tools",
+    "debugging" to "Debugging tools",
+    "glemulation" to "OpenGL / ES support",
 )
 
 internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
@@ -113,7 +137,6 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     // Extension class documentation
 
-    val appendices = root.resolve("appendices")
     // We parse extensions.txt to create a map of attributes to pass to asciidoctor.
     // The attributes are used in ifdef preprocessor directives in extensions.txt
     // to enable extensions.
@@ -140,19 +163,21 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         .ignoreUndefinedAttributes(false)
         .attribute("VK_VERSION_1_0")
         .attribute("VK_VERSION_1_1")
+        .attribute("VK_VERSION_1_2")
         .attributes(extensionIDs)
-        .attribute("appendices", "../../appendices")
-        .attribute("chapters", "../chapters")
-        .attribute("generated", "../gen")
-        .attribute("images", "images")
-        .attribute("spirv", "https://htmlpreview.github.io/?https://github.com/KhronosGroup/SPIRV-Registry/blob/master/extensions")
+        .attribute("appendices", root.resolve("appendices"))
+        .attribute("chapters", root.resolve("chapters"))
+        .attribute("config", root.resolve("config"))
+        .attribute("generated", root.resolve("gen"))
+        .attribute("images", root.resolve("images"))
+        .attribute("refprefix", "")
         .apply {
             ATTRIBS.forEach { (key, value) ->
                 attribute(key, value)
             }
         }
-        .asMap()
 
+    val appendices = root.resolve("appendices")
     val extensions = asciidoctor.loadFile(
         appendices.resolve("extensions.txt").toFile(),
         OptionsBuilder.options()
@@ -169,7 +194,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     // Enums, functions & structs
 
-    val document = root.resolve("man").let { man ->
+    val document = root.resolve("gen").resolve("refpage").let { man ->
         asciidoctor.load(
             String(Files.readAllBytes(man.resolve("apispec.txt")), StandardCharsets.UTF_8),
             OptionsBuilder.options()
@@ -209,14 +234,8 @@ private fun buildExtensionDocumentation(
     extensionIDs: Map<String, String>,
     structs: Map<String, TypeStruct>
 ) {
-    var i = 0
+    var i = findFirstExtensionBlock(blocks, 0, extensionIDs)
     while (i < blocks.size) {
-        // Find an extension
-        i = findFirstExtensionBlock(blocks, i, extensionIDs)
-        if (i == blocks.size) {
-            break
-        }
-
         val firstBlock = blocks[i++]
         val from = i
 
@@ -225,11 +244,17 @@ private fun buildExtensionDocumentation(
 
         // Concat blocks
         EXTENSION_DOC[firstBlock.id.substring(3)] =
-            // move metadata last
-            (firstBlock.blocks.asSequence().drop(1) +
-                blocks.listIterator(from).asSequence().take(i - from) +
-                firstBlock.blocks.asSequence().take(1)
-                )
+            // Re-order sections for readability: description first, metadata last
+            (
+                // appendices/<extension>.txt: skip "Other Extension Metadata" and drop "Description" header
+                blocks[from + 1].blocks.asSequence() +
+                // appendices/<extension>.txt: all sections after "Description"
+                blocks.listIterator(from + 2).asSequence().take(i - (from + 2)) +
+                // meta/<extension>.txt
+                firstBlock +
+                // appendices/<extension>.txt: "Other Extension Metadata"
+                blocks[from]
+            )
                 .filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
                 .map { nodeToJavaDoc(it, structs) }
                 .joinToString("\n\n$t$t")
@@ -302,9 +327,11 @@ private fun addEnum(node: StructuralNode, structs: Map<String, TypeStruct>) {
 }
 
 private val SECTION_XREFS = mapOf(
+    "acceleration-structure-inactive-prims" to "Inactive Primitives and Instances",
     "clears" to "Clear Commands",
     "clears-values" to "Clear Values",
     "copies" to "Copy Commands",
+    "copies-buffers-images-rotation-addressing" to "Buffer and Image Addressing with Rotation",
     "debug-report-object-types" to "{@code VkDebugReportObjectTypeEXT} and Vulkan Handle Relationship",
     "descriptorsets-combinedimagesampler" to "Combined Image Sampler",
     "descriptorsets-compatibility" to "Pipeline Layout Compatibility",
@@ -321,9 +348,11 @@ private val SECTION_XREFS = mapOf(
     "descriptorsets-uniformtexelbuffer" to "Uniform Texel Buffer",
     "descriptorsets-updates" to "Descriptor Set Updates",
     "descriptorsets-updates-consecutive" to "consecutive binding updates",
+    "device-generated-commands" to "Device-Generated Commands",
     "devsandqueues-priority" to "Queue Priority",
     "dispatch" to "Dispatching Commands",
     "drawing-mesh-shading" to "Programmable Mesh Shading",
+    "drawing-triangle-fans" to "Triangle Fans",
     "extendingvulkan-coreversions-versionnumbers" to "Version Numbers",
     "extendingvulkan-extensions" to "Extensions",
     "extendingvulkan-layers" to "Layers",
@@ -332,6 +361,9 @@ private val SECTION_XREFS = mapOf(
     "formats-compatible-planes" to "Compatible formats of planes of multi-planar formats",
     "formats-numericformat" to "Interpretation of Numeric Format",
     "formats-requiring-sampler-ycbcr-conversion" to "Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views",
+    "fragops-stencil" to "Stencil Test",
+    "framebuffer-blendfactors" to "Blend Factors",
+    "framebuffer-blending" to "Blending",
     "framebuffer-dsb" to "Dual-Source Blending",
     "fundamentals-fp10" to "Unsigned 10-Bit Floating-Point Numbers",
     "fundamentals-fp11" to "Unsigned 11-Bit Floating-Point Numbers",
@@ -343,12 +375,18 @@ private val SECTION_XREFS = mapOf(
     "memory" to "Memory Allocation",
     "memory-device-hostaccess" to "Host Access to Device Memory Objects",
     "primsrast" to "Rasterization",
+    "primsrast-fragment-shading-rate-attachment" to "Attachment Fragment Shading Rate",
+    "primsrast-fragment-shading-rate-pipeline" to "Pipeline Fragment Shading Rate",
+    "primsrast-fragment-shading-rate-primitive" to "Primitive Fragment Shading Rate",
+    "primsrast-polygonmode" to "Polygon Mode",
     "queries-pipestats" to "Pipeline Statistics Queries",
     "resources-association" to "Resource Memory Association",
     "resources-image-views" to "Image Views",
     "samplers-maxAnisotropy" to "samplers-maxAnisotropy",
     "samplers-mipLodBias" to "samplers-mipLodBias",
+    "shaders-scope-quad" to "Quad",
     "shaders-vertex" to "Vertex Shaders",
+    "synchronization-events" to "Events",
     "synchronization-queue-transfers" to "Queue Family Ownership Transfer",
     "tessellation" to "Tessellation",
     "textures-chroma-reconstruction" to "Chroma Reconstruction"
@@ -417,7 +455,7 @@ internal class PlainConverter(backend: String, opts: Map<String, Any>) : StringC
     }
 }
 
-private val CODE_BLOCK_TRIM_PATTERN = """^\s*\n|\n\s*$""".toRegex() // first and/or last empty lines...
+private val CODE_BLOCK_TRIM_PATTERN = """^\s*(?:// Provided by [^\n]+)?\n|\n\s*$""".toRegex() // first and/or last empty lines...
 private val CODE_BLOCK_COMMENT_PATTERN = """/\*\s*(.+)\s*\*/""".toRegex() // first and/or last empty lines...
 private val CODE_BLOCK_HASH = "#".toRegex()
 private val CODE_BLOCK_ESCAPE_PATTERN = "^".toRegex(RegexOption.MULTILINE) // line starts
@@ -594,14 +632,18 @@ E & =
 \end{aligned}""" to codeBlock("""
 E = r &times; sqrt(L) for 0 &le; L &le; 1
     a &times; ln(L - b) + c for 1 &lt L""")*/
-    """\lfloor i_G \times 0.5 \rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
-    """\lfloor j_G \times 0.5 \rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>",
-    "\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(width / maxFragmentDensityTexelSize.width)}",
-    "\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(height / maxFragmentDensityTexelSize.height)}",
-    "\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\rceil" to "{@code ceil(maxFramebufferWidth / minFragmentDensityTexelSize.width)}",
-    "\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}",
+    """\left\lfloor i_G \times 0.5
+\right\rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
+    """\left\lfloor i_G \times 0.5 \right\rfloor = i_B =
+i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
+    """\left\lfloor j_G \times 0.5
+\right\rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>",
+    "\\left\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\right\\rceil" to "{@code ceil(width / maxFragmentDensityTexelSize.width)}",
+    "\\left\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\right\\rceil" to "{@code ceil(height / maxFragmentDensityTexelSize.height)}",
+    "\\left\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\right\\rceil" to "{@code ceil(maxFramebufferWidth / minFragmentDensityTexelSize.width)}",
+    "\\left\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\right\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}",
     "\\pm\\infty" to "&plusmn;&infin;",
-    "s = {WorkGroupSize.x * WorkGroupSize.y * WorkgroupSize.z <= SubgroupSize * maxComputeWorkgroupSubgroups }" to "<code>s = {WorkGroupSize.x * WorkGroupSize.y * WorkgroupSize.z &le; SubgroupSize * maxComputeWorkgroupSubgroups }</code>"
+    """s = { WorkGroupSize.x \times WorkGroupSize.y \times WorkgroupSize.z \leq SubgroupSize \times maxComputeWorkgroupSubgroups }""" to "<code>s = { WorkGroupSize.x &times; WorkGroupSize.y &times; WorkgroupSize.z &le; SubgroupSize &times; maxComputeWorkgroupSubgroups }</code>"
 )
 
 private val LATEX_REGISTRY_USED = HashSet<String>()
@@ -627,7 +669,6 @@ fun printUnusedLatexEquations() {
 
 private val LINE_BREAK = """\n\s*""".toRegex()
 
-private val SPIRV_LINKS = """\{spirv}""".toRegex() // asciidoctor isn't replacing the attribute is many places
 private val SIMPLE_NUMBER = """(?<=^|\s)`(\d+)`|code:(\d+)(?=\s|$)""".toRegex()
 private val KEYWORD = """(?<=^|\s)(must|should|may|can|cannot):(?=\s|$)""".toRegex()
 private val UNDEFINED = """(?<=^|\s)undefined:""".toRegex()
@@ -636,23 +677,32 @@ private val EMPHASIS = """(?<=^|\W)_([^_]+)_(?=[\W]|$)""".toRegex()
 private val SUPERSCRIPT = """\^([^^]+)\^""".toRegex()
 private val SUBSCRIPT = """~([^~]+)~""".toRegex()
 private val EQUATION = """\[eq]#((?:[^#]|(?<=&)#(?=x?[0-9a-fA-F]{1,4};))+)#""".toRegex()
-private val EQUATION_ATTRIB = """\{(\w+)}""".toRegex()
+private val ATTRIB = """\{(\w+)}""".toRegex()
 private val STRUCT_OR_HANDLE = """s(?:name|link):(\w+)""".toRegex()
 private val STRUCT_FIELD = """::pname:(\w+)""".toRegex()
 private val CODE1 = """`([^`]+?)`""".toRegex()
-private val FUNCTION = """(?:flink):vk(\w+)""".toRegex()
-private val FUNCTION_TYPE = """(?:tlink):PFN_vk(\w+)""".toRegex()
+private val EXTENSION_LINK = """link:(\w+)\.html\[\1\^]""".toRegex()
+private val FUNCTION = """flink:vk(\w+)""".toRegex()
+private val FUNCTION_TYPE = """tlink:PFN_vk(\w+)""".toRegex()
 private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:fname|pname|ptext|basetype|ename|elink|tlink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val CODE3 = """(?:etext|ftext):([\w*]+)""".toRegex()
 private val LINK = """(?:link:)?(https?://.+?)\[([^]]*?)\^?]""".toRegex()
 private val SPEC_LINK = """<<([^,]+?)(?:,([\s\S]+?))?>>""".toRegex()
+private val ELEMENT_LINK = """link:(\w+)\.html\[([^]]+?)\^]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
-private val FIX_ARROWS = """\\->""".toRegex()
+private val FIX_ARROWS = """\\?->""".toRegex()
 private val FIX_INVALID_VUIDs = """\[\[VUID-\{refpage}.+?]]\s*""".toRegex()
 
+private fun String.replaceAttributes() = this.replace(ATTRIB) { result ->
+    val attrib = result.groups[1]!!.value
+    if (ATTRIBS.containsKey(attrib)) {
+        ATTRIBS.getValue(attrib)
+    } else
+        result.value
+} // TODO: more?
+
 private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = this.trim()
-    .replace(SPIRV_LINKS, "https://htmlpreview.github.io/?https://github.com/KhronosGroup/SPIRV-Registry/blob/master/extensions")
     .replace(LINE_BREAK, " ")
     .replace(LATEX_MATH) {
         // These will likely be replaced to reduce HTML load times.
@@ -662,15 +712,9 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         getLatexCode(it.groups[1]!!.value)
     }
     .replace(SIMPLE_NUMBER, "$1$2")
+    .replaceAttributes()
     .replace(EQUATION) { "<code>${it.groups[1]!!.value
         .replace(CODE2, "$1")
-        .replace(EQUATION_ATTRIB) { result ->
-            val attrib = result.groups[1]!!.value
-            if (ATTRIBS.containsKey(attrib)) {
-                ATTRIBS.getValue(attrib)
-            } else
-                it.value
-        } // TODO: more?
         .htmlEscaped
     }</code>" }
     .replace(KEYWORD, "<b>$1</b>")
@@ -689,18 +733,13 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         result.groups[1]!!.value.let {
             if (it.startsWith("etext:")) {
                 it
+            } else if (it.startsWith("apiext:")) {
+                val extension = it.substring(7)
+                "{@link ${extension.substring(3).template} $extension}"
             } else {
                 val extension =
                     SPEC_LINK.find(it)?.run { groups[1]!!.value } ?:
-                    LINK.find(it)?.run {
-                        val (url, description) = destructured
-                        (if (description.isNotEmpty()) description else url).run {
-                            if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#"))
-                                substring("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#".length)
-                            else
-                                null
-                        }
-                    }
+                    EXTENSION_LINK.find(it)?.run { groups[1]!!.value }
                 if (extension != null) {
                     check(extension.startsWith("VK_"))
                     "{@link ${extension.substring(3).template} $extension}"
@@ -732,16 +771,21 @@ private fun String.replaceMarkup(structs: Map<String, TypeStruct>): String = thi
         val (url, description) = result.destructured
         """<a target="_blank" href="${url
             .replace("#", "\\#")
-        }">${(if (description.isNotEmpty()) description else url).run {
-            if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#"))
-                getSectionXREF(substring("https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#".length))
+        }">${description.ifEmpty { url }.run {
+            if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#"))
+                getSectionXREF(substring("https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#".length))
             else
                 this
         }}</a>"""
     }
     .replace(SPEC_LINK) {
         val section = it.groups[1]!!
-        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html\#${section.value}">${it.groups[2]?.value ?: section.value}</a>"""
+        """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html\#${section.value}">${(it.groups[2]?.value ?: section.value)}</a>"""
+    }
+    .replace(ELEMENT_LINK) {
+        val element = it.groups[1]!!.value
+        val content = it.groups[2]!!.value
+        "$content ({@code $element})"
     }
     .replace(SUPERSCRIPT, "<sup>$1</sup>")
     .replace(SUBSCRIPT, "<sub>$1</sub>")
@@ -761,7 +805,7 @@ private fun containerToJavaDoc(node: StructuralNode, structs: Map<String, TypeSt
         if (node.title == null || node.title.isEmpty() || block.isEmpty() || block.startsWith("<h5>"))
             block
         else
-            "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t$block".let {
+            "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t${block}".let {
                 if (node.style == "NOTE") {
                     """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
         $indent</div>"""
@@ -878,7 +922,7 @@ private fun seeAlsoToJavaDoc(node: StructuralNode, structs: Map<String, TypeStru
         "<h5>${node.title.replaceMarkup(structs)}</h5>\n$t$t${links.replaceMarkup(structs)}"
 }
 
-private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:(?:\w+))+\s+""")
+private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*pname:(\w+)(?:[,:]?(?:\s+and)?\s+pname:\w+)+\s+""")
 private val PARAM_REGEX = Regex("""pname:(\w+)""")
 private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:(?:sname|slink):(\w+)::)?pname:(\w+)(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
 
