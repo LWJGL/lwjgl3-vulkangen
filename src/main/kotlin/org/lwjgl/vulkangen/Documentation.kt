@@ -461,7 +461,7 @@ private val CODE_BLOCK_HASH = "#".toRegex()
 private val CODE_BLOCK_ESCAPE_PATTERN = "^".toRegex(RegexOption.MULTILINE) // line starts
 private val CODE_BLOCK_TAB_PATTERN = "\t".toRegex() // tabs
 
-private val HTML_ESCAPE_PATTERN = """[<>]|&(?!(?:amp|gt|lt);)""".toRegex()
+private val HTML_ESCAPE_PATTERN = """[<>]|&(?!(?:amp|gt|lt|#\d+);)""".toRegex()
 
 private val String.htmlEscaped: String
     get() = this.replace(HTML_ESCAPE_PATTERN) {
@@ -688,7 +688,7 @@ private val ENUM = """(?:ename|dlink|code):VK_(\w+)""".toRegex()
 private val CODE2 = """(?:fname|pname|ptext|basetype|ename|elink|tlink|code):(\w+(?:[.]\w+)*)""".toRegex()
 private val CODE3 = """(?:etext|ftext):([\w*]+)""".toRegex()
 private val LINK = """(?:link:)?(https?://.+?)\[([^]]*?)\^?]""".toRegex()
-private val SPEC_LINK = """<<([^,]+?)(?:,([\s\S]+?))?>>""".toRegex()
+private val SPEC_LINK = """<<([^,]+?)(?:,([\s\S]+?))?>>(?!>)""".toRegex()
 private val ELEMENT_LINK = """link:(\w+)\.html\[([^]]+?)\^]""".toRegex()
 private val EXTENSION = """[+](\w+)[+]""".toRegex()
 private val FIX_ARROWS = """\\?->""".toRegex()
