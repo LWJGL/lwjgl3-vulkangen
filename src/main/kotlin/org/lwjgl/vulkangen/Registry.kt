@@ -754,7 +754,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
 
 private fun Enum.getEnumValue(extensionNumber: Int, enumRegistry: EnumRegistry): String = when {
     value != null  -> ".\"${value.replace("U", "")}\""
-    offset != null -> ".\"${offsetAsEnum(if (extensionNumber == 0 && extnumber != null) extnumber else extensionNumber, offset, dir)}\""
+    offset != null -> ".\"${offsetAsEnum(extnumber ?: extensionNumber, offset, dir)}\""
     bitpos != null -> "enum(${bitposAsHex(bitpos)})"
     else           -> enumRegistry.enumMap.getValue(alias ?: name).getEnumValue(extensionNumber, enumRegistry)
 }
