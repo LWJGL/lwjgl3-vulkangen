@@ -250,7 +250,7 @@ private fun getParamType(param: Field, indirection: String, hasConst: Boolean, h
             if (hasConst) "opaque_const_p" else "opaque_p"
         else
             if (hasConst) "void.const.p" else "void.p"
-        }${indirection.removePrefix(".p").let { if (it.isEmpty()) it else ".$it" }}"
+        }${indirection.removePrefix(".p")}"
     else
         "${param.type}$encoding${if (hasConst) ".const.p" + indirection.removePrefix(".p") else indirection}"
 

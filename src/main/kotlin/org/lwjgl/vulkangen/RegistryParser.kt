@@ -201,10 +201,9 @@ else {
 
 private fun String.indirection(prefix: String) = this.length
     .downTo(1)
-    .asSequence(
-
-    ).map { "p" }
-    .joinToString("", prefix = prefix)
+    .asSequence()
+    .map { "p" }
+    .joinToString(".", prefix = prefix)
 
 internal class FieldConverter : Converter {
     override fun marshal(source: Any, writer: HierarchicalStreamWriter, context: MarshallingContext) {
