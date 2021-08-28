@@ -445,6 +445,8 @@ internal class TypeConverter : Converter {
 }
 
 internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
+    xs.allowTypesByWildcard(arrayOf("org.lwjgl.vulkangen.*"))
+
     xs.alias("registry", Registry::class.java)
 
     Platform::class.java.let {

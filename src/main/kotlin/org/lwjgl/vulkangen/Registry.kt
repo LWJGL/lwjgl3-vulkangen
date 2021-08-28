@@ -12,6 +12,8 @@ internal val DISABLED_EXTENSIONS = setOf(
     "VK_ANDROID_external_memory_android_hardware_buffer",
     "VK_EXT_directfb_surface",
     "VK_FUCHSIA_imagepipe_surface",
+    "VK_FUCHSIA_external_memory",
+    "VK_FUCHSIA_external_semaphore",
     "VK_GGP_frame_token",
     "VK_GGP_stream_descriptor_surface",
     "VK_KHR_android_surface",
@@ -33,14 +35,19 @@ val String.template
         .splitToSequence('_')
         .map {
             if (ABBREVIATIONS.contains(it))
-                it.toUpperCase()
+                it.uppercase()
             else
-                "${it[0].toUpperCase()}${it.substring(1)}"
+                "${it[0].uppercaseChar()}${it.substring(1)}"
         }
         .joinToString("")
 
 private val IMPORTS = mapOf(
     "android/native_window.h" to "org.lwjgl.system.android.*",
+    "vk_video/vulkan_video_codec_h264std.h" to "TODO",
+    "vk_video/vulkan_video_codec_h264std_encode.h" to "TODO",
+    "vk_video/vulkan_video_codec_h264std_decode.h" to "TODO",
+    "vk_video/vulkan_video_codec_h265std.h" to "TODO",
+    "vk_video/vulkan_video_codec_h265std_decode.h" to "TODO",
     "wayland-client.h" to "org.lwjgl.system.linux.*",
     "windows.h" to "org.lwjgl.system.windows.*",
     "X11/Xlib.h" to "org.lwjgl.system.linux.*",
@@ -427,7 +434,7 @@ ${templateTypes.asSequence()
                 val functionDoc = FUNCTION_DOC[fp.name]
                 """${structTypes}val ${fp.name} = Module.VULKAN.callback {
     ${getReturnType(fp.proto)}(
-        "${fp.name.substring(4).let { "${it[0].toUpperCase()}${it.substring(1)}" }}",
+        "${fp.name.substring(4).let { "${it[0].uppercase()}${it.substring(1)}" }}",
         "${functionDoc?.shortDescription ?: ""}"${getParams(fp, FUNCTION_DOC[fp.proto.name], types, structs, forceIN = true, indent = "$t$t")},
 
         nativeType = "${fp.name}"
@@ -438,7 +445,7 @@ ${templateTypes.asSequence()
 
         ${functionDoc.cSpecification}
 
-        ${functionDoc.description}${if (functionDoc.seeAlso == null) "" else """
+        ${functionDoc.description}${if (seeAlsoIsEmpty(functionDoc.seeAlso)) "" else """
 
         ${functionDoc.seeAlso}"""}
         $QUOTES3"""}
@@ -486,9 +493,9 @@ ${templateTypes.asSequence()
         $QUOTES3
         ${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
 
-        ${structDoc.description}${if (structDoc.seeAlso == null) "" else """
+        ${structDoc.description}"""}${if (seeAlsoIsEmpty(structDoc.seeAlso)) "" else """
 
-        ${structDoc.seeAlso}"""}"""}
+        ${structDoc.seeAlso}"""}
         $QUOTES3
 
     """}${struct.members.asSequence()
@@ -587,7 +594,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
                             else            -> """"$QUOTES3
         ${enumDoc.shortDescription}${
                             if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-                            if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
+                            if (seeAlsoIsEmpty(enumDoc.seeAlso)) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         $QUOTES3"""
                         }},
 
@@ -618,6 +625,10 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
 
         writer.print("\n}")
     }
+}
+
+private fun seeAlsoIsEmpty(seeAlso: String?): Boolean {
+    return seeAlso == null || seeAlso.isEmpty() || seeAlso.contains("No cross-references are available")
 }
 
 private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
@@ -694,7 +705,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
                             else -> """"$QUOTES3
         ${enumDoc.shortDescription}${
                         if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-                        if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
+                        if (seeAlsoIsEmpty(enumDoc.seeAlso)) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         $QUOTES3"""}},
 
         ${enumList.asSequence()
@@ -789,7 +800,7 @@ private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enu
         ${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3${"""
         ${enumDoc.shortDescription}${
             if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-            if (enumDoc.seeAlso.isEmpty()) "" else "\n\n$t$t${enumDoc.seeAlso}"}
+            if (seeAlsoIsEmpty(enumDoc.seeAlso)) "" else "\n\n$t$t${enumDoc.seeAlso}"}
         """.splitLargeLiteral()}$QUOTES3"""},
 
         ${block.enums!!.joinToString(",\n$t$t") {
@@ -839,7 +850,7 @@ private fun PrintWriter.printCommands(
 
         ${functionDoc.cSpecification}
 
-        ${functionDoc.description}${if (functionDoc.seeAlso == null) "" else """
+        ${functionDoc.description}${if (seeAlsoIsEmpty(functionDoc.seeAlso)) "" else """
 
         ${functionDoc.seeAlso}"""}
         $QUOTES3"""
