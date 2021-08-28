@@ -43,11 +43,11 @@ val String.template
 
 private val IMPORTS = mapOf(
     "android/native_window.h" to "org.lwjgl.system.android.*",
-    "vk_video/vulkan_video_codec_h264std.h" to "TODO",
-    "vk_video/vulkan_video_codec_h264std_encode.h" to "TODO",
-    "vk_video/vulkan_video_codec_h264std_decode.h" to "TODO",
-    "vk_video/vulkan_video_codec_h265std.h" to "TODO",
-    "vk_video/vulkan_video_codec_h265std_decode.h" to "TODO",
+    "vk_video/vulkan_video_codec_h264std.h" to "org.lwjgl.vulkan.video.*",
+    "vk_video/vulkan_video_codec_h264std_encode.h" to "org.lwjgl.vulkan.video.*",
+    "vk_video/vulkan_video_codec_h264std_decode.h" to "org.lwjgl.vulkan.video.*",
+    "vk_video/vulkan_video_codec_h265std.h" to "org.lwjgl.vulkan.video.*",
+    "vk_video/vulkan_video_codec_h265std_decode.h" to "org.lwjgl.vulkan.video.*",
     "wayland-client.h" to "org.lwjgl.system.linux.*",
     "windows.h" to "org.lwjgl.system.windows.*",
     "X11/Xlib.h" to "org.lwjgl.system.linux.*",
@@ -153,13 +153,6 @@ fun main(args: Array<String>) {
 
     // TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
 
-    val featureTypes = getDistinctTypes(registry.features.asSequence().flatMap { it.requires.asSequence() }, commands, types)
-    generateTypes(root, "VKTypes", types, structs, featureTypes) {
-        registry.tags.asSequence()
-            .map { "const val ${it.name} = \"${it.name}\"" }
-            .joinToString("\n", postfix = "\n\n")
-    }
-
     val extensions = registry.extensions.asSequence()
         .filter { it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
 
@@ -178,21 +171,29 @@ fun main(args: Array<String>) {
         }
     }
 
+    // TODO: build [enum -> core/extension] for static imports
+    // see VkQueueFamilyGlobalPriorityPropertiesEXT in Custom.kt
     val enumsSeen = HashSet<Enums>()
     registry.features.forEach { feature ->
         generateFeature(root, types, enumRegistry, structs, commands, feature, enumsSeen)
     }
 
-    val extensionTypes = getDistinctTypes(extensions.flatMap { it.requires.asSequence() }, commands, types)
-        .toMutableSet()
-    extensionTypes.removeAll(featureTypes)
-
-    generateTypes(root, "ExtensionTypes", types, structs, extensionTypes)
-
     extensions.forEach { extension ->
         // Type declarations for enums are missing in some extensions.
         // We generate <enums> the first time we encounter them.
         generateExtension(root, types, enumRegistry, structs, commands, extension, enumsSeen)
+    }
+
+    val featureTypes = getDistinctTypes(registry.features.asSequence().flatMap { it.requires.asSequence() }, commands, types)
+    generateTypes(root, "VKTypes", types, structs, featureTypes)
+
+    val extensionTypes = getDistinctTypes(extensions.flatMap { it.requires.asSequence() }, commands, types)
+        .toMutableSet()
+    extensionTypes.removeAll(featureTypes)
+    generateTypes(root, "ExtensionTypes", types, structs, extensionTypes) {
+        registry.tags.asSequence()
+            .map { "const val ${it.name} = \"${it.name}\"" }
+            .joinToString("\n", postfix = "\n\n")
     }
 
     printUnusedSectionXREFs()
@@ -563,9 +564,9 @@ private fun generateFeature(
 
 import org.lwjgl.generator.*${distinctTypes.asSequence()
             .filterIsInstance<TypeSystem>()
-            .map { it.requires }
+            .mapNotNull { IMPORTS[it.requires] }
             .distinct()
-            .map { "\nimport ${IMPORTS.getValue(it).replace("org.lwjgl.system.", "core.")}" }
+            .map { "\nimport ${it.replace("org.lwjgl.system.", "core.")}" }
             .distinct()
             .joinToString()
         }
@@ -652,9 +653,10 @@ private fun generateExtension(
 
 import org.lwjgl.generator.*${distinctTypes.asSequence()
             .filterIsInstance<TypeSystem>()
-            .map { it.requires }
+            .mapNotNull { IMPORTS[it.requires] }
+            .filter { it.startsWith("org.lwjgl.system.") }
             .distinct()
-            .map { "\nimport ${IMPORTS.getValue(it).replace("org.lwjgl.system.", "core.")}" }
+            .map { "\nimport ${it.replace("org.lwjgl.system.", "core.")}" }
             .distinct()
             .joinToString()
         }
