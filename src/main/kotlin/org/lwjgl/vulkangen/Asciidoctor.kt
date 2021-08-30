@@ -263,7 +263,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                                 }
                             } else if (hasUnnamedXREF(match)) {
                                 // hack for vkAllocationFunction_return_rules
-                                """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#$match">${node.text}</a>"""
+                                """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html\#$match">${node.text}</a>"""
                             } else {
                                 "${node.text} ({@code $match})"
                             }
