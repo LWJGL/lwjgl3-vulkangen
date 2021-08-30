@@ -330,7 +330,7 @@ else {
         ) "nullable.." else ""
 
         val hasConst = param.modifier == "const"
-        val isString = param.len.contains("null-terminated") || (param.array != null && param.type == "char")
+        val isString = param.len.contains("null-terminated") || (param.type == "char" && (param.array != null || (function is TypeFuncpointer && hasConst && indirection == ".p")))
         val type = getParamType(param, indirection, hasConst, check.any(),
             if (isString) {
                 if (returns.type == "PFN_vkVoidFunction") "ASCII" else "UTF8"
@@ -342,9 +342,16 @@ else {
                 "_$it" // struct forward declaration
             }
         }
+       val unsafe = if (
+            indirection.isNotEmpty() &&
+            check.isEmpty() &&
+            !isString &&
+            !(type == "opaque_p" || type == "opaque_const_p" || nativeType is TypeSystem || nativeType is TypeStruct) &&
+            params.none { param.len.contains(it.name) }
+        ) "Unsafe.." else ""
         val paramType = if ("false,true" == param.optional && (isString || nativeType is TypeStruct)) "Input.." else ""
 
-        "$autoSize$check$nullable$paramType$type(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
+        "$autoSize$check$unsafe$nullable$paramType$type(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
     }.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
