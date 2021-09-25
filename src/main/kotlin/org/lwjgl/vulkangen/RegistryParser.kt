@@ -102,6 +102,7 @@ internal class Field(
     }
 
     val optional: String? get() = attribs["optional"]
+    val values: String? get() = attribs["values"]
     val externsync: String? get() = attribs["externsync"]
     val noautovalidity: String? get() = attribs["noautovalidity"]
     //val validextensionstructs: String? get() = attribs["validextensionstructs"]

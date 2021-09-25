@@ -508,6 +508,17 @@ ${templateTypes.asSequence()
 
     """}${struct.members.asSequence()
                     .map { member ->
+                        val expression = member.values.let {
+                            if (it != null) {
+                                if (it.contains(',')) {
+                                    throw UnsupportedOperationException("Multiple struct member values! ${struct.name}::${member.name}")
+                                }
+                                """Expression("#${it.substring(3)}").."""
+                            } else {
+                                ""
+                            }
+                        }
+
                         val autoSize = struct.members
                             .filter { it.len.contains(member.name) }
                             .let { members ->
@@ -539,7 +550,7 @@ ${templateTypes.asSequence()
                             if (member.type == struct.name) "_$it" else it
                         }
 
-                        "$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
+                        "$expression$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
                         if (member.array != null) "[${member.array}]" else ""
                         }${
                         if (struct.returnedonly && (member.name == "sType" || member.name == "pNext")) ".mutable()" else ""
