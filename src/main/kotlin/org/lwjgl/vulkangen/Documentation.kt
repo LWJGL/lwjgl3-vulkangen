@@ -226,7 +226,7 @@ private fun addEnum(node: StructuralNode) {
         ENUM_DOC[enum] = EnumDoc(
             (node.blocks[0].blocks[0] as Block).content.toString().patch(),
             node.blocks.firstOrNull { it.title == "Description" }?.let { containerToJavaDoc(it) } ?: "",
-            node.blocks.firstOrNull { it.title == "See Also" }?.let { containerToJavaDoc(it) } ?: ""
+            node.blocks.firstOrNull { it.title == "See Also" }?.let { seeAlsoToJavaDoc(it) } ?: ""
         )
     } catch (e: Exception) {
         System.err.println("Failed while parsing: $enum")

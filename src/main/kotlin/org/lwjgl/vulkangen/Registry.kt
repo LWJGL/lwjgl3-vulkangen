@@ -701,7 +701,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
     StringConstant(
         "The extension name.",
 
-        "${enum.name.substring(3)}"..${enum.value}
+        "${enum.name.substring(3)}"${enum.alias.let { if (it == null) "..${enum.value}" else ".expr(\"$it\")" }}
     )""")
                                 return@nextEnumList
                             } else if (enum.name.endsWith("_SPEC_VERSION")) {
@@ -709,7 +709,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
     IntConstant(
         "The extension specification version.",
 
-        "${enum.name.substring(3)}".."${enum.value}"
+        "${enum.name.substring(3)}".."${enum.alias ?: enum.value}"
     )""")
                                 return@nextEnumList
                             }

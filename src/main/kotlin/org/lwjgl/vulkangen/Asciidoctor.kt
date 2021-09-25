@@ -34,6 +34,10 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
         .javaConverterRegistry()
         .register(LWJGLConverter::class.java, "lwjgl")
 
+    asciidoctor
+        .rubyExtensionRegistry()
+        .loadClass(Files.newInputStream(root.resolve("config").resolve("tilde_open_block.rb")))
+
     // Register a preprocessor to replace attribute assignments that do not work.
     // --------------------------------------------------------------------------
     // Normally attributes are assigned in the header, before the document body. However, Vulkan-Docs assigns certain attributes (KNOWN_ATTRIBS) in the body,
@@ -111,6 +115,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
         .inlineMacroQuoted("ename", """ename:(\w+)""") { if (it.startsWith("VK_")) "#${it.substring(3)}" else "{@code $it}" }
         .inlineMacroQuoted("dlink", """dlink:VK_(\w+)""") { "#$it" }
         .inlineMacroQuoted("flink", """flink:vk(\w+)""") { "#$it()" }
+        .inlineMacroQuoted("reflink", """reflink:(\w+)""") { "{@code $it}" } // in see-also blocks, hidden atm
         .inlineMacroQuoted("apiext", """apiext:(\w+)""") { "{@link ${it.substring(3).template} $it}" }
         .inlineMacroQuoted("tlink", """tlink:(\w+)""") {
             if (it.startsWith("PFN_vk")) {
@@ -220,6 +225,8 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                 "monospaced"  -> {
                     if (NUMERIC_PATTERN.matches(node.text) || APIEXT_PATTERN.matches(node.text) || (node.text.startsWith("&lt;&lt;") && node.text.endsWith("&gt;&gt;")) || node.text.startsWith("link:"))
                         node.text
+                    else if (node.text.contains("__")) // VK_IMAGE_ASPECT_MEMORY_PLANE__{ibit}__BIT_EXT
+                        "<code>${node.text}</code>"
                     else
                         "{@code ${node.text}}"
                 }
