@@ -5,6 +5,7 @@ import org.asciidoctor.ast.*
 import org.asciidoctor.converter.*
 import org.asciidoctor.extension.*
 import org.intellij.lang.annotations.*
+import java.net.*
 import java.nio.charset.*
 import java.nio.file.*
 
@@ -64,6 +65,14 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 "maxinstancecheck",
                 "imageopts"
             )
+
+            private val LINKS = """link:\+\+(.+?)\+\+""".toRegex()
+            private fun String.encodeURI(): String =
+                if (!this.startsWith("http"))
+                    this
+                else
+                    URL(this).let { URI(it.protocol, it.userInfo, it.host, it.port, it.path, it.query, it.ref) }.toString()
+
             override fun process(document: Document, reader: PreprocessorReader) {
                 if (reader.file.endsWith("attribs.txt")) {
                     return
@@ -87,6 +96,9 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                             }
                             lines[i] = "{set:$attribute:$value}"
                         }
+                    }
+                    lines[i] = LINKS.replace(lines[i]) { m ->
+                        "link:++${m.groups[1]!!.value.encodeURI()}++"
                     }
                     i++
                 }
