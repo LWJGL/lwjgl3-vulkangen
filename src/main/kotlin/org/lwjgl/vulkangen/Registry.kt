@@ -11,6 +11,7 @@ import kotlin.system.*
 internal val DISABLED_EXTENSIONS = setOf(
     "VK_ANDROID_external_memory_android_hardware_buffer",
     "VK_EXT_directfb_surface",
+    "VK_FUCHSIA_buffer_collection",
     "VK_FUCHSIA_imagepipe_surface",
     "VK_FUCHSIA_external_memory",
     "VK_FUCHSIA_external_semaphore",

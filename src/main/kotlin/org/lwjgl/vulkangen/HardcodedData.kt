@@ -39,7 +39,6 @@ private val SECTION_XREFS = mapOf(
     "external-memory-handle-types-compatibility" to "External memory handle types compatibility",
     "formats-compatible-planes" to "Compatible formats of planes of multi-planar formats",
     "formats-numericformat" to "Interpretation of Numeric Format",
-    "formats-requiring-sampler-ycbcr-conversion" to "Formats requiring sampler Y'C<sub>B</sub>C<sub>R</sub> conversion for #IMAGE_ASPECT_COLOR_BIT image views",
     "fragops-stencil" to "Stencil Test",
     "framebuffer-blendfactors" to "Blend Factors",
     "framebuffer-blending" to "Blending",
@@ -116,71 +115,9 @@ p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = max(A<sub>d</sub> &minus; A<sub>s<
 p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) = max(A<sub>s</sub> + A<sub>d</sub> &minus; 1, 0) \\
 p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>s</sub>, 1 &minus; A<sub>d</sub>) \\
 p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>d</sub>, 1 &minus; A<sub>s</sub>) \\"""),
-    /*
-    "a = 0.948" to codeBlock("a = 0.948"),
-    "b = 0.052" to codeBlock("b = 0.052"),
-    "c = 0.077" to codeBlock("c = 0.077"),
-    """\alpha = 1.099 \text{ and } \beta = 0.018 \text{ for 10-bits and less per sample system (the values given in Rec. 709)}""" to
-        codeBlock("""α = 1.099 and β = 0.018 for 10-bits and less per sample system (the values given in Rec.709)"""),
-    """\alpha = 1.0993 \text{ and } \beta = 0.0181 \text{ for 12-bits per sample system}""" to
-        codeBlock("""α = 1.0993 and β = 0.0181 for 12-bits per sample system"""),
-    """m_1 = 2610 / 4096 \times \frac{1}{4} = 0.1593017578125""" to
-        codeBlock("""m<sub>1</sub> = 2610 / 4096 &times; 1/4 = 0.1593017578125"""),
-    """m_2 = 2523 / 4096 \times 128 = 78.84375""" to
-        codeBlock("""m<sub>2</sub> = 2523 / 4096 &times; 128 = 78.84375"""),
-    """c_1 = 3424 / 4096 = 0.8359375 = c3 - c2 + 1""" to
-        codeBlock("""c<sub>1</sub> = 3424 / 4096 = 0.8359375 = c3 - c2 + 1"""),
-    """c_2 = 2413 / 4096 \times 32 = 18.8515625""" to
-        codeBlock("""c<sub>2</sub> = 2413 / 4096 &times; 32 = 18.8515625"""),
-    """c_3 = 2392 / 4096 \times 32 = 18.6875""" to
-        codeBlock("""c<sub>3</sub> = 2392 / 4096 &times; 32 = 18.6875"""),
-    """L \text{ - is the signal normalized by the reference white level}""" to
-        codeBlock("""L - is the signal normalized by the reference white level"""),
-    """r \text{ - is the reference white level and has a signal value of 0.5}""" to
-        codeBlock("""r - is the reference white level and has a signal value of 0.5"""),
-    """a = 0.17883277 \text{ and } b = 0.28466892 \text{, and } c = 0.55991073""" to
-        codeBlock("""a = 0.17883277 and b = 0.28466892, and c = 0.55991073"""),
-    """E = L^\frac{1}{2.19921875}""" to
-        codeBlock("""E = L^<sup>1 / 2.19921875</sup>"""),
-    """E = L^\frac{1}{2.6}""" to
-        codeBlock("""E = L^<sup>1 / 2.6</sup>"""),*/
     """\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to "{@code ceil(rasterizationSamples / 32)}",
     """\textrm{codeSize} \over 4""" to "{@code codeSize / 4}",
     """\frac{k}{2^m - 1}""" to "<code>k / (2<sup>m</sup> - 1)</code>",
-
-    """m = \sqrt{ \left({{\partial z_f} \over {\partial x_f}}\right)^2
-        +  \left({{\partial z_f} \over {\partial y_f}}\right)^2}""" to
-        codeBlock("      m = sqrt((&part;z<sub>f</sub> / &part;x<sub>f</sub>)<sup>2</sup> + (&part;z<sub>f</sub> / &part;y<sub>f</sub>)<sup>2</sup>)"),
-
-    """m = \max\left( \left| { {\partial z_f} \over {\partial x_f} } \right|,
-               \left| { {\partial z_f} \over {\partial y_f} } \right|
-       \right).""" to
-        codeBlock("      m = max(abs(&part;z<sub>f</sub> / &part;x<sub>f</sub>), abs(&part;z<sub>f</sub> / &part;y<sub>f</sub>))"),
-
-    """\begin{aligned}
-o &= \mathrm{dbclamp}( m \times \mathtt{depthBiasSlopeFactor} + r \times \mathtt{depthBiasConstantFactor} ) \\
-\text{where} &\quad \mathrm{dbclamp}(x) =
-\begin{cases}
-    x                                 & \mathtt{depthBiasClamp} = 0 \ \text{or}\ \texttt{NaN} \\
-    \min(x, \mathtt{depthBiasClamp})  & \mathtt{depthBiasClamp} > 0 \\
-    \max(x, \mathtt{depthBiasClamp})  & \mathtt{depthBiasClamp} < 0 \\
-\end{cases}
-\end{aligned}""" to
-        codeBlock("""
-        m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor                     depthBiasClamp = 0 or NaN
-o = min(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &gt; 0
-    max(m &times; depthBiasSlopeFactor + r &times; depthBiasConstantFactor, depthBiasClamp)    depthBiasClamp &lt; 0"""),
-
-    /*"""\begin{aligned}
-E & =
-  \begin{cases}
-    1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 1 \\
-    12.92 \times L                       & \text{for}\  0 \leq L < 0.0031308
-  \end{cases}
-\end{aligned}""" to
-        codeBlock("""
-E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 1
-    12.92  &times; L for 0 &le; L &lt 0.0031308"""),*/
 
     """\begin{aligned}
 E & =
@@ -193,53 +130,6 @@ E & =
 E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0030186 &le; L &le; 1
     12.92  &times; L for 0 &le; L &lt; 0.0030186"""),
 
-    /*"""\begin{aligned}
-E & =
-  \begin{cases}
-    1.055 \times L^{1 \over 2.4} - 0.055 & \text{for}\  0.0031308 \leq L \leq 7.5913 \\
-    12.92 \times L                       & \text{for}\  0 \leq L < 0.0031308 \\
-    -f(-L)                               & \text{for}\  L < 0
-  \end{cases}
-\end{aligned}""" to
-        codeBlock("""
-     1.055 &times;  L<sup>1/2.4</sup> - 0.055 for 0.0031308 &le; L &le; 7.5913
-E = 12.92  &times;  L for 0 &le; L &lt 0.0031308
-    -f(-L) for L &lt; 0"""),
-
-    """\begin{aligned}
-E & =
-  \begin{cases}
-    (a \times L + b)^{2.4} & \text{for}\  0.039 \leq L \leq 1 \\
-    b \times L                    & \text{for}\  0 \leq L < 0.039
-  \end{cases}
-\end{aligned}""" to codeBlock("""
-E = (a &times; L + b)<sup>2.4</sup> for 0.039 &le; L &le; 1
-    b &times; L for 0 &le; L &lt; 0.039"""),
-
-    """\begin{aligned}
-E & =
-  \begin{cases}
-    \alpha \times L^{0.45} - (1 - \alpha) & \text{for}\  \beta \leq L \leq 1 \\
-    4.5 \times L                            & \text{for}\  0 \leq L < \beta
-  \end{cases}
-\end{aligned}""" to codeBlock("""
-E = α &times; L^<sup>0.45</sup> - (1 - α) for β &le; L &le; 1
-    4.5 &times; L for 0 &le; L &lt; β"""),
-
-    """\[
-E = (\frac{c_1 + c_2 \times L^{m_1}}{1 + c_3 \times L^{m_1}})^{m_2}
-\]""" to codeBlock("""
-E = ((c_<sub>1</sub> + c_<sub>2</sub> &times; L^<sup>m_<sub>1</sub></sup>) / (1 + c_<sub>3</sub> &times; L^<sup>m_<sub>1</sub></sup>))^<sup>m_<sub>2</sub></sup>"""),
-
-    """\begin{aligned}
-E & =
-  \begin{cases}
-    r \sqrt{L}                & \text{for}\  0 \leq L \leq 1 \\
-    a \times \ln(L - b) + c    & \text{for}\  1 < L
-  \end{cases}
-\end{aligned}""" to codeBlock("""
-E = r &times; sqrt(L) for 0 &le; L &le; 1
-    a &times; ln(L - b) + c for 1 &lt L""")*/
     """\left\lfloor i_G \times 0.5 \right\rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
     """\left\lfloor j_G \times 0.5
 \right\rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>",
