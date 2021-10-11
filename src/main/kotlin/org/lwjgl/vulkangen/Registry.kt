@@ -414,7 +414,7 @@ ${templateTypes.asSequence()
 // Bitmask types
 ${templateTypes.asSequence()
             .filterIsInstance<TypeBitmask>()
-            .joinToString("\n") { "val ${it.name} = typedef(VkFlags, \"${it.name}\")" }}
+            .joinToString("\n") { "val ${it.name} = typedef(${it.typedef}, \"${it.name}\")" }}
 
 ${templateTypes.asSequence()
             .filterIsInstance<TypeFuncpointer>()
@@ -605,6 +605,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
                     .groupBy { it.extends!! }
                     .forEach { (enumName, enumList) ->
                         val extends = enumList.firstOrNull { it.extends != null }?.extends
+                        val typeLong = enumRegistry.enums[enumName]?.bitwidth == 64
                         val enumDoc = ENUM_DOC[enumName]
                         writer.println("""
     EnumConstant(
@@ -619,7 +620,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
                         }},
 
         ${enumList.asSequence()
-                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry)}" }
+                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry, typeLong)}" }
                             .joinToString(",\n$t$t")}
     )""")
                     }
@@ -717,9 +718,10 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
                         }
 
                         val extends = enumList.firstOrNull { it.extends != null }?.extends
+                        val typeLong = enumRegistry.enums[enumName]?.bitwidth == 64
                         val enumDoc = ENUM_DOC[enumName]
                         writer.println("""
-    EnumConstant(
+    EnumConstant${if (typeLong) "Long" else ""}(
         ${when {
                             extends != null -> "\"Extends {@code $enumName}.\""
                             enumDoc == null -> "\"$enumName\""
@@ -730,7 +732,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
         $QUOTES3"""}},
 
         ${enumList.asSequence()
-                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry)}" }
+                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry, typeLong)}" }
                             .joinToString(",\n$t$t")}
     )""")
                     }
@@ -783,11 +785,14 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
     }
 }
 
-private fun Enum.getEnumValue(extensionNumber: Int, enumRegistry: EnumRegistry): String = when {
-    value != null  -> ".\"${value.replace("U", "")}\""
-    offset != null -> ".\"${offsetAsEnum(extnumber ?: extensionNumber, offset, dir)}\""
-    bitpos != null -> "enum(${bitposAsHex(bitpos)})"
-    else           -> enumRegistry.enumMap.getValue(alias ?: name).getEnumValue(extensionNumber, enumRegistry)
+private fun Enum.getEnumValue(extensionNumber: Int, enumRegistry: EnumRegistry, typeLong: Boolean): String = when {
+    value != null  -> ".\"${value.replace("U", "")}${if (typeLong) "L" else ""}\""
+    offset != null -> {
+        if (typeLong) throw UnsupportedOperationException()
+        ".\"${offsetAsEnum(extnumber ?: extensionNumber, offset, dir)}\""
+    }
+    bitpos != null -> "enum(${bitposAsHex(bitpos)}${if (typeLong) "L" else ""})"
+    else           -> enumRegistry.enumMap.getValue(alias ?: name).getEnumValue(extensionNumber, enumRegistry, typeLong)
 }
 
 private fun offsetAsEnum(extensionNumber: Int, offset: String, dir: String?) =
@@ -798,7 +803,7 @@ private fun offsetAsEnum(extensionNumber: Int, offset: String, dir: String?) =
             it
     }
 
-private fun bitposAsHex(bitpos: String) = "0x${Integer.toHexString(1 shl bitpos.toInt()).padStart(8, '0')}"
+private fun bitposAsHex(bitpos: String) = "0x${java.lang.Long.toHexString(1L shl bitpos.toInt()).padStart(8, '0')}"
 
 private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
     .filter { it is TypeEnum || it is TypeBitmask }
@@ -815,9 +820,10 @@ private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enu
     enums.asSequence()
         .filter { block -> block.enums != null }
         .forEach { block ->
+            val typeLong = block.bitwidth == 64
             val enumDoc = ENUM_DOC[block.name]
             println("""
-    EnumConstant(
+    EnumConstant${if (typeLong) "Long" else ""}(
         ${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3${"""
         ${enumDoc.shortDescription}${
             if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
@@ -825,7 +831,7 @@ private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enu
         """.splitLargeLiteral()}$QUOTES3"""},
 
         ${block.enums!!.joinToString(",\n$t$t") {
-                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extensionNumber, enumRegistry)}"
+                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extensionNumber, enumRegistry, typeLong)}"
             }}
     )""")
         }

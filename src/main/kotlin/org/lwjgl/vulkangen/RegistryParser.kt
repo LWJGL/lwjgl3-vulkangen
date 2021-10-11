@@ -37,6 +37,7 @@ internal class TypePlatform(name: String) : Type(name)
 
 internal class TypeBitmask(
     val requires: String?,
+    val typedef: String,
     name: String
 ) : Type(name)
 
@@ -83,6 +84,7 @@ internal class Unused(val start: String)
 internal class Enums(
     val name: String,
     val type: String?,
+    val bitwidth: Int?,
     val comment: String?,
     val enums: List<Enum>?,
     val unused: Unused?
@@ -344,17 +346,17 @@ internal class TypeConverter : Converter {
                 var name = reader.getAttribute("name")
                 val t = if (name == null) {
                     reader.moveDown()
-                    // VkFlags
+                    val typedef = reader.value // e.g. VkFlags
                     reader.moveUp()
 
                     reader.moveDown()
                     name = reader.value
                     reader.moveUp()
 
-                    TypeBitmask(requires, name)
+                    TypeBitmask(requires, typedef, name)
                 } else {
                     val ref = context.registryMap.bitmasks[reader.getAttribute("alias")]!!
-                    TypeBitmask(ref.requires, name)
+                    TypeBitmask(ref.requires, ref.typedef, name)
                 }
                 context.registryMap.bitmasks[name] = t
                 t
@@ -473,6 +475,7 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.addImplicitCollection(Registry::class.java, "enums", "enums", it)
         xs.useAttributeFor(it, "name")
         xs.useAttributeFor(it, "type")
+        xs.useAttributeFor(it, "bitwidth")
         xs.useAttributeFor(it, "comment")
     }
 
