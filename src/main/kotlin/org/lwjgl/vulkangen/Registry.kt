@@ -186,12 +186,28 @@ fun main(args: Array<String>) {
     }
 
     val featureTypes = getDistinctTypes(registry.features.asSequence().flatMap { it.requires.asSequence() }, commands, types)
-    generateTypes(root, "VKTypes", types, structs, featureTypes)
-
     val extensionTypes = getDistinctTypes(extensions.flatMap { it.requires.asSequence() }, commands, types)
         .toMutableSet()
     extensionTypes.removeAll(featureTypes)
-    generateTypes(root, "ExtensionTypes", types, structs, extensionTypes) {
+
+    // Does not contain struct types from disabled extensions
+    val structsVisible =
+        (featureTypes.asSequence().filterIsInstance<TypeStruct>() + extensionTypes.asSequence().filterIsInstance<TypeStruct>())
+            .map { it.name }
+            .toHashSet()
+
+    // base struct name -> list of structs extending it
+    val structExtends = HashMap<String, MutableList<String>>()
+    structs.forEach { (name, struct) ->
+        if (struct.structextends != null && structsVisible.contains(name)) {
+            structExtends
+                .getOrPut(struct.structextends) { ArrayList() }
+                .add(name)
+        }
+    }
+
+    generateTypes(root, "VKTypes", types, structs, structExtends, featureTypes)
+    generateTypes(root, "ExtensionTypes", types, structs, structExtends, extensionTypes) {
         registry.tags.asSequence()
             .map { "const val ${it.name} = \"${it.name}\"" }
             .joinToString("\n", postfix = "\n\n")
@@ -378,6 +394,7 @@ private fun generateTypes(
     template: String,
     types: Map<String, Type>,
     structs: Map<String, TypeStruct>,
+    structExtends: Map<String, List<String>>,
     templateTypes: Set<Type>,
     custom: (() -> String)? = null
 ) {
@@ -509,6 +526,17 @@ ${templateTypes.asSequence()
 
     """}${struct.members.asSequence()
                     .map { member ->
+                        val pointerSetters = if (member.name == "pNext") {
+                            val pNextTypes = structExtends[struct.name]
+                            if (pNextTypes != null) {
+                                "PointerSetter(${pNextTypes.joinToString { "\"$it\"" } }).."
+                            } else {
+                                ""
+                            }
+                        } else {
+                            ""
+                        }
+                        
                         val expression = member.values.let {
                             if (it != null) {
                                 if (it.contains(',')) {
@@ -551,7 +579,7 @@ ${templateTypes.asSequence()
                             if (member.type == struct.name) "_$it" else it
                         }
 
-                        "$expression$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
+                        "$pointerSetters$expression$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
                         if (member.array != null) "[${member.array}]" else ""
                         }${
                         if (struct.returnedonly && (member.name == "sType" || member.name == "pNext")) ".mutable()" else ""
