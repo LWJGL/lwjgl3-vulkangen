@@ -540,7 +540,7 @@ ${templateTypes.asSequence()
                             }
 
                         val nullable = if (
-                            (member.name == "pNext" || member.optional != null || (member.noautovalidity != null && member.len.any())) && 
+                            (member.optional != null || (member.noautovalidity != null && member.len.any())) && 
                             (member.indirection.isNotEmpty() || types.getValue(member.type).let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })
                         ) "nullable.." else ""
 
