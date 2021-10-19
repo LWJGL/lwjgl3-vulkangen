@@ -199,13 +199,16 @@ fun main(args: Array<String>) {
 
     // base struct name -> list of structs extending it
     val structExtends = HashMap<String, MutableList<String>>()
-    structs.forEach { (name, struct) ->
-        if (struct.structextends != null && structsVisible.contains(name)) {
-            structExtends
-                .getOrPut(struct.structextends) { ArrayList() }
-                .add(name)
+    structs.forEach { (child, childStruct) ->
+        if (childStruct.structextends != null && structsVisible.contains(child)) {
+            childStruct.structextends.forEach { parent ->
+                structExtends
+                    .getOrPut(parent) { ArrayList() }
+                    .add(child)
+            }
         }
     }
+    structExtends.forEach { (_, structTypes) -> structTypes.sort() }
 
     generateTypes(root, "VKTypes", types, structs, structExtends, featureTypes)
     generateTypes(root, "ExtensionTypes", types, structs, structExtends, extensionTypes) {

@@ -63,7 +63,7 @@ internal class TypeStruct(
     val type: String, // struct or union
     name: String,
     val returnedonly: Boolean,
-    val structextends: String?,
+    val structextends: List<String>?,
     val members: List<Field>,
     val alias: String?
 ) : Type(name)
@@ -423,7 +423,7 @@ internal class TypeConverter : Converter {
 
                 val t = if (alias == null) {
                     val returnedonly = reader.getAttribute("returnedonly") != null
-                    val structextends = reader.getAttribute("structextends")
+                    val structextends = reader.getAttribute("structextends")?.split(",")
 
                     val members = ArrayList<Field>()
                     while (reader.hasMoreChildren()) {
