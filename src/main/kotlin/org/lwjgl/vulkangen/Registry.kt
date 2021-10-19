@@ -49,6 +49,7 @@ private val IMPORTS = mapOf(
     "vk_video/vulkan_video_codec_h264std_decode.h" to "org.lwjgl.vulkan.video.*",
     "vk_video/vulkan_video_codec_h265std.h" to "org.lwjgl.vulkan.video.*",
     "vk_video/vulkan_video_codec_h265std_decode.h" to "org.lwjgl.vulkan.video.*",
+    "vk_video/vulkan_video_codec_h265std_encode.h" to "org.lwjgl.vulkan.video.*",
     "wayland-client.h" to "org.lwjgl.system.linux.*",
     "windows.h" to "org.lwjgl.system.windows.*",
     "X11/Xlib.h" to "org.lwjgl.system.linux.*",
