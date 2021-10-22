@@ -533,7 +533,7 @@ ${templateTypes.asSequence()
                         val pointerSetters = if (member.name == "pNext") {
                             val pNextTypes = structExtends[struct.name]
                             if (pNextTypes != null) {
-                                "PointerSetter(${pNextTypes.joinToString { "\"$it\"" } }).."
+                                "PointerSetter(\n$t$t${pNextTypes.joinToString { "\"$it\"" } },\n$t${t}prepend = true\n$t).."
                             } else {
                                 ""
                             }
