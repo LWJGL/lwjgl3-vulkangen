@@ -50,7 +50,6 @@ private val SECTION_XREFS = mapOf(
     "geometry" to "Geometry Shading",
     "img-tessellation-topology-ul" to "Domain parameterization for tessellation primitive modes (upper-left origin)",
     "img-tessellation-topology-ll" to "Domain parameterization for tessellation primitive modes (lower-left origin)",
-    "memory" to "Memory Allocation",
     "memory-device-hostaccess" to "Host Access to Device Memory Objects",
     "primsrast" to "Rasterization",
     "primsrast-fragment-shading-rate-attachment" to "Attachment Fragment Shading Rate",
@@ -133,10 +132,11 @@ E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0030186 &le; L &le; 1
     """\left\lfloor i_G \times 0.5 \right\rfloor = i_B = i_R""" to "<code>floor(i<sub>G</sub> &times; 0.5) = i<sub>B</sub> = i<sub>R</sub></code>",
     """\left\lfloor j_G \times 0.5
 \right\rfloor = j_B = j_R""" to "<code>floor(j<sub>G</sub> &times; 0.5) = j<sub>B</sub> = j<sub>R</sub></code>",
-    "\\left\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\right\\rceil" to "{@code ceil(width / maxFragmentDensityTexelSize.width)}",
-    "\\left\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\right\\rceil" to "{@code ceil(height / maxFragmentDensityTexelSize.height)}",
-    "\\left\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\right\\rceil" to "{@code ceil(maxFramebufferWidth / minFragmentDensityTexelSize.width)}",
-    "\\left\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\right\\rceil" to "{@code ceil(maxFramebufferHeight / minFragmentDensityTexelSize.height)}",
+    "\\left\\lceil{\\frac{width}{maxFragmentDensityTexelSize_{width}}}\\right\\rceil" to "<code>ceil(width / maxFragmentDensityTexelSize<sub>width</sub>)</code>",
+    "\\left\\lceil{\\frac{height}{maxFragmentDensityTexelSize_{height}}}\\right\\rceil" to "<code>ceil(height / maxFragmentDensityTexelSize<sub>height</sub>)</code>",
+    "\\left\\lceil{\\frac{maxFramebufferWidth}{minFragmentDensityTexelSize_{width}}}\\right\\rceil" to "<code>ceil(maxFramebufferWidth / minFragmentDensityTexelSize<sub>width</sub>)</code>",
+    "\\left\\lceil{\\frac{maxFramebufferHeight}{minFragmentDensityTexelSize_{height}}}\\right\\rceil" to "<code>ceil(maxFramebufferHeight / minFragmentDensityTexelSize<sub>height</sub>)</code>" +
+        "",
     "\\pm\\infty" to "&plusmn;&infin;",
     """s = { WorkGroupSize.x \times WorkGroupSize.y \times WorkgroupSize.z \leq SubgroupSize \times maxComputeWorkgroupSubgroups }""" to "<code>s = { WorkGroupSize.x &times; WorkGroupSize.y &times; WorkgroupSize.z &le; SubgroupSize &times; maxComputeWorkgroupSubgroups }</code>",
     "2 \\times \\mathtt{VK\\_UUID\\_SIZE}" to "2 &times; {@code VK_UUID_SIZE}",
@@ -166,7 +166,23 @@ E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0030186 &le; L &le; 1
     <tr><td>1</td><td>0</td><td>0</td><td>tx</td></tr>
     <tr><td>0</td><td>1</td><td>0</td><td>ty</td></tr>
     <tr><td>0</td><td>0</td><td>1</td><td>tz</td></tr>
-</table>"""
+</table>""",
+    """\left\lceil{\frac{renderArea_{x}+renderArea_{width}}{maxFragmentDensityTexelSize_{width}}}\right\rceil""" to
+        """<code>ceil((renderArea<sub>x</sub>+renderArea<sub>width</sub>) / maxFragmentDensityTexelSize<sub>width</sub>)</code>""",
+    """\left\lceil{\frac{pDeviceRenderAreas_{x}+pDeviceRenderAreas_{width}}{maxFragmentDensityTexelSize_{width}}}\right\rceil""" to
+        """<code>ceil((pDeviceRenderAreas<sub>x</sub>+pDeviceRenderAreas<sub>width</sub>) / maxFragmentDensityTexelSize<sub>width</sub>)</code>""",
+    """\left\lceil{\frac{renderArea_{y}+renderArea_{height}}{maxFragmentDensityTexelSize_{height}}}\right\rceil""" to
+        """<code>ceil((renderArea<sub>y</sub>+renderArea<sub>height</sub>) / maxFragmentDensityTexelSize<sub>height</sub>)</code>""",
+    """\left\lceil{\frac{pDeviceRenderAreas_{y}+pDeviceRenderAreas_{height}}{maxFragmentDensityTexelSize_{height}}}\right\rceil""" to
+        """<code>ceil((pDeviceRenderAreas<sub>y</sub>+pDeviceRenderAreas<sub>height</sub>) / maxFragmentDensityTexelSize<sub>height</sub>)</code>""",
+    """\left\lceil{\frac{renderArea_{x}+renderArea_{width}}{shadingRateAttachmentTexelSize_{width}}}\right\rceil""" to
+        """<code>ceil((renderArea<sub>x</sub>+renderArea<sub>width</sub>) / shadingRateAttachmentTexelSize<sub>width</sub>)</code>""",
+    """\left\lceil{\frac{pDeviceRenderAreas_{x}+pDeviceRenderAreas_{width}}{shadingRateAttachmentTexelSize_{width}}}\right\rceil""" to
+        """<code>ceil((pDeviceRenderAreas<sub>x</sub>+pDeviceRenderAreas<sub>width</sub>) / shadingRateAttachmentTexelSize<sub>width</sub>)</code>""",
+    """\left\lceil{\frac{renderArea_{y}+renderArea_{height}}{shadingRateAttachmentTexelSize_{height}}}\right\rceil""" to
+        """<code>ceil((renderArea<sub>y</sub>+renderArea<sub>height</sub>) / shadingRateAttachmentTexelSize<sub>height</sub>)</code>""",
+    """\left\lceil{\frac{pDeviceRenderAreas_{y}+pDeviceRenderAreas_{height}}{shadingRateAttachmentTexelSize_{height}}}\right\rceil""" to
+        """<code>ceil((pDeviceRenderAreas<sub>y</sub>+pDeviceRenderAreas<sub>height</sub>) / shadingRateAttachmentTexelSize<sub>height</sub>)</code>"""
 )
 private val LATEX_REGISTRY_USED = HashSet<String>()
 internal fun getLatexCode(source: String): String {
