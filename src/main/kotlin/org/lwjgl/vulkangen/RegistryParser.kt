@@ -182,6 +182,36 @@ internal class SPIRVCapability(
     val enables: List<Enable>
 )
 
+internal class Component(
+    val name: String,
+    val bits: String,
+    val numericFormat: String
+)
+
+internal class SPIRVImageFormat(
+    val name: String
+)
+
+internal class Plane(
+    val index: Int,
+    val widthDivisor: Int,
+    val heightDivisor: Int,
+    val compatible: String
+)
+
+internal class Format(
+    val name: String,
+    val class_: String,
+    val blockSize: Int,
+    val texelsPerBlock: Int,
+    val blockExtent: String?,
+    val compressed: String?,
+    val packed: Int?,
+    val components: List<Component>,
+    val planes: List<Plane>,
+    val spirvimageformat: SPIRVImageFormat?
+)
+
 internal class Registry(
     val platforms: List<Platform>,
     val tags: List<Tag>,
@@ -191,7 +221,8 @@ internal class Registry(
     val features: List<Feature>,
     val extensions: List<Extension>,
     val spirvextensions: List<SPIRVExtension>,
-    val spirvcapabilities: List<SPIRVCapability>
+    val spirvcapabilities: List<SPIRVCapability>,
+    val formats: List<Format>
 )
 
 private val INDIRECTION_REGEX = Regex("""([*]+)(?:\s+const\s*([*]+))?""")
@@ -572,6 +603,40 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     SPIRVCapability::class.java.let {
         xs.alias("spirvcapability", it)
         xs.useAttributeFor(it, "name")
+    }
+
+    Component::class.java.let {
+        xs.addImplicitCollection(Format::class.java, "components", "component", it)
+        xs.alias("component", it)
+        xs.useAttributeFor(it, "name")
+        xs.useAttributeFor(it, "bits")
+        xs.useAttributeFor(it, "numericFormat")
+    }
+
+    SPIRVImageFormat::class.java.let {
+        xs.alias("spirvimageformat", it)
+        xs.useAttributeFor(it, "name")
+    }
+
+    Plane::class.java.let {
+        xs.addImplicitCollection(Format::class.java, "planes", "plane", it)
+        xs.alias("plane", it)
+        xs.useAttributeFor(it, "index")
+        xs.useAttributeFor(it, "widthDivisor")
+        xs.useAttributeFor(it, "heightDivisor")
+        xs.useAttributeFor(it, "compatible")
+    }
+
+    Format::class.java.let {
+        xs.alias("format", it)
+        xs.useAttributeFor(it, "name")
+        xs.useAttributeFor(it, "class_")
+        xs.aliasAttribute("class_", "class")
+        xs.useAttributeFor(it, "blockSize")
+        xs.useAttributeFor(it, "texelsPerBlock")
+        xs.useAttributeFor(it, "blockExtent")
+        xs.useAttributeFor(it, "compressed")
+        xs.useAttributeFor(it, "packed")
     }
 
     xs
