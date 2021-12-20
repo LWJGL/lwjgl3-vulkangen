@@ -346,6 +346,8 @@ else {
         val nullable = if ((indirection.isNotEmpty() || nativeType is TypeFuncpointer/* || (nativeType is TypeHandle && nativeType.type == "VK_DEFINE_HANDLE")*//* || nativeType is TypePlatform*/) && (
                 // the parameter is optional
                 "true" == param.optional ||
+                // the parameter is marked with noautovalidity
+                param.noautovalidity != null ||
                 // the AutoSize param is optional
                 param.len.any() && params.any { param.len.contains(it.name) && "true" == it.optional })
         ) "nullable.." else ""
@@ -572,7 +574,7 @@ ${templateTypes.asSequence()
                             }
 
                         val nullable = if (
-                            (member.optional != null || (member.noautovalidity != null && member.len.any())) && 
+                            (member.optional != null || (member.noautovalidity != null /*&& member.len.any()*/)) && 
                             (member.indirection.isNotEmpty() || types.getValue(member.type).let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })
                         ) "nullable.." else ""
 
