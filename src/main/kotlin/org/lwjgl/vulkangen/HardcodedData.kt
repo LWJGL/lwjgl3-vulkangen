@@ -1,5 +1,115 @@
 package org.lwjgl.vulkangen
 
+// Character sequence used for alignment
+internal const val t = "    "
+
+internal const val S = "\$"
+internal const val QUOTES3 = "\"\"\""
+
+internal const val HEADER = """/*
+ * Copyright LWJGL. All rights reserved.
+ * License terms: https://www.lwjgl.org/license
+ * MACHINE GENERATED FILE, DO NOT EDIT
+ */
+"""
+
+internal val VERSION_HISTORY = mapOf(
+    "1.1" to "10",
+    "1.2" to "11"
+)
+
+internal val DISABLED_EXTENSIONS = setOf(
+    "VK_ANDROID_external_memory_android_hardware_buffer",
+    "VK_EXT_directfb_surface",
+    "VK_FUCHSIA_buffer_collection",
+    "VK_FUCHSIA_imagepipe_surface",
+    "VK_FUCHSIA_external_memory",
+    "VK_FUCHSIA_external_semaphore",
+    "VK_GGP_frame_token",
+    "VK_GGP_stream_descriptor_surface",
+    "VK_KHR_android_surface",
+    "VK_KHR_xcb_surface",
+    "VK_MVK_ios_surface",
+    "VK_NN_vi_surface",
+    "VK_QNX_screen_surface",
+)
+
+internal val EXTENSION_TOKEN_REPLACEMENTS = mapOf(
+    "gcn" to "GCN",
+    "glsl" to "GLSL",
+    "gpu" to "GPU",
+    "pvrtc" to "PVRTC"
+)
+
+internal val IMPORTS = mapOf(
+    //"android/native_window.h" to Import("core.android.*", "org.lwjgl.system.android.*"),
+    "QuartzCore.framework" to Import("core.macos.*", null),
+    "vk_video/vulkan_video_codec_h264std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_h264std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_h264std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_h265std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_h265std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_h265std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "wayland-client.h" to Import("core.linux.*", "org.lwjgl.system.linux.*"),
+    "windows.h" to Import("core.windows.*", "org.lwjgl.system.windows.*"),
+    "X11/Xlib.h" to Import("core.linux.*", "org.lwjgl.system.linux.*"),
+    "X11/extensions/Xrandr.h" to Import("core.linux.*", "org.lwjgl.system.linux.*")
+)
+
+internal val SYSTEM_STRUCTS = mapOf<String, TypeStruct>(
+    //
+)
+
+internal val SYSTEM_OPAQUE = setOf(
+    "Display",
+    "wl_display",
+    "wl_surface"
+)
+
+internal val MACROS = setOf(
+    "MAKE_API_VERSION",
+    "API_VERSION_VARIANT",
+    "API_VERSION_MAJOR",
+    "API_VERSION_MINOR",
+    "API_VERSION_PATCH",
+    "MAKE_VERSION",
+    "VERSION_MAJOR",
+    "VERSION_MINOR",
+    "VERSION_PATCH"
+)
+
+internal fun configAPIConstantImports(enumClassMap: MutableMap<String, String>) {
+    enumClassMap["VK_MAX_PHYSICAL_DEVICE_NAME_SIZE"] = "VK10"
+    enumClassMap["VK_UUID_SIZE"] = "VK10"
+    enumClassMap["VK_LUID_SIZE"] = "VK10"
+    enumClassMap["VK_LUID_SIZE_KHR"] = "KHRExternalMemoryCapabilities"
+    enumClassMap["VK_MAX_EXTENSION_NAME_SIZE"] = "VK10"
+    enumClassMap["VK_MAX_DESCRIPTION_SIZE"] = "VK10"
+    enumClassMap["VK_MAX_MEMORY_TYPES"] = "VK10"
+    enumClassMap["VK_MAX_MEMORY_HEAPS"] = "VK10"
+    enumClassMap["VK_LOD_CLAMP_NONE"] = "VK10"
+    enumClassMap["VK_REMAINING_MIP_LEVELS"] = "VK10"
+    enumClassMap["VK_REMAINING_ARRAY_LAYERS"] = "VK10"
+    enumClassMap["VK_WHOLE_SIZE"] = "VK10"
+    enumClassMap["VK_ATTACHMENT_UNUSED"] = "VK10"
+    enumClassMap["VK_TRUE"] = "VK10"
+    enumClassMap["VK_FALSE"] = "VK10"
+    enumClassMap["VK_QUEUE_FAMILY_IGNORED"] = "VK10"
+    enumClassMap["VK_QUEUE_FAMILY_EXTERNAL"] = "VK10"
+    enumClassMap["VK_QUEUE_FAMILY_EXTERNAL_KHR"] = "KHRExternalMemory"
+    enumClassMap["VK_QUEUE_FAMILY_FOREIGN_EXT"] = "EXTQueueFamilyForeign"
+    enumClassMap["VK_SUBPASS_EXTERNAL"] = "VK10"
+    enumClassMap["VK_MAX_DEVICE_GROUP_SIZE"] = "VK10"
+    enumClassMap["VK_MAX_DEVICE_GROUP_SIZE_KHR"] = "KHRDeviceGroupCreation"
+    enumClassMap["VK_MAX_DRIVER_NAME_SIZE"] = "VK10"
+    enumClassMap["VK_MAX_DRIVER_NAME_SIZE_KHR"] = "KHRDriverProperties"
+    enumClassMap["VK_MAX_DRIVER_INFO_SIZE"] = "VK10"
+    enumClassMap["VK_MAX_DRIVER_INFO_SIZE_KHR"] = "KHRDriverProperties"
+    enumClassMap["VK_SHADER_UNUSED_KHR"] = "KHRRayTracingPipeline"
+    enumClassMap["VK_SHADER_UNUSED_NV"] = "NVRayTracing"
+    enumClassMap["VK_MAX_GLOBAL_PRIORITY_SIZE_EXT"] = "EXTGlobalPriorityQuery"
+}
+
 private val UNNAMED_XREFS = setOf(
     "vkAllocationFunction_return_rules"
 )

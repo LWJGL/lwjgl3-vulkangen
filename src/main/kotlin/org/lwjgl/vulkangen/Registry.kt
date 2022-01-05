@@ -8,66 +8,18 @@ import java.io.*
 import java.nio.file.*
 import kotlin.system.*
 
-internal val DISABLED_EXTENSIONS = setOf(
-    "VK_ANDROID_external_memory_android_hardware_buffer",
-    "VK_EXT_directfb_surface",
-    "VK_FUCHSIA_buffer_collection",
-    "VK_FUCHSIA_imagepipe_surface",
-    "VK_FUCHSIA_external_memory",
-    "VK_FUCHSIA_external_semaphore",
-    "VK_GGP_frame_token",
-    "VK_GGP_stream_descriptor_surface",
-    "VK_KHR_android_surface",
-    "VK_KHR_xcb_surface",
-    "VK_MVK_ios_surface",
-    "VK_NN_vi_surface",
-    "VK_QNX_screen_surface",
-)
-
-private val ABBREVIATIONS = setOf(
-    "gcn",
-    "glsl",
-    "gpu",
-    "pvrtc"
-)
-
 val String.template
     get() = this
         .splitToSequence('_')
-        .map {
-            if (ABBREVIATIONS.contains(it))
-                it.uppercase()
+        .map { token ->
+            if (EXTENSION_TOKEN_REPLACEMENTS.containsKey(token))
+                EXTENSION_TOKEN_REPLACEMENTS[token]
             else
-                "${it[0].uppercaseChar()}${it.substring(1)}"
+                "${token[0].uppercaseChar()}${token.substring(1)}"
         }
         .joinToString("")
 
-private val IMPORTS = mapOf(
-    "android/native_window.h" to "org.lwjgl.system.android.*",
-    "vk_video/vulkan_video_codec_h264std.h" to "org.lwjgl.vulkan.video.*",
-    "vk_video/vulkan_video_codec_h264std_encode.h" to "org.lwjgl.vulkan.video.*",
-    "vk_video/vulkan_video_codec_h264std_decode.h" to "org.lwjgl.vulkan.video.*",
-    "vk_video/vulkan_video_codec_h265std.h" to "org.lwjgl.vulkan.video.*",
-    "vk_video/vulkan_video_codec_h265std_decode.h" to "org.lwjgl.vulkan.video.*",
-    "vk_video/vulkan_video_codec_h265std_encode.h" to "org.lwjgl.vulkan.video.*",
-    "wayland-client.h" to "org.lwjgl.system.linux.*",
-    "windows.h" to "org.lwjgl.system.windows.*",
-    "X11/Xlib.h" to "org.lwjgl.system.linux.*",
-    "X11/extensions/Xrandr.h" to "org.lwjgl.system.linux.*"
-)
-
-private const val HEADER = """/*
- * Copyright LWJGL. All rights reserved.
- * License terms: https://www.lwjgl.org/license
- * MACHINE GENERATED FILE, DO NOT EDIT
- */
-"""
-
-// Character sequence used for alignment
-internal const val t = "    "
-
-private const val S = "\$"
-private const val QUOTES3 = "\"\"\""
+internal data class Import(val templatePackage: String?, val javaPackage: String?)
 
 internal class LWJGLWriter(out: Writer) : PrintWriter(out) {
     override fun println() = print('\n')
@@ -78,11 +30,16 @@ private class EnumRegistry(enumsList: List<Enums>) {
     val enumMap = enums.values.asSequence()
         .flatMap { it.enums?.asSequence() ?: emptySequence() }
         .associateByTo(HashMap()) { it.name }
+    val enumImportMap = HashMap<String, String>()
+
+    init {
+        configAPIConstantImports(enumImportMap)
+    }
 }
 
 fun main(args: Array<String>) {
     require(args.size == 2) {
-        "Usage: VulkanSpecKt <vulkan-docs-path> <lwjgl3-path>"
+        "Usage: RegistryKt <vulkan-docs-path> <lwjgl3-path>"
     }
 
     val vulkanDocs = Paths.get(args[0]).toAbsolutePath().normalize()
@@ -119,7 +76,7 @@ fun main(args: Array<String>) {
 
     val structs = registry.types.asSequence()
         .filterIsInstance<TypeStruct>()
-        .associateBy(Type::name)
+        .associateBy(Type::name) + SYSTEM_STRUCTS
 
     val enumRegistry = EnumRegistry(registry.enums)
 
@@ -173,7 +130,6 @@ fun main(args: Array<String>) {
         }
     }
 
-    // TODO: build [enum -> core/extension] for static imports
     // see VkQueueFamilyGlobalPriorityPropertiesEXT in Custom.kt
     val enumsSeen = HashSet<Enums>()
     registry.features.forEach { feature ->
@@ -210,12 +166,8 @@ fun main(args: Array<String>) {
     }
     structExtends.forEach { (_, structTypes) -> structTypes.sort() }
 
-    generateTypes(root, "VKTypes", types, structs, structExtends, featureTypes)
-    generateTypes(root, "ExtensionTypes", types, structs, structExtends, extensionTypes) {
-        registry.tags.asSequence()
-            .map { "const val ${it.name} = \"${it.name}\"" }
-            .joinToString("\n", postfix = "\n\n")
-    }
+    generateTypes(root, "VKTypes", types, structs, structExtends, enumRegistry, featureTypes)
+    generateTypes(root, "ExtensionTypes", types, structs, structExtends, enumRegistry, extensionTypes)
 
     printUnusedSectionXREFs()
     printUnusedLatexEquations()
@@ -231,13 +183,14 @@ in <vulkan.h>.
 private fun getDistinctTypes(
     requires: Sequence<Require>,
     commands: Map<String, Command>,
-    types: Map<String, Type>
+    types: Map<String, Type>,
+    commandsOnly: Boolean = false
 ) = requires
     .flatMap { require ->
         // Get all top-level types
         sequenceOf(
-            if (require.types == null) emptySequence() else require.types.asSequence().map { it.name },
-            if (require.enums == null) emptySequence() else require.enums.asSequence().map { it.name },
+            if (require.types == null || commandsOnly) emptySequence() else require.types.asSequence().map { it.name },
+            if (require.enums == null || commandsOnly) emptySequence() else require.enums.asSequence().map { it.name },
             if (require.commands == null) emptySequence() else require.commands.asSequence()
                 .map { commands.getValue(it.name) }
                 .flatMap { cmd ->
@@ -283,12 +236,13 @@ private fun getReturnType(proto: Field) = proto.let {
     )
 }
 
+private val INDIRECTION_REGEX = "\\.p(?=\\.|$)".toRegex()
 private fun getCheck(param: Field, indirection: String, structs: Map<String, TypeStruct>, forceIN: Boolean): String {
     if (indirection.isNotEmpty()) { // pointer
         if (param.array != null) {
             return "Check(${param.array}).."
         } else if (param.len.none()) { // not auto-sized
-            if (!forceIN && param.modifier != "const" && !structs.containsKey(param.type)) // output, non-struct
+            if (!forceIN && param.modifier != "const" && (!structs.containsKey(param.type) || INDIRECTION_REGEX.findAll(indirection).count() > 1)) // output, non-struct or struct**
                 return "Check(1).."
         } else {
             // TODO: support more? this currently only supports "struct->member"
@@ -337,8 +291,7 @@ else {
 
         val nativeType = types.getValue(param.type)
         val forceINParam = forceIN
-                           /* TODO: happens to work nicely atm, revisit */
-                           || (nativeType is TypeSystem && param.type.any(Character::isLowerCase))
+                           || (nativeType is TypeSystem && SYSTEM_OPAQUE.contains(nativeType.name))
                            /* TODO: validate this */
                            || param.externsync != null
         val check = getCheck(param, indirection, structs, forceINParam)
@@ -378,14 +331,14 @@ else {
     }.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
-private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>) = fields
+private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>, enumRegistry: EnumRegistry) = fields
     .mapNotNull {
-        if (it.array != null && (it.array.startsWith("\"VK_MAX_") || it.array == "\"VK_UUID_SIZE\""))
-            "static org.lwjgl.vulkan.VK10.*"
+        if (it.array != null && it.array.startsWith("\"VK_"))
+            "static org.lwjgl.vulkan.${enumRegistry.enumImportMap[it.array.substring(1, it.array.length - 1)]!!}.*"
         else {
             val type = types[it.type]
             if (type is TypeSystem)
-                IMPORTS[type.requires]
+                IMPORTS[type.requires]?.javaPackage
             else
                 null
         }
@@ -401,8 +354,8 @@ private fun generateTypes(
     types: Map<String, Type>,
     structs: Map<String, TypeStruct>,
     structExtends: Map<String, List<String>>,
-    templateTypes: Set<Type>,
-    custom: (() -> String)? = null
+    enumRegistry: EnumRegistry,
+    templateTypes: Set<Type>
 ) {
     val file = root.resolve("$template.kt")
 
@@ -418,13 +371,17 @@ private fun generateTypes(
         writer.print(HEADER)
         writer.print("""package vulkan
 
-import org.lwjgl.generator.*${if (templateTypes.any { it is TypeSystem }) """
-//import core.android.*
-import core.linux.*
-import core.macos.*
-import core.windows.*""" else ""}
+import org.lwjgl.generator.*${templateTypes.asSequence()
+    .flatMap { getDistinctTypes(it.name, types) }
+    .distinct()
+    .filterIsInstance<TypeSystem>()
+    .mapNotNull { IMPORTS[it.requires]?.templatePackage }
+    .distinct()
+    .sorted()
+    .joinToString("") { "\nimport $it" }
+}
 
-${if (custom != null) custom() else ""}// Handle types
+// Handle types
 ${templateTypes.asSequence()
             .filterIsInstance<TypeHandle>()
             .joinToString("\n") { "val ${it.name} = ${it.type}(\"${it.name}\")" }}
@@ -471,7 +428,7 @@ ${templateTypes.asSequence()
 
         nativeType = "${fp.name}"
     ) {
-        ${getJavaImports(types, sequenceOf(fp.proto) + fp.params.asSequence())}${if (functionDoc == null) "" else """documentation =
+        ${getJavaImports(types, sequenceOf(fp.proto) + fp.params.asSequence(), enumRegistry)}${if (functionDoc == null) "" else """documentation =
         $QUOTES3
         ${functionDoc.shortDescription}
 
@@ -516,7 +473,7 @@ ${templateTypes.asSequence()
                 }val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
                 if (struct.returnedonly) ", mutable = false" else ""
                 }${alias ?: ""}) {
-    ${getJavaImports(types, struct.members.asSequence())}${if (structDoc == null) {
+    ${getJavaImports(types, struct.members.asSequence(), enumRegistry)}${if (structDoc == null) {
                     if (struct.alias == null) "" else """documentation = "See ##${struct.alias}."
 
     """
@@ -611,22 +568,33 @@ private fun generateFeature(
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
         val distinctTypes = getDistinctTypes(feature.requires.asSequence(), commands, types)
+        val imports = getDistinctTypes(feature.requires.asSequence(), commands, types, commandsOnly = true).asSequence()
+            .filterIsInstance<TypeSystem>()
+            .mapNotNull { IMPORTS[it.requires] }
+            .distinct()
+            .toList()
 
         writer.print(HEADER)
         writer.print("""package vulkan.templates
 
-import org.lwjgl.generator.*${distinctTypes.asSequence()
-            .filterIsInstance<TypeSystem>()
-            .mapNotNull { IMPORTS[it.requires] }
-            .distinct()
-            .map { "\nimport ${it.replace("org.lwjgl.system.", "core.")}" }
-            .distinct()
-            .joinToString()
-        }
-import vulkan.*
+import org.lwjgl.generator.*
+${imports.asSequence()
+    .mapNotNull { it.templatePackage }
+    .sorted()
+    .joinToString("") { "import $it\n" }
+}import vulkan.*
 
 val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK", binding = VK_BINDING_INSTANCE) {
-    ${if (feature.number != "1.0") /* TODO: */"extends = VK10\n    " else ""}documentation =
+    ${
+        VERSION_HISTORY[feature.number].let {
+            if (it == null) "" else "extends = VK$it\n$t"
+        }
+    }${
+        imports.asSequence()
+            .mapNotNull { it.javaPackage }
+            .sorted()
+            .joinToString("") { "javaImport(\"$it\")\n$t" }
+    }documentation =
         $QUOTES3
         The core Vulkan ${feature.number} functionality.
         $QUOTES3
@@ -654,7 +622,10 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
                         }},
 
         ${enumList.asSequence()
-                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry, typeLong)}" }
+                            .map {
+                                enumRegistry.enumImportMap[it.name] = template
+                                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry, typeLong)}"
+                            }
                             .joinToString(",\n$t$t")}
     )""")
                     }
@@ -667,7 +638,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
         featureEnums.removeAll(enumsSeen)
         if (featureEnums.isNotEmpty()) {
             enumsSeen.addAll(featureEnums)
-            writer.printEnums(featureEnums, 0, enumRegistry)
+            writer.printEnums(template, featureEnums, 0, enumRegistry)
         }
 
         feature.requires.asSequence()
@@ -697,27 +668,34 @@ private fun generateExtension(
     enumsSeen: MutableSet<Enums>
 ) {
     val name = extension.name.substring(3)
+    val template = name.template
     val file = root.resolve("templates/$name.kt")
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
         val distinctTypes = getDistinctTypes(extension.requires.asSequence(), commands, types)
+        val imports = getDistinctTypes(extension.requires.asSequence(), commands, types, commandsOnly = true).asSequence()
+            .filterIsInstance<TypeSystem>()
+            .mapNotNull { IMPORTS[it.requires] }
+            .distinct()
+            .toList()
 
         writer.print(HEADER)
         writer.print("""package vulkan.templates
 
-import org.lwjgl.generator.*${distinctTypes.asSequence()
-            .filterIsInstance<TypeSystem>()
-            .mapNotNull { IMPORTS[it.requires] }
-            .filter { it.startsWith("org.lwjgl.system.") }
-            .distinct()
-            .map { "\nimport ${it.replace("org.lwjgl.system.", "core.")}" }
-            .distinct()
-            .joinToString()
-        }
-import vulkan.*
+import org.lwjgl.generator.*
+${imports.asSequence()
+    .mapNotNull { it.templatePackage }
+    .sorted()
+    .joinToString("") { "import $it\n" }
+}import vulkan.*
 
-val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}", postfix = ${name.substringBefore('_')}) {
-    documentation =
+val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}", postfix = "${name.substringBefore('_')}") {
+    ${
+        imports.asSequence()
+            .mapNotNull { it.javaPackage }
+            .sorted()
+            .joinToString("") { "javaImport(\"$it\")\n$t" }
+    }documentation =
         $QUOTES3
         ${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}
         $QUOTES3
@@ -766,7 +744,10 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
         $QUOTES3"""}},
 
         ${enumList.asSequence()
-                            .map { "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry, typeLong)}" }
+                            .map {
+                                enumRegistry.enumImportMap[it.name] = template
+                                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry, typeLong)}"
+                            }
                             .joinToString(",\n$t$t")}
     )""")
                     }
@@ -779,7 +760,7 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
         extensionEnums.removeAll(enumsSeen)
         if (extensionEnums.isNotEmpty()) {
             enumsSeen.addAll(extensionEnums)
-            writer.printEnums(extensionEnums, extension.number, enumRegistry)
+            writer.printEnums(template, extensionEnums, extension.number, enumRegistry)
         }
 
         // Merge multiple dependencies (in different <require>) for the same command
@@ -850,7 +831,7 @@ private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
     .distinct()
     .mapNotNull { enums[it] }
 
-private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enumRegistry: EnumRegistry) {
+private fun PrintWriter.printEnums(className: String, enums: List<Enums>, extensionNumber: Int, enumRegistry: EnumRegistry) {
     enums.asSequence()
         .filter { block -> block.enums != null }
         .forEach { block ->
@@ -865,6 +846,7 @@ private fun PrintWriter.printEnums(enums: List<Enums>, extensionNumber: Int, enu
         """.splitLargeLiteral()}$QUOTES3"""},
 
         ${block.enums!!.joinToString(",\n$t$t") {
+                enumRegistry.enumImportMap[it.name] = className
                 "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extensionNumber, enumRegistry, typeLong)}"
             }}
     )""")

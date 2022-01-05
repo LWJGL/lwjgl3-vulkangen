@@ -1,16 +1,15 @@
-From 948d0221a89ecae451e24101bf66029e11100bae Mon Sep 17 00:00:00 2001
+From dd85ce2f03d9126dbff939b9af8092040794c466 Mon Sep 17 00:00:00 2001
 From: Ioannis Tsakpinis <iotsakp@gmail.com>
 Date: Sat, 28 Aug 2021 21:24:50 +0300
 Subject: [PATCH] LWJGL fixes
 
 ---
- .gitignore                                    | 17 +++++++++-----
+ .gitignore                                    | 19 ++++++++++------
  Makefile                                      |  2 +-
  appendices/VK_EXT_debug_report.txt            | 22 -------------------
  appendices/VK_EXT_texel_buffer_alignment.txt  |  1 -
  appendices/VK_INTEL_performance_query.txt     |  2 +-
  .../VK_KHR_pipeline_executable_properties.txt |  1 -
- appendices/VK_KHR_pipeline_library.txt        |  2 +-
  .../VK_NV_device_diagnostics_config.txt       |  2 +-
  .../PresentTimeInfo.txt                       |  2 ++
  .../VK_INTEL_performance_query/queries.txt    | 10 ++++-----
@@ -23,25 +22,25 @@ Subject: [PATCH] LWJGL fixes
  chapters/features.txt                         | 12 +++++-----
  chapters/limits.txt                           |  2 +-
  chapters/memory.txt                           |  2 ++
- chapters/video_decode_extensions.txt          |  1 +
- chapters/video_decode_h265_extensions.txt     |  4 ++++
- chapters/video_encode_extensions.txt          |  2 ++
- makeSpec                                      | 13 +++++++++++
+ chapters/video_decode_h265_extensions.txt     |  8 +++----
+ makeSpec                                      | 14 ++++++++++++
  scripts/extensionmetadocgenerator.py          |  4 ++--
  scripts/reflib.py                             | 14 ++++++++++++
- xml/vk.xml                                    | 14 ++++++------
- 26 files changed, 95 insertions(+), 72 deletions(-)
+ xml/vk.xml                                    | 19 ++++++++--------
+ 23 files changed, 96 insertions(+), 78 deletions(-)
 
 diff --git a/.gitignore b/.gitignore
-index 2d6d0e74..1bee2910 100644
+index 787cb5b3..6187aba0 100644
 --- a/.gitignore
 +++ b/.gitignore
-@@ -47,13 +47,18 @@ __pycache__
+@@ -47,14 +47,19 @@ __pycache__
  # Spec build generated, temporary, and output files
 
  # Files generated from vk.xml
 -/gen/
+-/gencore/
 +#/gen/
++#/gencore/
 +/gen/api.py
 +/gen/out/
 +/gen/refpage/refpage.log
@@ -60,7 +59,7 @@ index 2d6d0e74..1bee2910 100644
  man/logfile
  man/CAMetalLayer.txt
  man/WSIheaders.txt
-@@ -74,7 +79,7 @@ xml/diag.txt
+@@ -75,7 +80,7 @@ xml/diag.txt
  .DS_Store
 
  # Auto-generated files
@@ -70,10 +69,10 @@ index 2d6d0e74..1bee2910 100644
  # check_spec_links (and its tests) output
  applyfixes.sh
 diff --git a/Makefile b/Makefile
-index 28efeb98..cd22faf0 100644
+index c9929c5b..09e6da30 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -455,7 +455,7 @@ manhtmlpages: $(REFPATH)/apispec.txt $(GENDEPENDS)
+@@ -461,7 +461,7 @@ manhtmlpages: $(REFPATH)/apispec.txt $(GENDEPENDS)
  	$(QUIET) echo "manhtmlpages: building HTML refpages with these options:"
  	$(QUIET) echo $(ASCIIDOC) -b html5 $(ADOCOPTS) $(ADOCHTMLOPTS) \
  	    $(ADOCREFOPTS) -d manpage -o REFPAGE.html REFPAGE.txt
@@ -152,19 +151,6 @@ index 0ffbf2e9..93ca249c 100644
  *Contributors*::
    - Jason Ekstrand, Intel
    - Ian Romanick, Intel
-diff --git a/appendices/VK_KHR_pipeline_library.txt b/appendices/VK_KHR_pipeline_library.txt
-index 1efddca7..54982242 100644
---- a/appendices/VK_KHR_pipeline_library.txt
-+++ b/appendices/VK_KHR_pipeline_library.txt
-@@ -11,7 +11,7 @@ include::{generated}/meta/{refprefix}VK_KHR_pipeline_library.txt[]
- *IP Status*::
-     No known IP claims.
- *Contributors*::
--  - See contributors to `apiext:VK_KHR_ray_tracing`
-+  - See contributors to `apiext:VK_KHR_ray_tracing_pipeline`
-
- === Description
-
 diff --git a/appendices/VK_NV_device_diagnostics_config.txt b/appendices/VK_NV_device_diagnostics_config.txt
 index 1bd1d1c2..33a8fc6d 100644
 --- a/appendices/VK_NV_device_diagnostics_config.txt
@@ -190,7 +176,7 @@ index 062abbec..266111c2 100644
 +include::{generated}/validity/structs/VkPresentTimeGOOGLE.txt[]
  --
 diff --git a/chapters/VK_INTEL_performance_query/queries.txt b/chapters/VK_INTEL_performance_query/queries.txt
-index dd06994d..92338f4f 100644
+index 1b750a87..51872232 100644
 --- a/chapters/VK_INTEL_performance_query/queries.txt
 +++ b/chapters/VK_INTEL_performance_query/queries.txt
 @@ -123,11 +123,11 @@ The sname:VkPerformanceValueDataINTEL union is defined as:
@@ -233,10 +219,10 @@ index ad9433c7..558bed8b 100644
  .Note
  ====
 diff --git a/chapters/VK_KHR_performance_query/queriesperformance.txt b/chapters/VK_KHR_performance_query/queriesperformance.txt
-index e834628b..5e567280 100644
+index 28364505..c8d1c3af 100644
 --- a/chapters/VK_KHR_performance_query/queriesperformance.txt
 +++ b/chapters/VK_KHR_performance_query/queriesperformance.txt
-@@ -61,6 +61,8 @@ The slink:VkPerformanceCounterKHR::pname:unit enumeration specifies how to
+@@ -70,6 +70,8 @@ The slink:VkPerformanceCounterKHR::pname:unit enumeration specifies how to
  parse the counter data.
 
  include::{generated}/api/structs/VkPerformanceCounterResultKHR.txt[]
@@ -246,7 +232,7 @@ index e834628b..5e567280 100644
 
 
 diff --git a/chapters/VK_KHR_swapchain/wsi.txt b/chapters/VK_KHR_swapchain/wsi.txt
-index 91b8d88d..7a7fa7bb 100644
+index 966ec7fc..2b89fcce 100644
 --- a/chapters/VK_KHR_swapchain/wsi.txt
 +++ b/chapters/VK_KHR_swapchain/wsi.txt
 @@ -232,20 +232,20 @@ effects that require them to run for all pixels in the presentable image.
@@ -312,7 +298,7 @@ index 2e16e689..4a033457 100644
  --
 
 diff --git a/chapters/VK_NV_device_generated_commands/indirectcommands.txt b/chapters/VK_NV_device_generated_commands/indirectcommands.txt
-index 54a6ef8b..9e3113f1 100644
+index 45d48ade..ad58daa2 100644
 --- a/chapters/VK_NV_device_generated_commands/indirectcommands.txt
 +++ b/chapters/VK_NV_device_generated_commands/indirectcommands.txt
 @@ -119,7 +119,7 @@ void cmdProcessAllSequences(cmd, pipeline, indirectCommandsLayout, pIndirectComm
@@ -325,11 +311,11 @@ index 54a6ef8b..9e3113f1 100644
      sname:VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::pname:maxIndirectCommandsStreamStride.
      Furthermore the alignment of each token input must: be ensured
 diff --git a/chapters/capabilities.txt b/chapters/capabilities.txt
-index 3628f74d..0a3b6fb6 100644
+index 2ae5c483..f6da696b 100644
 --- a/chapters/capabilities.txt
 +++ b/chapters/capabilities.txt
 @@ -135,7 +135,7 @@ ifdef::VK_VERSION_1_1,VK_KHR_sampler_ycbcr_conversion[]
-     sampler Y'C~B~C~R~ conversion>>
+      sampler Y'C~B~C~R~ conversion>>
  endif::VK_VERSION_1_1,VK_KHR_sampler_ycbcr_conversion[]
  ifdef::VK_EXT_image_drm_format_modifier[]
 -  * If pname:tiling is ename:VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT, then
@@ -348,7 +334,7 @@ index 3628f74d..0a3b6fb6 100644
  --
 
 diff --git a/chapters/features.txt b/chapters/features.txt
-index 6b8ba4c2..4e0fc3f2 100644
+index 79cc909d..079b7aa2 100644
 --- a/chapters/features.txt
 +++ b/chapters/features.txt
 @@ -1039,8 +1039,7 @@ include::{chapters}/features.txt[tag=VK_KHR_vulkan_memory_model-features]
@@ -361,7 +347,7 @@ index 6b8ba4c2..4e0fc3f2 100644
      code:OpGroupNonUniformBroadcast can: be dynamically uniform within a
      subgroup, and the "`Index`" operand of
      code:OpGroupNonUniformQuadBroadcast can: be dynamically uniform within
-@@ -2222,7 +2221,7 @@ This structure describes the following features:
+@@ -2232,7 +2231,7 @@ This structure describes the following features:
 
  See <<shaders-scope-quad, Quad shader scope>> for more information.
 
@@ -370,7 +356,7 @@ index 6b8ba4c2..4e0fc3f2 100644
  include::{chapters}/features.txt[tag=features]
 
  include::{generated}/validity/structs/VkPhysicalDeviceComputeShaderDerivativesFeaturesNV.txt[]
-@@ -2900,7 +2899,7 @@ This structure describes the following feature:
+@@ -2936,7 +2935,7 @@ This structure describes the following feature:
      indicates that the implementation supports the
      code:IntegerFunctions2INTEL SPIR-V capability.
 
@@ -379,7 +365,7 @@ index 6b8ba4c2..4e0fc3f2 100644
  include::{chapters}/features.txt[tag=features]
 
  include::{generated}/validity/structs/VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL.txt[]
-@@ -4003,14 +4002,15 @@ This structure describes the following feature:
+@@ -4082,14 +4081,15 @@ This structure describes the following feature:
      that the implementation must: support using the elink:VkDescriptorType
      of ename:VK_DESCRIPTOR_TYPE_MUTABLE_VALVE with at least the following
      descriptor types, where any combination of the types must: be supported:
@@ -398,10 +384,10 @@ index 6b8ba4c2..4e0fc3f2 100644
    ** Non-uniform descriptor indexing must: be supported if all descriptor
       types in a slink:VkMutableDescriptorTypeListVALVE for
 diff --git a/chapters/limits.txt b/chapters/limits.txt
-index 11e82a52..c571b5ff 100644
+index 1e0d99f3..4106b5ac 100644
 --- a/chapters/limits.txt
 +++ b/chapters/limits.txt
-@@ -1275,7 +1275,7 @@ ifndef::VK_VERSION_1_2[:anchor-prefix:]
+@@ -1282,7 +1282,7 @@ ifndef::VK_VERSION_1_2[:anchor-prefix:]
  include::{chapters}/limits.txt[tag=limits_desc]
 
  If pname:supportedOperations includes <<features-subgroup-quad,
@@ -411,7 +397,7 @@ index 11e82a52..c571b5ff 100644
  or <<features-shaderSubgroupUniformControlFlow,
  pname:shaderSubgroupUniformControlFlow>> is enabled,
 diff --git a/chapters/memory.txt b/chapters/memory.txt
-index 73305eb8..a277abc2 100644
+index 15ba95f9..9301ef43 100644
 --- a/chapters/memory.txt
 +++ b/chapters/memory.txt
 @@ -230,6 +230,8 @@ include::{generated}/api/funcpointers/PFN_vkInternalFreeNotification.txt[]
@@ -423,84 +409,43 @@ index 73305eb8..a277abc2 100644
  --
 
  [open,refpage='VkSystemAllocationScope',desc='Allocation scope',type='enums',xrefs='VkAllocationCallbacks']
-diff --git a/chapters/video_decode_extensions.txt b/chapters/video_decode_extensions.txt
-index 31178baa..005533b7 100644
---- a/chapters/video_decode_extensions.txt
-+++ b/chapters/video_decode_extensions.txt
-@@ -273,6 +273,7 @@ include::{generated}/validity/protos/vkCmdDecodeVideoKHR.txt[]
- The slink:VkVideoDecodeInfoKHR structure is defined as:
-
- include::{generated}/api/structs/VkVideoDecodeInfoKHR.txt[]
-+
-   * pname:sType is the type of this structure.
-   * pname:pNext is `NULL` or a pointer to a structure extending this
-     structure.
 diff --git a/chapters/video_decode_h265_extensions.txt b/chapters/video_decode_h265_extensions.txt
-index a0432713..47e3cc05 100644
+index 586a41d8..ba540cc8 100644
 --- a/chapters/video_decode_h265_extensions.txt
 +++ b/chapters/video_decode_h265_extensions.txt
-@@ -68,6 +68,7 @@ capabilities.
- The slink:VkVideoDecodeH265CapabilitiesEXT structure is defined as:
+@@ -58,10 +58,6 @@ slink:VkVideoProfileKHR field of slink:VkVideoSessionCreateInfoKHR.
 
- include::{generated}/api/structs/VkVideoDecodeH265CapabilitiesEXT.txt[]
+ [open,refpage='VkVideoDecodeH265CapabilitiesEXT',desc='Structure specifies H.265 decode capabilities parameters when decoding a frame',type='structs']
+ --
+-The sname:VkVideoDecodeH265CapabilitiesEXT structure is defined as:
+-
+-include::{generated}/api/structs/VkVideoDecodeH265CapabilitiesEXT.txt[]
+-
+ When using flink:vkGetPhysicalDeviceVideoCapabilitiesKHR to query the
+ capabilities for the parameter pname:videoCodecOperation specified as
+ ename:VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_EXT, a
+@@ -69,6 +65,10 @@ slink:VkVideoDecodeH265CapabilitiesEXT structure can: be chained to
+ slink:VkVideoCapabilitiesKHR to return this H.265 extension specific
+ capabilities.
+
++The slink:VkVideoDecodeH265CapabilitiesEXT structure is defined as:
 +
-   * pname:sType is the type of this structure.
-   * pname:pNext is `NULL` or a pointer to a structure extending this
-     structure.
-@@ -92,6 +93,7 @@ decode operations.
- The slink:VkVideoDecodeH265SessionCreateInfoEXT structure is defined as:
-
- include::{generated}/api/structs/VkVideoDecodeH265SessionCreateInfoEXT.txt[]
-+
-   * pname:sType is the type of this structure.
-   * pname:pNext is `NULL` or a pointer to a structure extending this
-     structure.
-@@ -214,6 +216,7 @@ include::{generated}/validity/structs/VkVideoDecodeH265SessionParametersAddInfoE
- The slink:VkVideoDecodeH265PictureInfoEXT structure is defined as:
-
- include::{generated}/api/structs/VkVideoDecodeH265PictureInfoEXT.txt[]
-+
-   * pname:sType is the type of this structure.
-   * pname:pNext is `NULL` or a pointer to a structure extending this
-     structure.
-@@ -233,6 +236,7 @@ include::{generated}/validity/structs/VkVideoDecodeH265PictureInfoEXT.txt[]
- The slink:VkVideoDecodeH265DpbSlotInfoEXT structure is defined as:
-
- include::{generated}/api/structs/VkVideoDecodeH265DpbSlotInfoEXT.txt[]
-+
-   * pname:sType is the type of this structure.
-   * pname:pNext is `NULL` or a pointer to a structure extending this
-     structure.
-diff --git a/chapters/video_encode_extensions.txt b/chapters/video_encode_extensions.txt
-index 71833170..c8a9bd75 100644
---- a/chapters/video_encode_extensions.txt
-+++ b/chapters/video_encode_extensions.txt
-@@ -133,6 +133,7 @@ include::{generated}/validity/protos/vkCmdEncodeVideoKHR.txt[]
- The slink:VkVideoEncodeInfoKHR structure is defined as:
-
- include::{generated}/api/structs/VkVideoEncodeInfoKHR.txt[]
-+
-   * pname:sType is the type of this structure.
-   * pname:pNext is a pointer to a structure extending this structure.
-     A codec-specific extension structure must: be chained to specify what
-@@ -219,6 +220,7 @@ more elink:VkVideoEncodeFlagBitsKHR.
- The slink:VkVideoEncodeRateControlInfoKHR structure is defined as:
-
- include::{generated}/api/structs/VkVideoEncodeRateControlInfoKHR.txt[]
++include::{generated}/api/structs/VkVideoDecodeH265CapabilitiesEXT.txt[]
 +
    * pname:sType is the type of this structure.
    * pname:pNext is `NULL` or a pointer to a structure extending this
      structure.
 diff --git a/makeSpec b/makeSpec
-index 7a3add3f..4b2af6c7 100755
+index c747d923..c865e88b 100755
 --- a/makeSpec
 +++ b/makeSpec
-@@ -72,6 +72,19 @@ if __name__ == '__main__':
+@@ -97,6 +97,20 @@ if __name__ == '__main__':
          title = 'with all registered extensions'
-         exts = set(allExts)
+         exts = set(deps.allExtensions())
 
 +    exts.remove('VK_ANDROID_external_memory_android_hardware_buffer')
 +    exts.remove('VK_EXT_directfb_surface')
++    exts.remove('VK_FUCHSIA_buffer_collection')
 +    exts.remove('VK_FUCHSIA_imagepipe_surface')
 +    exts.remove('VK_FUCHSIA_external_memory')
 +    exts.remove('VK_FUCHSIA_external_semaphore')
@@ -516,7 +461,7 @@ index 7a3add3f..4b2af6c7 100755
      extraexts = set()
      for name in results.extension:
 diff --git a/scripts/extensionmetadocgenerator.py b/scripts/extensionmetadocgenerator.py
-index 9f7b627d..3fa90404 100644
+index d973c757..94853456 100644
 --- a/scripts/extensionmetadocgenerator.py
 +++ b/scripts/extensionmetadocgenerator.py
 @@ -263,12 +263,12 @@ class Extension:
@@ -535,7 +480,7 @@ index 9f7b627d..3fa90404 100644
 
          if self.deprecationType:
 diff --git a/scripts/reflib.py b/scripts/reflib.py
-index 5eaf5e79..2f6ec331 100644
+index 235a9389..27cdbcfd 100644
 --- a/scripts/reflib.py
 +++ b/scripts/reflib.py
 @@ -219,6 +219,11 @@ def nextPara(file, line):
@@ -561,7 +506,7 @@ index 5eaf5e79..2f6ec331 100644
  def fixupRefs(pageMap, specFile, file):
      """Fill in missing fields in pageInfo structures, to the extent they can be
      inferred.
-@@ -319,6 +328,11 @@ def fixupRefs(pageMap, specFile, file):
+@@ -322,6 +331,11 @@ def fixupRefs(pageMap, specFile, file):
                  pi.param = nextPara(file, pi.include)
                  if pi.body is None:
                      pi.body = nextPara(file, pi.param)
@@ -574,10 +519,26 @@ index 5eaf5e79..2f6ec331 100644
                  if pi.body is None:
                      pi.body = nextPara(file, pi.include)
 diff --git a/xml/vk.xml b/xml/vk.xml
-index 31b8f1ed..717de389 100644
+index 6a8d05e9..d83bb452 100644
 --- a/xml/vk.xml
 +++ b/xml/vk.xml
-@@ -224,7 +224,7 @@ typedef void <name>CAMetalLayer</name>;
+@@ -196,12 +196,13 @@ branch of the member gitlab server.
+
+         <type category="basetype">struct <name>ANativeWindow</name>;</type>
+         <type category="basetype">struct <name>AHardwareBuffer</name>;</type>
+-        <type category="basetype">
++        <!--<type category="basetype">
+ #ifdef __OBJC__
+ @class CAMetalLayer;
+ #else
+ typedef void <name>CAMetalLayer</name>;
+-#endif</type>
++#endif</type>-->
++        <type requires="QuartzCore.framework" name="CAMetalLayer"/>
+
+         <type category="basetype">typedef <type>uint32_t</type> <name>VkSampleMask</name>;</type>
+         <type category="basetype">typedef <type>uint32_t</type> <name>VkBool32</name>;</type>
+@@ -224,7 +225,7 @@ typedef void <name>CAMetalLayer</name>;
          <type requires="vk_platform" name="int32_t"/>
          <type requires="vk_platform" name="int64_t"/>
          <type requires="vk_platform" name="size_t"/>
@@ -586,7 +547,7 @@ index 31b8f1ed..717de389 100644
 
              <comment>Bitmask types</comment>
          <type requires="VkFramebufferCreateFlagBits"      category="bitmask">typedef <type>VkFlags</type> <name>VkFramebufferCreateFlags</name>;</type>
-@@ -907,9 +907,9 @@ typedef void <name>CAMetalLayer</name>;
+@@ -927,9 +928,9 @@ typedef void <name>CAMetalLayer</name>;
          </type>
          <type category="struct" name="VkPhysicalDeviceMemoryProperties" returnedonly="true">
              <member><type>uint32_t</type>               <name>memoryTypeCount</name></member>
@@ -598,7 +559,7 @@ index 31b8f1ed..717de389 100644
          </type>
          <type category="struct" name="VkMemoryAllocateInfo">
              <member values="VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO"><type>VkStructureType</type> <name>sType</name></member>
-@@ -4116,7 +4116,7 @@ typedef void <name>CAMetalLayer</name>;
+@@ -4136,7 +4137,7 @@ typedef void <name>CAMetalLayer</name>;
          <type category="struct" name="VkAccelerationStructureInfoNV">
              <member values="VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV"><type>VkStructureType</type> <name>sType</name></member>
              <member optional="true">const <type>void</type>*                            <name>pNext</name></member>
@@ -607,7 +568,7 @@ index 31b8f1ed..717de389 100644
              <member optional="true"><type>VkBuildAccelerationStructureFlagsNV</type><name>flags</name></member>
              <member optional="true"><type>uint32_t</type>               <name>instanceCount</name></member>
              <member optional="true"><type>uint32_t</type>               <name>geometryCount</name></member>
-@@ -13149,7 +13149,7 @@ typedef void <name>CAMetalLayer</name>;
+@@ -13605,7 +13606,7 @@ typedef void <name>CAMetalLayer</name>;
              </require>
              <require extension="VK_KHR_descriptor_update_template">
                  <command name="vkCmdPushDescriptorSetWithTemplateKHR"/>
@@ -616,7 +577,7 @@ index 31b8f1ed..717de389 100644
              </require>
          </extension>
          <extension name="VK_EXT_conditional_rendering" number="82" type="device" author="NV" contact="Vikram Kushwaha @vkushwaha" supported="vulkan">
-@@ -15331,10 +15331,10 @@ typedef void <name>CAMetalLayer</name>;
+@@ -15781,10 +15782,10 @@ typedef void <name>CAMetalLayer</name>;
                  <command                                                    name="vkGetPhysicalDeviceToolPropertiesEXT"/>
              </require>
              <require extension="VK_EXT_debug_report">

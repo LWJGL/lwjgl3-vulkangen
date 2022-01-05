@@ -405,22 +405,29 @@ private fun seeAlsoToJavaDoc(node: StructuralNode): String? {
         "<h5>${node.title.patch()}</h5>\n$t$t${links.patch()}"
 }
 
+private val PARAM_DOC_NODE_REGEX = Regex("""^\s*\{@code (\w+)}""")
 private val MULTI_PARAM_DOC_REGEX = Regex("""^\s*\{@code (\w+)}(?:[,:]?(?:\s+and)?\s+\{@code \w+})+\s+""")
 private val PARAM_REGEX = Regex("""\{@code (\w+)}""")
 private val PARAM_DOC_REGEX = Regex("""^\s*(When\s+)?(?:##(\w+)::)?\{@code (\w+)}(?:\[\d+])?(\.\w+)?[,:]?\s+(?:is\s+)?(.+)""", RegexOption.DOT_MATCHES_ALL)
 
 private val ESCAPE_REGEX = Regex(""""|\\#""")
 
-private fun nodeToParamJavaDoc(members: StructuralNode): Map<String, String> {
-    val params = HashMap<String, String>()
-    members.blocks.forEach { node ->
-        if (node !is org.asciidoctor.ast.List) {
-            return@forEach
-        }
+private fun findParameterList(node: StructuralNode): Sequence<org.asciidoctor.ast.List> =
+    if (node is org.asciidoctor.ast.List)
+        sequenceOf(node)
+    else if (node.blocks != null) {
+        node.blocks.asSequence()
+            .mapNotNull { findParameterList(it) }
+            .flatMap { it }
+    } else {
+        emptySequence()
+    }
 
-        node.items.asSequence()
+private fun nodeToParamJavaDoc(members: StructuralNode) = findParameterList(members)
+    .flatMap { list ->
+        list.items.asSequence()
             .filterIsInstance<ListItem>()
-            .filter { it.text != null }
+            .filter { it.text != null && PARAM_DOC_NODE_REGEX.containsMatchIn(it.text) }
             .flatMap { item ->
                 val multi = MULTI_PARAM_DOC_REGEX.find(item.text)
                 if (multi != null) {
@@ -467,10 +474,8 @@ private fun nodeToParamJavaDoc(members: StructuralNode): Map<String, String> {
                         }
                         .joinToString("\n\n$t$t", prefix = "\"\"", postfix = "\"\"")
             }
-            .toMap(params)
     }
-    return params
-}
+    .toMap(HashMap())
 
 private fun getItemDescription(listItem: ListItem, description: String) =
     if (listItem.blocks.isNotEmpty())

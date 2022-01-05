@@ -125,7 +125,12 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
             }
         })
         .inlineMacroQuoted("ename", """ename:(\w+)""") { if (it.startsWith("VK_")) "#${it.substring(3)}" else "{@code $it}" }
-        .inlineMacroQuoted("dlink", """dlink:VK_(\w+)""") { "#$it" }
+        .inlineMacroQuoted("dlink", """dlink:VK_(\w+)""") {
+            if (MACROS.contains(it))
+                "#VK_$it()"
+            else
+                "#$it"
+        }
         .inlineMacroQuoted("flink", """flink:vk(\w+)""") { "#$it()" }
         .inlineMacroQuoted("reflink", """reflink:(\w+)""") { "{@code $it}" } // in see-also blocks, hidden atm
         .inlineMacroQuoted("apiext", """apiext:(\w+)""") { "{@link ${it.substring(3).template} $it}" }

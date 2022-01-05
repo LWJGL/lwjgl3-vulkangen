@@ -245,12 +245,13 @@ internal class FieldConverter : Converter {
         TODO()
     }
 
+    private val MODIFIER_STRUCT_REGEX = "\\s*struct(?=\\s|$)".toRegex()
     override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any {
         val attribs = reader.attributeNames.asSequence()
             .map(Any?::toString)
             .associateWithTo(HashMap()) { reader.getAttribute(it) }
 
-        val modifier = reader.value.trim()
+        val modifier = reader.value.trim().replace(MODIFIER_STRUCT_REGEX, "")
 
         if (!reader.hasMoreChildren())
             return Field("", "N/A", "", modifier, null, null, attribs)
@@ -428,7 +429,7 @@ internal class TypeConverter : Converter {
                 }
 
                 if (proto.name == "PFN_vkVoidFunction")
-                    TypeIgnored
+                    TypePlatform("PFN_vkVoidFunction")
                 else {
                     val params = ArrayList<Field>()
                     while (reader.hasMoreChildren()) {
