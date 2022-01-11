@@ -489,7 +489,7 @@ ${templateTypes.asSequence()
 
     """}${struct.members.asSequence()
                     .map { member ->
-                        val pointerSetters = if (member.name == "pNext") {
+                        val pointerSetters = if (member.name == "pNext" && member.type == "void" && member.indirection == ".p") {
                             val pNextTypes = structExtends[struct.name]
                             if (pNextTypes != null) {
                                 "PointerSetter(\n$t$t${pNextTypes.joinToString { "\"$it\"" } },\n$t${t}prepend = true\n$t).."
@@ -545,7 +545,7 @@ ${templateTypes.asSequence()
                         "$pointerSetters$expression$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
                         if (member.array != null) "[${member.array}]" else ""
                         }${
-                        if (struct.returnedonly && (member.name == "sType" || member.name == "pNext")) ".mutable()" else ""
+                        if (struct.returnedonly && ((member.name == "sType" && member.type == "VkStructureType") || (member.name == "pNext" && member.type == "void" && member.indirection == ".p"))) ".mutable()" else ""
                         }"
                     }
                     .joinToString("\n$t")}
