@@ -78,6 +78,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         .attribute("VK_VERSION_1_0")
         .attribute("VK_VERSION_1_1")
         .attribute("VK_VERSION_1_2")
+        .attribute("VK_VERSION_1_3")
         .attributes(extensionIDs)
         // These two are necessary because something goes wrong when a Preprocessor is used
         .attribute("HAS_PROVISIONAL_EXTENSIONS")

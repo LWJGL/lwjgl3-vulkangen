@@ -15,7 +15,8 @@ internal const val HEADER = """/*
 
 internal val VERSION_HISTORY = mapOf(
     "1.1" to "10",
-    "1.2" to "11"
+    "1.2" to "11",
+    "1.3" to "12"
 )
 
 internal val DISABLED_EXTENSIONS = setOf(
@@ -43,7 +44,7 @@ internal val EXTENSION_TOKEN_REPLACEMENTS = mapOf(
 
 internal val IMPORTS = mapOf(
     //"android/native_window.h" to Import("core.android.*", "org.lwjgl.system.android.*"),
-    "QuartzCore.framework" to Import("core.macos.*", null),
+    "QuartzCore.h" to Import("core.macos.*", null),
     "vk_video/vulkan_video_codec_h264std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),

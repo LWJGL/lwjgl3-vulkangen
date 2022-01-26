@@ -58,12 +58,14 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 "toclevels"
             )
             private val KNOWN_ATTRIBS = setOf(
-                "refpage",
-                "imageparam",
-                "stageMaskName",
                 "accessMaskName",
+                "imageopts",
+                "imageparam",
+                "maxBlockSize",
                 "maxinstancecheck",
-                "imageopts"
+                "maxTotalSize",
+                "refpage",
+                "stageMaskName"
             )
 
             private val LINKS = """link:\+\+(.+?)\+\+""".toRegex()
@@ -261,7 +263,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                         if (EXTENSION_LINK_PATTERN.matches(refid)) {
                             "{@link ${refid.substring(3).template} $refid}"
                         } else {
-                            """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
+                            """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
                         }
                     }
                 }
@@ -287,7 +289,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                                 }
                             } else if (hasUnnamedXREF(match)) {
                                 // hack for vkAllocationFunction_return_rules
-                                """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html\#$match">${node.text}</a>"""
+                                """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html\#$match">${node.text}</a>"""
                             } else {
                                 "${node.text} ({@code $match})"
                             }
@@ -296,8 +298,8 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                         """<a target="_blank" href="${node.target.replace("#", "\\#")}">${node.text
                             .ifEmpty { node.target }
                             .run {
-                                if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#"))
-                                    getSectionXREF(substring("https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#".length))
+                                if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#"))
+                                    getSectionXREF(substring("https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#".length))
                                 else
                                     this
                             }

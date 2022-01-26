@@ -1,36 +1,35 @@
-From dd85ce2f03d9126dbff939b9af8092040794c466 Mon Sep 17 00:00:00 2001
+From d6c8c404066671953b2b163b3e0a346efcf90837 Mon Sep 17 00:00:00 2001
 From: Ioannis Tsakpinis <iotsakp@gmail.com>
 Date: Sat, 28 Aug 2021 21:24:50 +0300
 Subject: [PATCH] LWJGL fixes
 
 ---
- .gitignore                                    | 19 ++++++++++------
- Makefile                                      |  2 +-
- appendices/VK_EXT_debug_report.txt            | 22 -------------------
- appendices/VK_EXT_texel_buffer_alignment.txt  |  1 -
- appendices/VK_INTEL_performance_query.txt     |  2 +-
- .../VK_KHR_pipeline_executable_properties.txt |  1 -
- .../VK_NV_device_diagnostics_config.txt       |  2 +-
- .../PresentTimeInfo.txt                       |  2 ++
- .../VK_INTEL_performance_query/queries.txt    | 10 ++++-----
- chapters/VK_KHR_display/display.txt           |  4 ++--
- .../queriesperformance.txt                    |  2 ++
- chapters/VK_KHR_swapchain/wsi.txt             |  6 ++---
- .../platformCreateSurface_macos.txt           | 20 ++++++++---------
- .../indirectcommands.txt                      |  2 +-
- chapters/capabilities.txt                     |  4 +++-
- chapters/features.txt                         | 12 +++++-----
- chapters/limits.txt                           |  2 +-
- chapters/memory.txt                           |  2 ++
- chapters/video_decode_h265_extensions.txt     |  8 +++----
- makeSpec                                      | 14 ++++++++++++
- scripts/extensionmetadocgenerator.py          |  4 ++--
- scripts/reflib.py                             | 14 ++++++++++++
- xml/vk.xml                                    | 19 ++++++++--------
- 23 files changed, 96 insertions(+), 78 deletions(-)
+ .gitignore                                    |  19 +-
+ Makefile                                      |   2 +-
+ appendices/VK_EXT_debug_report.txt            |  22 --
+ appendices/VK_INTEL_performance_query.txt     |   2 +-
+ .../VK_KHR_pipeline_executable_properties.txt |   1 -
+ .../VK_NV_device_diagnostics_config.txt       |   2 +-
+ .../PresentTimeInfo.txt                       |   2 +
+ .../VK_INTEL_performance_query/queries.txt    |  10 +-
+ chapters/VK_KHR_display/display.txt           |   4 +-
+ .../queriesperformance.txt                    |   2 +
+ chapters/VK_KHR_swapchain/wsi.txt             |   6 +-
+ .../platformCreateSurface_macos.txt           |  20 +-
+ .../indirectcommands.txt                      |   2 +-
+ chapters/capabilities.txt                     |   4 +-
+ chapters/features.txt                         |  12 +-
+ chapters/limits.txt                           |   2 +-
+ chapters/memory.txt                           |   2 +
+ chapters/video_decode_h265_extensions.txt     |   8 +-
+ makeSpec                                      |  14 ++
+ scripts/extensionmetadocgenerator.py          |   4 +-
+ scripts/reflib.py                             |  14 ++
+ xml/vk.xml                                    | 193 +++++++++---------
+ 22 files changed, 183 insertions(+), 164 deletions(-)
 
 diff --git a/.gitignore b/.gitignore
-index 787cb5b3..6187aba0 100644
+index ccb0f0da..025205e7 100644
 --- a/.gitignore
 +++ b/.gitignore
 @@ -47,14 +47,19 @@ __pycache__
@@ -69,10 +68,10 @@ index 787cb5b3..6187aba0 100644
  # check_spec_links (and its tests) output
  applyfixes.sh
 diff --git a/Makefile b/Makefile
-index c9929c5b..09e6da30 100644
+index 6e1b218d..0a435d1a 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -461,7 +461,7 @@ manhtmlpages: $(REFPATH)/apispec.txt $(GENDEPENDS)
+@@ -465,7 +465,7 @@ manhtmlpages: $(REFPATH)/apispec.txt $(GENDEPENDS)
  	$(QUIET) echo "manhtmlpages: building HTML refpages with these options:"
  	$(QUIET) echo $(ASCIIDOC) -b html5 $(ADOCOPTS) $(ADOCHTMLOPTS) \
  	    $(ADOCREFOPTS) -d manpage -o REFPAGE.html REFPAGE.txt
@@ -82,7 +81,7 @@ index c9929c5b..09e6da30 100644
  # Build the individual refpages, then the symbolic links from aliases
  MANHTMLDIR  = $(OUTDIR)/man/html
 diff --git a/appendices/VK_EXT_debug_report.txt b/appendices/VK_EXT_debug_report.txt
-index 8a2e6fd2..9f3dc622 100644
+index 6cb7d0ab..f834fa3d 100644
 --- a/appendices/VK_EXT_debug_report.txt
 +++ b/appendices/VK_EXT_debug_report.txt
 @@ -91,28 +91,6 @@ happens and the third will log warnings to stdout.
@@ -114,18 +113,6 @@ index 8a2e6fd2..9f3dc622 100644
 
  === Issues
 
-diff --git a/appendices/VK_EXT_texel_buffer_alignment.txt b/appendices/VK_EXT_texel_buffer_alignment.txt
-index af5ca5a5..8d893c7d 100644
---- a/appendices/VK_EXT_texel_buffer_alignment.txt
-+++ b/appendices/VK_EXT_texel_buffer_alignment.txt
-@@ -10,7 +10,6 @@ include::{generated}/meta/{refprefix}VK_EXT_texel_buffer_alignment.txt[]
-     2019-06-06
- *IP Status*::
-     No known IP claims.
--*Interactions and External Dependencies*::
- *Contributors*::
-   - Jeff Bolz, NVIDIA
-
 diff --git a/appendices/VK_INTEL_performance_query.txt b/appendices/VK_INTEL_performance_query.txt
 index 723710fa..2b31aaf0 100644
 --- a/appendices/VK_INTEL_performance_query.txt
@@ -140,7 +127,7 @@ index 723710fa..2b31aaf0 100644
  library to present the data in a human readable way.
 
 diff --git a/appendices/VK_KHR_pipeline_executable_properties.txt b/appendices/VK_KHR_pipeline_executable_properties.txt
-index 0ffbf2e9..93ca249c 100644
+index 4cfee552..baf264c8 100644
 --- a/appendices/VK_KHR_pipeline_executable_properties.txt
 +++ b/appendices/VK_KHR_pipeline_executable_properties.txt
 @@ -10,7 +10,6 @@ include::{generated}/meta/{refprefix}VK_KHR_pipeline_executable_properties.txt[]
@@ -197,7 +184,7 @@ index 1b750a87..51872232 100644
 
  The correct member of the union is determined by the associated
 diff --git a/chapters/VK_KHR_display/display.txt b/chapters/VK_KHR_display/display.txt
-index ad9433c7..558bed8b 100644
+index c1bf4e97..d00b64a5 100644
 --- a/chapters/VK_KHR_display/display.txt
 +++ b/chapters/VK_KHR_display/display.txt
 @@ -71,7 +71,7 @@ include::{generated}/api/structs/VkDisplayPropertiesKHR.txt[]
@@ -219,7 +206,7 @@ index ad9433c7..558bed8b 100644
  .Note
  ====
 diff --git a/chapters/VK_KHR_performance_query/queriesperformance.txt b/chapters/VK_KHR_performance_query/queriesperformance.txt
-index 28364505..c8d1c3af 100644
+index 803aeca8..015d0344 100644
 --- a/chapters/VK_KHR_performance_query/queriesperformance.txt
 +++ b/chapters/VK_KHR_performance_query/queriesperformance.txt
 @@ -70,6 +70,8 @@ The slink:VkPerformanceCounterKHR::pname:unit enumeration specifies how to
@@ -232,7 +219,7 @@ index 28364505..c8d1c3af 100644
 
 
 diff --git a/chapters/VK_KHR_swapchain/wsi.txt b/chapters/VK_KHR_swapchain/wsi.txt
-index 966ec7fc..2b89fcce 100644
+index 11ed2837..b2451334 100644
 --- a/chapters/VK_KHR_swapchain/wsi.txt
 +++ b/chapters/VK_KHR_swapchain/wsi.txt
 @@ -232,20 +232,20 @@ effects that require them to run for all pixels in the presentable image.
@@ -311,7 +298,7 @@ index 45d48ade..ad58daa2 100644
      sname:VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::pname:maxIndirectCommandsStreamStride.
      Furthermore the alignment of each token input must: be ensured
 diff --git a/chapters/capabilities.txt b/chapters/capabilities.txt
-index 2ae5c483..f6da696b 100644
+index 88c62bad..8db41aa2 100644
 --- a/chapters/capabilities.txt
 +++ b/chapters/capabilities.txt
 @@ -135,7 +135,7 @@ ifdef::VK_VERSION_1_1,VK_KHR_sampler_ycbcr_conversion[]
@@ -334,10 +321,10 @@ index 2ae5c483..f6da696b 100644
  --
 
 diff --git a/chapters/features.txt b/chapters/features.txt
-index 79cc909d..079b7aa2 100644
+index 452af26a..a832117f 100644
 --- a/chapters/features.txt
 +++ b/chapters/features.txt
-@@ -1039,8 +1039,7 @@ include::{chapters}/features.txt[tag=VK_KHR_vulkan_memory_model-features]
+@@ -1040,8 +1040,7 @@ include::{chapters}/features.txt[tag=VK_KHR_vulkan_memory_model-features]
      from vertex or tessellation evaluation shaders.
      If this feature is not enabled, the code:Layer built-in decoration must:
      not be used on outputs in vertex or tessellation evaluation shaders.
@@ -347,7 +334,7 @@ index 79cc909d..079b7aa2 100644
      code:OpGroupNonUniformBroadcast can: be dynamically uniform within a
      subgroup, and the "`Index`" operand of
      code:OpGroupNonUniformQuadBroadcast can: be dynamically uniform within
-@@ -2232,7 +2231,7 @@ This structure describes the following features:
+@@ -2281,7 +2280,7 @@ This structure describes the following features:
 
  See <<shaders-scope-quad, Quad shader scope>> for more information.
 
@@ -356,7 +343,7 @@ index 79cc909d..079b7aa2 100644
  include::{chapters}/features.txt[tag=features]
 
  include::{generated}/validity/structs/VkPhysicalDeviceComputeShaderDerivativesFeaturesNV.txt[]
-@@ -2936,7 +2935,7 @@ This structure describes the following feature:
+@@ -2985,7 +2984,7 @@ This structure describes the following feature:
      indicates that the implementation supports the
      code:IntegerFunctions2INTEL SPIR-V capability.
 
@@ -365,7 +352,7 @@ index 79cc909d..079b7aa2 100644
  include::{chapters}/features.txt[tag=features]
 
  include::{generated}/validity/structs/VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL.txt[]
-@@ -4082,14 +4081,15 @@ This structure describes the following feature:
+@@ -4241,14 +4240,15 @@ This structure describes the following feature:
      that the implementation must: support using the elink:VkDescriptorType
      of ename:VK_DESCRIPTOR_TYPE_MUTABLE_VALVE with at least the following
      descriptor types, where any combination of the types must: be supported:
@@ -384,7 +371,7 @@ index 79cc909d..079b7aa2 100644
    ** Non-uniform descriptor indexing must: be supported if all descriptor
       types in a slink:VkMutableDescriptorTypeListVALVE for
 diff --git a/chapters/limits.txt b/chapters/limits.txt
-index 1e0d99f3..4106b5ac 100644
+index ed519926..8e123d95 100644
 --- a/chapters/limits.txt
 +++ b/chapters/limits.txt
 @@ -1282,7 +1282,7 @@ ifndef::VK_VERSION_1_2[:anchor-prefix:]
@@ -397,7 +384,7 @@ index 1e0d99f3..4106b5ac 100644
  or <<features-shaderSubgroupUniformControlFlow,
  pname:shaderSubgroupUniformControlFlow>> is enabled,
 diff --git a/chapters/memory.txt b/chapters/memory.txt
-index 15ba95f9..9301ef43 100644
+index a30e3232..a9e2add4 100644
 --- a/chapters/memory.txt
 +++ b/chapters/memory.txt
 @@ -230,6 +230,8 @@ include::{generated}/api/funcpointers/PFN_vkInternalFreeNotification.txt[]
@@ -410,7 +397,7 @@ index 15ba95f9..9301ef43 100644
 
  [open,refpage='VkSystemAllocationScope',desc='Allocation scope',type='enums',xrefs='VkAllocationCallbacks']
 diff --git a/chapters/video_decode_h265_extensions.txt b/chapters/video_decode_h265_extensions.txt
-index 586a41d8..ba540cc8 100644
+index 089ca4b5..411a71aa 100644
 --- a/chapters/video_decode_h265_extensions.txt
 +++ b/chapters/video_decode_h265_extensions.txt
 @@ -58,10 +58,6 @@ slink:VkVideoProfileKHR field of slink:VkVideoSessionCreateInfoKHR.
@@ -436,10 +423,10 @@ index 586a41d8..ba540cc8 100644
    * pname:pNext is `NULL` or a pointer to a structure extending this
      structure.
 diff --git a/makeSpec b/makeSpec
-index c747d923..c865e88b 100755
+index 22cf3ff5..d3d1ef46 100755
 --- a/makeSpec
 +++ b/makeSpec
-@@ -97,6 +97,20 @@ if __name__ == '__main__':
+@@ -98,6 +98,20 @@ if __name__ == '__main__':
          title = 'with all registered extensions'
          exts = set(deps.allExtensions())
 
@@ -461,7 +448,7 @@ index c747d923..c865e88b 100755
      extraexts = set()
      for name in results.extension:
 diff --git a/scripts/extensionmetadocgenerator.py b/scripts/extensionmetadocgenerator.py
-index d973c757..94853456 100644
+index 856a9c65..10d50ce6 100644
 --- a/scripts/extensionmetadocgenerator.py
 +++ b/scripts/extensionmetadocgenerator.py
 @@ -263,12 +263,12 @@ class Extension:
@@ -480,7 +467,7 @@ index d973c757..94853456 100644
 
          if self.deprecationType:
 diff --git a/scripts/reflib.py b/scripts/reflib.py
-index 235a9389..27cdbcfd 100644
+index 76385f47..6d942db3 100644
 --- a/scripts/reflib.py
 +++ b/scripts/reflib.py
 @@ -219,6 +219,11 @@ def nextPara(file, line):
@@ -519,10 +506,10 @@ index 235a9389..27cdbcfd 100644
                  if pi.body is None:
                      pi.body = nextPara(file, pi.include)
 diff --git a/xml/vk.xml b/xml/vk.xml
-index 6a8d05e9..d83bb452 100644
+index 9477feae..21a8b5a2 100644
 --- a/xml/vk.xml
 +++ b/xml/vk.xml
-@@ -196,12 +196,13 @@ branch of the member gitlab server.
+@@ -198,12 +198,13 @@ branch of the member gitlab server.
 
          <type category="basetype">struct <name>ANativeWindow</name>;</type>
          <type category="basetype">struct <name>AHardwareBuffer</name>;</type>
@@ -538,7 +525,7 @@ index 6a8d05e9..d83bb452 100644
 
          <type category="basetype">typedef <type>uint32_t</type> <name>VkSampleMask</name>;</type>
          <type category="basetype">typedef <type>uint32_t</type> <name>VkBool32</name>;</type>
-@@ -224,7 +225,7 @@ typedef void <name>CAMetalLayer</name>;
+@@ -226,7 +227,7 @@ typedef void <name>CAMetalLayer</name>;
          <type requires="vk_platform" name="int32_t"/>
          <type requires="vk_platform" name="int64_t"/>
          <type requires="vk_platform" name="size_t"/>
@@ -547,7 +534,7 @@ index 6a8d05e9..d83bb452 100644
 
              <comment>Bitmask types</comment>
          <type requires="VkFramebufferCreateFlagBits"      category="bitmask">typedef <type>VkFlags</type> <name>VkFramebufferCreateFlags</name>;</type>
-@@ -927,9 +928,9 @@ typedef void <name>CAMetalLayer</name>;
+@@ -947,9 +948,9 @@ typedef void <name>CAMetalLayer</name>;
          </type>
          <type category="struct" name="VkPhysicalDeviceMemoryProperties" returnedonly="true">
              <member><type>uint32_t</type>               <name>memoryTypeCount</name></member>
@@ -559,7 +546,7 @@ index 6a8d05e9..d83bb452 100644
          </type>
          <type category="struct" name="VkMemoryAllocateInfo">
              <member values="VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO"><type>VkStructureType</type> <name>sType</name></member>
-@@ -4136,7 +4137,7 @@ typedef void <name>CAMetalLayer</name>;
+@@ -4170,7 +4171,7 @@ typedef void <name>CAMetalLayer</name>;
          <type category="struct" name="VkAccelerationStructureInfoNV">
              <member values="VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV"><type>VkStructureType</type> <name>sType</name></member>
              <member optional="true">const <type>void</type>*                            <name>pNext</name></member>
@@ -568,7 +555,221 @@ index 6a8d05e9..d83bb452 100644
              <member optional="true"><type>VkBuildAccelerationStructureFlagsNV</type><name>flags</name></member>
              <member optional="true"><type>uint32_t</type>               <name>instanceCount</name></member>
              <member optional="true"><type>uint32_t</type>               <name>geometryCount</name></member>
-@@ -13605,7 +13606,7 @@ typedef void <name>CAMetalLayer</name>;
+@@ -8028,11 +8029,8 @@ typedef void <name>CAMetalLayer</name>;
+     </enums>
+     <enums name="VkPipelineCreationFeedbackFlagBits" type="bitmask">
+         <enum bitpos="0"    name="VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT"/>
+-        <enum               name="VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT" alias="VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT"/>
+         <enum bitpos="1"    name="VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT"/>
+-        <enum               name="VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT" alias="VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT"/>
+         <enum bitpos="2"    name="VK_PIPELINE_CREATION_FEEDBACK_BASE_PIPELINE_ACCELERATION_BIT"/>
+-        <enum               name="VK_PIPELINE_CREATION_FEEDBACK_BASE_PIPELINE_ACCELERATION_BIT_EXT" alias="VK_PIPELINE_CREATION_FEEDBACK_BASE_PIPELINE_ACCELERATION_BIT"/>
+     </enums>
+     <enums name="VkFullScreenExclusiveEXT" type="enum">
+         <enum value="0"     name="VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT"/>
+@@ -8123,15 +8121,10 @@ typedef void <name>CAMetalLayer</name>;
+     </enums>
+     <enums name="VkToolPurposeFlagBits" type="bitmask">
+         <enum bitpos="0"    name="VK_TOOL_PURPOSE_VALIDATION_BIT"/>
+-        <enum               name="VK_TOOL_PURPOSE_VALIDATION_BIT_EXT"          alias="VK_TOOL_PURPOSE_VALIDATION_BIT"/>
+         <enum bitpos="1"    name="VK_TOOL_PURPOSE_PROFILING_BIT"/>
+-        <enum               name="VK_TOOL_PURPOSE_PROFILING_BIT_EXT"           alias="VK_TOOL_PURPOSE_PROFILING_BIT"/>
+         <enum bitpos="2"    name="VK_TOOL_PURPOSE_TRACING_BIT"/>
+-        <enum               name="VK_TOOL_PURPOSE_TRACING_BIT_EXT"             alias="VK_TOOL_PURPOSE_TRACING_BIT"/>
+         <enum bitpos="3"    name="VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT"/>
+-        <enum               name="VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT_EXT" alias="VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT"/>
+         <enum bitpos="4"    name="VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT"/>
+-        <enum               name="VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT_EXT"  alias="VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT"/>
+     </enums>
+     <enums name="VkFragmentShadingRateCombinerOpKHR" type="enum">
+         <enum value="0" name="VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR"/>
+@@ -8160,107 +8153,58 @@ typedef void <name>CAMetalLayer</name>;
+     </enums>
+     <enums name="VkAccessFlagBits2" type="bitmask" bitwidth="64">
+         <enum value="0"     name="VK_ACCESS_2_NONE"/>
+-        <enum               name="VK_ACCESS_2_NONE_KHR" alias="VK_ACCESS_2_NONE"/>
+         <enum bitpos="0"    name="VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR" alias="VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"/>
+         <enum bitpos="1"    name="VK_ACCESS_2_INDEX_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_INDEX_READ_BIT_KHR" alias="VK_ACCESS_2_INDEX_READ_BIT"/>
+         <enum bitpos="2"    name="VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT_KHR" alias="VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT"/>
+         <enum bitpos="3"    name="VK_ACCESS_2_UNIFORM_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_UNIFORM_READ_BIT_KHR" alias="VK_ACCESS_2_UNIFORM_READ_BIT"/>
+         <enum bitpos="4"    name="VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT_KHR" alias="VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT"/>
+         <enum bitpos="5"    name="VK_ACCESS_2_SHADER_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_SHADER_READ_BIT_KHR" alias="VK_ACCESS_2_SHADER_READ_BIT"/>
+         <enum bitpos="6"    name="VK_ACCESS_2_SHADER_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_SHADER_WRITE_BIT_KHR" alias="VK_ACCESS_2_SHADER_WRITE_BIT"/>
+         <enum bitpos="7"    name="VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT_KHR" alias="VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT"/>
+         <enum bitpos="8"    name="VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR" alias="VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT"/>
+         <enum bitpos="9"    name="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR" alias="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT"/>
+         <enum bitpos="10"   name="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR" alias="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT"/>
+         <enum bitpos="11"   name="VK_ACCESS_2_TRANSFER_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_TRANSFER_READ_BIT_KHR" alias="VK_ACCESS_2_TRANSFER_READ_BIT"/>
+         <enum bitpos="12"   name="VK_ACCESS_2_TRANSFER_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR" alias="VK_ACCESS_2_TRANSFER_WRITE_BIT"/>
+         <enum bitpos="13"   name="VK_ACCESS_2_HOST_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_HOST_READ_BIT_KHR" alias="VK_ACCESS_2_HOST_READ_BIT"/>
+         <enum bitpos="14"   name="VK_ACCESS_2_HOST_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_HOST_WRITE_BIT_KHR" alias="VK_ACCESS_2_HOST_WRITE_BIT"/>
+         <enum bitpos="15"   name="VK_ACCESS_2_MEMORY_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_MEMORY_READ_BIT_KHR" alias="VK_ACCESS_2_MEMORY_READ_BIT"/>
+         <enum bitpos="16"   name="VK_ACCESS_2_MEMORY_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_MEMORY_WRITE_BIT_KHR" alias="VK_ACCESS_2_MEMORY_WRITE_BIT"/>
+         <!-- bitpos 17-31 are specified by extensions to the original VkAccessFlagBits enum -->
+         <enum bitpos="32"   name="VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_SHADER_SAMPLED_READ_BIT_KHR" alias="VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"/>
+         <enum bitpos="33"   name="VK_ACCESS_2_SHADER_STORAGE_READ_BIT"/>
+-        <enum               name="VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR" alias="VK_ACCESS_2_SHADER_STORAGE_READ_BIT"/>
+         <enum bitpos="34"   name="VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT"/>
+-        <enum               name="VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT_KHR" alias="VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT"/>
+     </enums>
+     <enums name="VkPipelineStageFlagBits2" type="bitmask" bitwidth="64">
+         <enum value="0"    name="VK_PIPELINE_STAGE_2_NONE"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_NONE_KHR" alias="VK_PIPELINE_STAGE_2_NONE"/>
+         <enum bitpos="0"    name="VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT"/>
+         <enum bitpos="1"    name="VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT"/>
+         <enum bitpos="2"    name="VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT"/>
+         <enum bitpos="3"    name="VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT"/>
+         <enum bitpos="4"    name="VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT"/>
+         <enum bitpos="5"    name="VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT"/>
+         <enum bitpos="6"    name="VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT"/>
+         <enum bitpos="7"    name="VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT"/>
+         <enum bitpos="8"    name="VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT"/>
+         <enum bitpos="9"    name="VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT"/>
+         <enum bitpos="10"   name="VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT"/>
+         <enum bitpos="11"   name="VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT"/>
+         <enum bitpos="12"   name="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_TRANSFER_BIT" alias="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TRANSFER_BIT"/>
+         <enum bitpos="13"   name="VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT_KHR" alias="VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT"/>
+         <enum bitpos="14"   name="VK_PIPELINE_STAGE_2_HOST_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_HOST_BIT_KHR" alias="VK_PIPELINE_STAGE_2_HOST_BIT"/>
+         <enum bitpos="15"   name="VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT"/>
+         <enum bitpos="16"   name="VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT"/>
+         <!-- bitpos 17-31 are specified by extensions to the original VkPipelineStageFlagBits enum -->
+         <enum bitpos="32"   name="VK_PIPELINE_STAGE_2_COPY_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_COPY_BIT_KHR" alias="VK_PIPELINE_STAGE_2_COPY_BIT"/>
+         <enum bitpos="33"   name="VK_PIPELINE_STAGE_2_RESOLVE_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_RESOLVE_BIT_KHR" alias="VK_PIPELINE_STAGE_2_RESOLVE_BIT"/>
+         <enum bitpos="34"   name="VK_PIPELINE_STAGE_2_BLIT_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_BLIT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_BLIT_BIT"/>
+         <enum bitpos="35"   name="VK_PIPELINE_STAGE_2_CLEAR_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_CLEAR_BIT_KHR" alias="VK_PIPELINE_STAGE_2_CLEAR_BIT"/>
+         <enum bitpos="36"   name="VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT"/>
+         <enum bitpos="37"   name="VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT"/>
+         <enum bitpos="38"   name="VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT"/>
+-        <enum               name="VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT"/>
+     </enums>
+     <enums name="VkSubmitFlagBits" type="bitmask">
+         <enum bitpos="0"    name="VK_SUBMIT_PROTECTED_BIT"/>
+-        <enum               name="VK_SUBMIT_PROTECTED_BIT_KHR" alias="VK_SUBMIT_PROTECTED_BIT"/>
+     </enums>
+     <enums name="VkEventCreateFlagBits" type="bitmask">
+     </enums>
+@@ -8383,67 +8327,37 @@ typedef void <name>CAMetalLayer</name>;
+     </enums>
+     <enums name="VkFormatFeatureFlagBits2" type="bitmask" bitwidth="64">
+         <enum bitpos="0"    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT"/>
+         <enum bitpos="1"    name="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT"/>
+         <enum bitpos="2"    name="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT"/>
+         <enum bitpos="3"    name="VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT"/>
+         <enum bitpos="4"    name="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT"/>
+         <enum bitpos="5"    name="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT"/>
+         <enum bitpos="6"    name="VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT"/>
+         <enum bitpos="7"    name="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT"/>
+         <enum bitpos="8"    name="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT_KHR" alias="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT"/>
+         <enum bitpos="9"    name="VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT"/>
+         <enum bitpos="10"   name="VK_FORMAT_FEATURE_2_BLIT_SRC_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_BLIT_SRC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_BLIT_SRC_BIT"/>
+         <enum bitpos="11"   name="VK_FORMAT_FEATURE_2_BLIT_DST_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_BLIT_DST_BIT_KHR" alias="VK_FORMAT_FEATURE_2_BLIT_DST_BIT"/>
+         <enum bitpos="12"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT"/>
+         <enum bitpos="13"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT"/>
+         <enum bitpos="14"   name="VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT"/>
+         <enum bitpos="15"   name="VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT_KHR" alias="VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT"/>
+         <enum bitpos="16"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT"/>
+         <enum bitpos="17"   name="VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR" alias="VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT"/>
+         <enum bitpos="18"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT"/>
+         <enum bitpos="19"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT"/>
+         <enum bitpos="20"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT"/>
+         <enum bitpos="21"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT"/>
+         <enum bitpos="22"   name="VK_FORMAT_FEATURE_2_DISJOINT_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_DISJOINT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_DISJOINT_BIT"/>
+         <enum bitpos="23"   name="VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR" alias="VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT"/>
+         <enum bitpos="31"   name="VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT"/>
+         <enum bitpos="32"   name="VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT"/>
+         <enum bitpos="33"   name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT"/>
+-        <enum               name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT"/>
+     </enums>
+     <enums name="VkRenderingFlagBits" type="bitmask">
+         <enum bitpos="0"    name="VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT"/>
+-        <enum               name="VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT_KHR" alias="VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT"/>
+         <enum bitpos="1"    name="VK_RENDERING_SUSPENDING_BIT"/>
+-        <enum               name="VK_RENDERING_SUSPENDING_BIT_KHR" alias="VK_RENDERING_SUSPENDING_BIT"/>
+         <enum bitpos="2"    name="VK_RENDERING_RESUMING_BIT"/>
+-        <enum               name="VK_RENDERING_RESUMING_BIT_KHR" alias="VK_RENDERING_RESUMING_BIT"/>
+     </enums>
+     <enums name="VkVideoEncodeH265InputModeFlagBitsEXT" type="bitmask">
+         <enum bitpos="0"      name="VK_VIDEO_ENCODE_H265_INPUT_MODE_FRAME_BIT_EXT"/>
+@@ -13629,6 +13543,9 @@ typedef void <name>CAMetalLayer</name>;
+                 <type name="VkCommandBufferInheritanceRenderingInfoKHR"/>
+                 <type name="VkRenderingFlagsKHR"/>
+                 <type name="VkRenderingFlagBitsKHR"/>
++                <enum extends="VkRenderingFlagBits"                             name="VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT_KHR" alias="VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT"/>
++                <enum extends="VkRenderingFlagBits"                             name="VK_RENDERING_SUSPENDING_BIT_KHR" alias="VK_RENDERING_SUSPENDING_BIT"/>
++                <enum extends="VkRenderingFlagBits"                             name="VK_RENDERING_RESUMING_BIT_KHR" alias="VK_RENDERING_RESUMING_BIT"/>
+             </require>
+             <require extension="VK_KHR_fragment_shading_rate">
+                 <enum bitpos="21" extends="VkPipelineCreateFlagBits"                name="VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR"/>
+@@ -14138,7 +14055,7 @@ typedef void <name>CAMetalLayer</name>;
              </require>
              <require extension="VK_KHR_descriptor_update_template">
                  <command name="vkCmdPushDescriptorSetWithTemplateKHR"/>
@@ -577,18 +778,125 @@ index 6a8d05e9..d83bb452 100644
              </require>
          </extension>
          <extension name="VK_EXT_conditional_rendering" number="82" type="device" author="NV" contact="Vikram Kushwaha @vkushwaha" supported="vulkan">
-@@ -15781,10 +15782,10 @@ typedef void <name>CAMetalLayer</name>;
+@@ -15757,6 +15674,9 @@ typedef void <name>CAMetalLayer</name>;
+                 <type name="VkPipelineCreationFeedbackFlagsEXT"/>
+                 <type name="VkPipelineCreationFeedbackCreateInfoEXT"/>
+                 <type name="VkPipelineCreationFeedbackEXT"/>
++                <enum extends="VkPipelineCreationFeedbackFlagBits"          name="VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT" alias="VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT"/>
++                <enum extends="VkPipelineCreationFeedbackFlagBits"          name="VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT" alias="VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT"/>
++                <enum extends="VkPipelineCreationFeedbackFlagBits"          name="VK_PIPELINE_CREATION_FEEDBACK_BASE_PIPELINE_ACCELERATION_BIT_EXT" alias="VK_PIPELINE_CREATION_FEEDBACK_BASE_PIPELINE_ACCELERATION_BIT"/>
+             </require>
+         </extension>
+         <extension name="VK_GOOGLE_extension_194" number="194" author="GOOGLE" contact="Jean-Francois Roy @jfroy" supported="disabled">
+@@ -16321,12 +16241,17 @@ typedef void <name>CAMetalLayer</name>;
+                 <type                                                       name="VkToolPurposeFlagsEXT"/>
+                 <type                                                       name="VkPhysicalDeviceToolPropertiesEXT"/>
                  <command                                                    name="vkGetPhysicalDeviceToolPropertiesEXT"/>
++                <enum extends="VkToolPurposeFlagBits"                       name="VK_TOOL_PURPOSE_VALIDATION_BIT_EXT"          alias="VK_TOOL_PURPOSE_VALIDATION_BIT"/>
++                <enum extends="VkToolPurposeFlagBits"                       name="VK_TOOL_PURPOSE_PROFILING_BIT_EXT"           alias="VK_TOOL_PURPOSE_PROFILING_BIT"/>
++                <enum extends="VkToolPurposeFlagBits"                       name="VK_TOOL_PURPOSE_TRACING_BIT_EXT"             alias="VK_TOOL_PURPOSE_TRACING_BIT"/>
++                <enum extends="VkToolPurposeFlagBits"                       name="VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT_EXT" alias="VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT"/>
++                <enum extends="VkToolPurposeFlagBits"                       name="VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT_EXT"  alias="VK_TOOL_PURPOSE_MODIFYING_FEATURES_BIT"/>
              </require>
              <require extension="VK_EXT_debug_report">
--                <enum bitpos="5" extends="VkToolPurposeFlagBitsEXT"         name="VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT"/>
-+                <!--<enum bitpos="5" extends="VkToolPurposeFlagBitsEXT"         name="VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT"/>-->
+-                <enum bitpos="5" extends="VkToolPurposeFlagBits"            name="VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT"/>
++                <!--<enum bitpos="5" extends="VkToolPurposeFlagBits"            name="VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT"/>-->
              </require>
              <require extension="VK_EXT_debug_marker">
--                <enum bitpos="6" extends="VkToolPurposeFlagBitsEXT"         name="VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT"/>
-+                <!--<enum bitpos="6" extends="VkToolPurposeFlagBitsEXT"         name="VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT"/>-->
+-                <enum bitpos="6" extends="VkToolPurposeFlagBits"            name="VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT"/>
++                <!--<enum bitpos="6" extends="VkToolPurposeFlagBits"            name="VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT"/>-->
              </require>
              <require extension="VK_EXT_debug_utils">
-                 <enum bitpos="5" extends="VkToolPurposeFlagBitsEXT"         name="VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT"/>
+                 <enum bitpos="5" extends="VkToolPurposeFlagBits"            name="VK_TOOL_PURPOSE_DEBUG_REPORTING_BIT_EXT"/>
+@@ -17130,6 +17055,55 @@ typedef void <name>CAMetalLayer</name>;
+                 <command name="vkCmdPipelineBarrier2KHR"/>
+                 <command name="vkCmdWriteTimestamp2KHR"/>
+                 <command name="vkQueueSubmit2KHR"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_NONE_KHR" alias="VK_PIPELINE_STAGE_2_NONE"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_TRANSFER_BIT" alias="VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_TRANSFER_BIT_KHR" alias="VK_PIPELINE_STAGE_2_TRANSFER_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT_KHR" alias="VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_HOST_BIT_KHR" alias="VK_PIPELINE_STAGE_2_HOST_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_COPY_BIT_KHR" alias="VK_PIPELINE_STAGE_2_COPY_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_RESOLVE_BIT_KHR" alias="VK_PIPELINE_STAGE_2_RESOLVE_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_BLIT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_BLIT_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_CLEAR_BIT_KHR" alias="VK_PIPELINE_STAGE_2_CLEAR_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT_KHR" alias="VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT"/>
++                <enum extends="VkPipelineStageFlagBits2"                    name="VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT_KHR" alias="VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_NONE_KHR" alias="VK_ACCESS_2_NONE"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR" alias="VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_INDEX_READ_BIT_KHR" alias="VK_ACCESS_2_INDEX_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT_KHR" alias="VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_UNIFORM_READ_BIT_KHR" alias="VK_ACCESS_2_UNIFORM_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT_KHR" alias="VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_SHADER_READ_BIT_KHR" alias="VK_ACCESS_2_SHADER_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_SHADER_WRITE_BIT_KHR" alias="VK_ACCESS_2_SHADER_WRITE_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT_KHR" alias="VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR" alias="VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR" alias="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR" alias="VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_TRANSFER_READ_BIT_KHR" alias="VK_ACCESS_2_TRANSFER_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR" alias="VK_ACCESS_2_TRANSFER_WRITE_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_HOST_READ_BIT_KHR" alias="VK_ACCESS_2_HOST_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_HOST_WRITE_BIT_KHR" alias="VK_ACCESS_2_HOST_WRITE_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_MEMORY_READ_BIT_KHR" alias="VK_ACCESS_2_MEMORY_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_MEMORY_WRITE_BIT_KHR" alias="VK_ACCESS_2_MEMORY_WRITE_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_SHADER_SAMPLED_READ_BIT_KHR" alias="VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR" alias="VK_ACCESS_2_SHADER_STORAGE_READ_BIT"/>
++                <enum extends="VkAccessFlagBits2"                           name="VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT_KHR" alias="VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT"/>
++                <enum extends="VkSubmitFlagBits"                            name="VK_SUBMIT_PROTECTED_BIT_KHR" alias="VK_SUBMIT_PROTECTED_BIT"/>
+             </require>
+             <require extension="VK_EXT_transform_feedback">
+                 <enum bitpos="24" extends="VkPipelineStageFlagBits2"        name="VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT"/>
+@@ -17603,6 +17577,33 @@ typedef void <name>CAMetalLayer</name>;
+                 <type                                                       name="VkFormatFeatureFlags2KHR"/>
+                 <type                                                       name="VkFormatFeatureFlagBits2KHR"/>
+                 <type                                                       name="VkFormatProperties3KHR"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT_KHR" alias="VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_BLIT_SRC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_BLIT_SRC_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_BLIT_DST_BIT_KHR" alias="VK_FORMAT_FEATURE_2_BLIT_DST_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_CUBIC_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT_KHR" alias="VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT_KHR" alias="VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR" alias="VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_DISJOINT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_DISJOINT_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR" alias="VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR" alias="VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT"/>
++                <enum extends="VkFormatFeatureFlagBits2"                    name="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT_KHR" alias="VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT"/>
+             </require>
+         </extension>
+         <extension name="VK_EXT_extension_362" number="362" author="EXT" contact="Lionel Duc @nvlduc" supported="disabled">
 --
 2.30.2.windows.1
