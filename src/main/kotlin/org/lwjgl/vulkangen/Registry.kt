@@ -465,14 +465,24 @@ ${templateTypes.asSequence()
                         }
                     }
                 }
-
+                var parentStruct: String? = null
+                struct.parentstruct.let {
+                    if (it != null) {
+                        if (!structDefinitions.contains(it) && forwardDeclarations.none { decl -> decl.name == it } && structInTemplate.contains(it)) {
+                            aliasForwardDecl = "val _$it = ${struct.type}(Module.OPENXR, \"$it\")\n"
+                            parentStruct = ", parentStruct = _$it"
+                        } else {
+                            parentStruct = ", parentStruct = $it"
+                        }
+                    }
+                }
                 val structDoc = STRUCT_DOC[struct.name]
 
                 """${aliasForwardDecl ?: ""}${
                 if (struct.members.any { it.type == struct.name }) "val _${struct.name} = ${struct.type}(Module.VULKAN, \"${struct.name}\")\n" else ""
                 }val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
                 if (struct.returnedonly) ", mutable = false" else ""
-                }${alias ?: ""}) {
+                }${alias ?: ""}${parentStruct ?: ""}) {
     ${getJavaImports(types, struct.members.asSequence(), enumRegistry)}${if (structDoc == null) {
                     if (struct.alias == null) "" else """documentation = "See ##${struct.alias}."
 

@@ -65,7 +65,8 @@ internal class TypeStruct(
     val returnedonly: Boolean,
     val structextends: List<String>?,
     val members: List<Field>,
-    val alias: String?
+    val alias: String?,
+    val parentstruct: String?
 ) : Type(name)
 
 internal class Enum(
@@ -452,6 +453,7 @@ internal class TypeConverter : Converter {
             "struct"      -> {
                 val alias = reader.getAttribute("alias")
                 val name = reader.getAttribute("name")
+                val parentstruct = reader.getAttribute("parentstruct")
 
                 val t = if (alias == null) {
                     val returnedonly = reader.getAttribute("returnedonly") != null
@@ -465,10 +467,10 @@ internal class TypeConverter : Converter {
                         reader.moveUp()
                     }
 
-                    TypeStruct(category, name, returnedonly, structextends, members, null)
+                    TypeStruct(category, name, returnedonly, structextends, members, null, parentstruct)
                 } else {
                     val ref = context.registryMap.structs[alias]!!
-                    TypeStruct(ref.type, name, ref.returnedonly, ref.structextends, ref.members, alias)
+                    TypeStruct(ref.type, name, ref.returnedonly, ref.structextends, ref.members, alias, parentstruct)
                 }
                 context.registryMap.structs[name] = t
                 t

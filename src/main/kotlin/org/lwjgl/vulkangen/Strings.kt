@@ -4,7 +4,7 @@ private const val MERGE_SEQUENCE = "\"\"\" mergeLargeLiteral \"\"\""
 
 private val Char.modifiedUTF8Length: Int
     get() {
-        val i = this.toInt()
+        val i = this.code
         return when {
             i == 0    -> 2
             i < 0x7F  -> 1
@@ -15,7 +15,7 @@ private val Char.modifiedUTF8Length: Int
 
 // Java classes cannot have string literals longer than 0xFFFF characters.
 internal fun String.splitLargeLiteral(): String {
-    val bytes = this.asSequence().sumBy { it.modifiedUTF8Length }
+    val bytes = this.asSequence().sumOf { it.modifiedUTF8Length }
     if (bytes <= 0xFFFF) {
         return this
     }
