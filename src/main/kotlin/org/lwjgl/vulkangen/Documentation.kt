@@ -242,20 +242,8 @@ private val CODE_BLOCK_HASH = "#".toRegex()
 private val CODE_BLOCK_ESCAPE_PATTERN = "^".toRegex(RegexOption.MULTILINE) // line starts
 private val CODE_BLOCK_TAB_PATTERN = "\t".toRegex() // tabs
 
-private val HTML_ESCAPE_PATTERN = """[<>]|&(?!(?:amp|gt|lt|#\d+);)""".toRegex()
-
-private val String.htmlEscaped: String
-    get() = this.replace(HTML_ESCAPE_PATTERN) {
-        when (it.value) {
-            "<"  -> "&lt;"
-            ">"  -> "&gt;"
-            "&"  -> "&amp;"
-            else -> throw IllegalStateException()
-        }
-    }
-
-fun codeBlock(code: String, escape: Boolean = false) = """<pre><code>
-${(if (escape) code.htmlEscaped else code)
+fun codeBlock(code: String) = """<pre><code>
+${code
     .replace(CODE_BLOCK_TRIM_PATTERN, "") // ...trim
     .replace(CODE_BLOCK_COMMENT_PATTERN, "// $1") // ...replace block comments with line comments
     .replace(CODE_BLOCK_HASH, """\\#""") // ...escape hashes
@@ -315,7 +303,7 @@ private fun nodeToJavaDoc(it: StructuralNode, indent: String = ""): String =
         else {
             check(it.blocks.isEmpty())
             when (it.style) {
-                "source"    -> codeBlock(it.content.toString(), escape = true)
+                "source"    -> codeBlock(it.content.toString())
                 "latexmath" -> getLatexCode(it.source)
                 else        -> it.content.toString().patch()
             }
