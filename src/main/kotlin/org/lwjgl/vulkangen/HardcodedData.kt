@@ -45,6 +45,8 @@ internal val EXTENSION_TOKEN_REPLACEMENTS = mapOf(
 internal val IMPORTS = mapOf(
     //"android/native_window.h" to Import("core.android.*", "org.lwjgl.system.android.*"),
     "QuartzCore.h" to Import("core.macos.*", null),
+    "Metal.h" to Import("core.macos.*", null),
+    "IOSurface.h" to Import("core.macos.*", null),
     "vk_video/vulkan_video_codec_h264std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),

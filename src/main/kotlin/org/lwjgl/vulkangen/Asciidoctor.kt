@@ -126,6 +126,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 return createPhraseNode(parent, "quoted", "undefined", attributes, LWJGL_OPTIONS)
             }
         })
+        .inlineMacroQuoted("dname", """dname:(\w+)""") { if (it.startsWith("VK_")) "#${it.substring(3)}" else "{@code $it}" }
         .inlineMacroQuoted("ename", """ename:(\w+)""") { if (it.startsWith("VK_")) "#${it.substring(3)}" else "{@code $it}" }
         .inlineMacroQuoted("dlink", """dlink:VK_(\w+)""") {
             if (MACROS.contains(it))
