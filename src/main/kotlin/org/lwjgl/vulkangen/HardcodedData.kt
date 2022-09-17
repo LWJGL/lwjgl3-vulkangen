@@ -164,6 +164,7 @@ private val SECTION_XREFS = mapOf(
     "img-tessellation-topology-ul" to "Domain parameterization for tessellation primitive modes (upper-left origin)",
     "img-tessellation-topology-ll" to "Domain parameterization for tessellation primitive modes (lower-left origin)",
     "memory-device-hostaccess" to "Host Access to Device Memory Objects",
+    "memory-protected-access-rules" to "Protected Memory Access Rules",
     "primsrast" to "Rasterization",
     "primsrast-fragment-shading-rate-attachment" to "Attachment Fragment Shading Rate",
     "primsrast-fragment-shading-rate-pipeline" to "Pipeline Fragment Shading Rate",
@@ -295,7 +296,11 @@ E =  1.055 &times; L<sup>1/2.4</sup> - 0.055 for 0.0030186 &le; L &le; 1
     """\left\lceil{\frac{renderArea_{y}+renderArea_{height}}{shadingRateAttachmentTexelSize_{height}}}\right\rceil""" to
         """<code>ceil((renderArea<sub>y</sub>+renderArea<sub>height</sub>) / shadingRateAttachmentTexelSize<sub>height</sub>)</code>""",
     """\left\lceil{\frac{pDeviceRenderAreas_{y}+pDeviceRenderAreas_{height}}{shadingRateAttachmentTexelSize_{height}}}\right\rceil""" to
-        """<code>ceil((pDeviceRenderAreas<sub>y</sub>+pDeviceRenderAreas<sub>height</sub>) / shadingRateAttachmentTexelSize<sub>height</sub>)</code>"""
+        """<code>ceil((pDeviceRenderAreas<sub>y</sub>+pDeviceRenderAreas<sub>height</sub>) / shadingRateAttachmentTexelSize<sub>height</sub>)</code>""",
+    """(numPhases
+\times \mathbin{max}\left(
+\mathbin{align}\left(filterSize.width,4\right),
+filterSize.height\right))""" to """<code>(numPhases &times; max(align(filterSize.width, 4), filterSize.height))</code>"""
 )
 private val LATEX_REGISTRY_USED = HashSet<String>()
 internal fun getLatexCode(source: String): String {

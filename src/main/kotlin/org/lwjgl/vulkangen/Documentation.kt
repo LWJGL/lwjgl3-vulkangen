@@ -42,14 +42,14 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     // Extension class documentation
 
-    // We parse extensions.txt to create a map of attributes to pass to asciidoctor.
-    // The attributes are used in ifdef preprocessor directives in extensions.txt
+    // We parse extensions.adoc to create a map of attributes to pass to asciidoctor.
+    // The attributes are used in ifdef preprocessor directives in extensions.adoc
     // to enable extensions.
-    val extensionIDs = """^include::\{appendices}/(VK_\w+)\.txt\[]""".toRegex().let { regex ->
+    val extensionIDs = """^include::\{appendices}/(VK_\w+)\.adoc\[]""".toRegex().let { regex ->
         (
-            Files.lines(root.resolve("gen/meta/current_extension_appendices.txt")).asSequence() +
-            Files.lines(root.resolve("gen/meta/deprecated_extension_appendices.txt")).asSequence() +
-            Files.lines(root.resolve("gen/meta/provisional_extension_appendices.txt")).asSequence()
+            Files.lines(root.resolve("gen/meta/current_extension_appendices.adoc")).asSequence() +
+            Files.lines(root.resolve("gen/meta/deprecated_extension_appendices.adoc")).asSequence() +
+            Files.lines(root.resolve("gen/meta/provisional_extension_appendices.adoc")).asSequence()
         )
             .mapNotNull {
                 val result = regex.find(it)
@@ -87,7 +87,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     val appendices = root.resolve("appendices")
     val extensions = asciidoctor.loadFile(
-        appendices.resolve("extensions.txt").toFile(),
+        appendices.resolve("extensions.adoc").toFile(),
         Options.builder()
             .backend("lwjgl")
             .docType("manpage")
@@ -106,7 +106,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
 
     val document = root.resolve("gen").resolve("refpage").let { man ->
         asciidoctor.loadFile(
-            man.resolve("apispec.txt").toFile(),
+            man.resolve("apispec.adoc").toFile(),
             Options.builder()
                 .backend("lwjgl")
                 .docType("manpage")

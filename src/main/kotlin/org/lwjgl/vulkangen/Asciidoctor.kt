@@ -20,11 +20,11 @@ internal data class AsciidoctorParser(
 )
 
 internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): AsciidoctorParser {
-    // extensions.txt does not include attribs.txt
+    // extensions.adoc does not include attribs.adoc
     // we always pass these as document attribs
     val commonAttribs = """^:([^:]+):"""
         .toRegex(RegexOption.MULTILINE)
-        .findAll(String(Files.readAllBytes(root.resolve("config").resolve("attribs.txt")), StandardCharsets.UTF_8))
+        .findAll(String(Files.readAllBytes(root.resolve("config").resolve("attribs.adoc")), StandardCharsets.UTF_8))
         .map { it.groups[1]!!.value }
         .toHashSet()
 
@@ -65,7 +65,18 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 "maxinstancecheck",
                 "maxTotalSize",
                 "refpage",
-                "stageMaskName"
+                "stageMaskName",
+                "cmdstruct",
+                "feature",
+                "rayGenShaderBindingTableAddress",
+                "rayGenShaderBindingTableSize",
+                "rayGenShaderBindingTableStride",
+                "missShaderBindingTableAddress",
+                "missShaderBindingTableStride",
+                "hitShaderBindingTableAddress",
+                "hitShaderBindingTableStride",
+                "callableShaderBindingTableAddress",
+                "callableShaderBindingTableStride",
             )
 
             private val LINKS = """link:\+\+(.+?)\+\+""".toRegex()
@@ -76,7 +87,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                     URL(this).let { URI(it.protocol, it.userInfo, it.host, it.port, it.path, it.query, it.ref) }.toString()
 
             override fun process(document: Document, reader: PreprocessorReader) {
-                if (reader.file.endsWith("attribs.txt")) {
+                if (reader.file.endsWith("attribs.adoc")) {
                     return
                 }
 
@@ -185,7 +196,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
         .attributeMissing("warn")
 
     asciidoctor.loadFile(
-        root.resolve("config").resolve("attribs.txt").toFile(),
+        root.resolve("config").resolve("attribs.adoc").toFile(),
         Options.builder()
             .backend("lwjgl")
             .docType("manpage")
@@ -264,7 +275,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                         if (EXTENSION_LINK_PATTERN.matches(refid)) {
                             "{@link ${refid.substring(3).template} $refid}"
                         } else {
-                            """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
+                            """<a target="_blank" href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
                         }
                     }
                 }
@@ -290,17 +301,19 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                                 }
                             } else if (hasUnnamedXREF(match)) {
                                 // hack for vkAllocationFunction_return_rules
-                                """<a target="_blank" href="https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html\#$match">${node.text}</a>"""
+                                """<a target="_blank" href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$match">${node.text}</a>"""
                             } else {
                                 "${node.text} ({@code $match})"
                             }
                         }
                     } else {
-                        """<a target="_blank" href="${node.target.replace("#", "\\#")}">${node.text
-                            .ifEmpty { node.target }
+                        val href = node.target.replace("#", "\\#")
+                        """<a target="_blank" href="$href">${node.text
                             .run {
-                                if (startsWith("https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#"))
-                                    getSectionXREF(substring("https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#".length))
+                                if (startsWith("https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#"))
+                                    getSectionXREF(substring("https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#".length))
+                                else if (this == node.target)
+                                    href
                                 else
                                     this
                             }
