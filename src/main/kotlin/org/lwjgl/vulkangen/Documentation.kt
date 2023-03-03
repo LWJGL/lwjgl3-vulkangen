@@ -98,7 +98,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
             .build()
     )
 
-    for (i in 1..3) {
+    for (i in 2..4) {
         buildExtensionDocumentation(extensions.blocks[i].blocks, extensionIDs)
     }
 
@@ -432,11 +432,11 @@ private fun nodeToParamJavaDoc(members: StructuralNode) = findParameterList(memb
                 } else {
                     try {
                         val doc = item.text.patch()
-                        val (When, struct, param, field, description) = PARAM_DOC_REGEX.matchEntire(doc)!!.destructured
+                        val (when_, struct, param, field, description) = PARAM_DOC_REGEX.matchEntire(doc)!!.destructured
                         if (struct.isNotEmpty()) {
                             System.err.println("lwjgl: struct member cross reference: $struct::$param")
                         }
-                        sequenceOf(param to getItemDescription(item, if (When.isEmpty() && field.isEmpty()) description else doc))
+                        sequenceOf(param to getItemDescription(item, if (when_.isEmpty() && field.isEmpty()) description else doc))
                     } catch (e: Exception) {
                         println("FAILED AT: ${item.text}")
                         printStructure(item)

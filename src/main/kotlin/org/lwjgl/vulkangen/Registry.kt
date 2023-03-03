@@ -8,6 +8,8 @@ import java.io.*
 import java.nio.file.*
 import kotlin.system.*
 
+internal lateinit var VULKAN_DOCS_ROOT: Path
+
 val String.template
     get() = this
         .splitToSequence('_')
@@ -42,8 +44,8 @@ fun main(args: Array<String>) {
         "Usage: RegistryKt <vulkan-docs-path> <lwjgl3-path>"
     }
 
-    val vulkanDocs = Paths.get(args[0]).toAbsolutePath().normalize()
-    val registry = vulkanDocs.let {
+    VULKAN_DOCS_ROOT = Paths.get(args[0]).toAbsolutePath().normalize()
+    val registry = VULKAN_DOCS_ROOT.let {
         require(Files.isDirectory(it)) {
             "Invalid Vulkan-Docs repository path specified: $it"
         }
@@ -54,6 +56,29 @@ fun main(args: Array<String>) {
         }
 
         parse(registryPath)
+    }
+
+    // Remove Vulkan SC-only definitions.
+    registry.types.removeIf { it.api == "vulkansc" }
+    registry.types.forEach { type ->
+        if (type is TypeStruct) {
+            type.members.removeIf { it.api == "vulkansc" }
+        }
+    }
+    registry.enums.forEach { block -> block.enums?.removeIf { it.api == "vulkansc" } }
+    registry.commands.removeIf { it.api == "vulkansc" }
+    registry.commands.forEach { command ->
+        if (command.name == null) {
+            command.params.removeIf { it.api == "vulkansc" }
+        }
+    }
+    registry.features.removeIf { it.api == "vulkansc" }
+    registry.extensions.removeIf { it.supported == "vulkansc" || it.supported == "disabled" || DISABLED_EXTENSIONS.contains(it.name) }
+    registry.extensions.forEach { extension ->
+        extension.requires.removeIf { it.api == "vulkansc" }
+        extension.requires.forEach { requires ->
+            requires.enums?.removeIf { it.api == "vulkansc" }
+        }
     }
 
     val root = args[1].let {
@@ -87,8 +112,13 @@ fun main(args: Array<String>) {
     registry.commands.asSequence()
         .filter { it.name != null }
         .forEach {
-            val ref = commands[it.alias]!!
+            val ref = commands[it.alias]
+            if (ref == null) {
+                commands.remove(it.name)
+                return@forEach
+            }
             commands[it.name!!] = Command(
+                ref.api,
                 it.name,
                 it.alias,
                 ref.successcodes,
@@ -104,16 +134,13 @@ fun main(args: Array<String>) {
         }
 
     try {
-        convert(vulkanDocs, structs)
+        convert(VULKAN_DOCS_ROOT, structs)
     } catch (e: Exception) {
         e.printStackTrace()
         exitProcess(-1)
     }
 
     // TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
-
-    val extensions = registry.extensions.asSequence()
-        .filter { it.supported != "disabled" && !DISABLED_EXTENSIONS.contains(it.name) }
 
     registry.features.forEach { feature ->
         feature.requires.forEach { requires ->
@@ -122,7 +149,7 @@ fun main(args: Array<String>) {
             }
         }
     }
-    extensions.forEach { extension ->
+    registry.extensions.forEach { extension ->
         extension.requires.forEach { requires ->
             requires.enums?.forEach { enum ->
                 enumRegistry.enumMap.putIfAbsent(enum.name, enum)
@@ -136,14 +163,14 @@ fun main(args: Array<String>) {
         generateFeature(root, types, enumRegistry, structs, commands, feature, enumsSeen)
     }
 
-    extensions.forEach { extension ->
+    registry.extensions.forEach { extension ->
         // Type declarations for enums are missing in some extensions.
         // We generate <enums> the first time we encounter them.
         generateExtension(root, types, enumRegistry, structs, commands, extension, enumsSeen)
     }
 
     val featureTypes = getDistinctTypes(registry.features.asSequence().flatMap { it.requires.asSequence() }, commands, types)
-    val extensionTypes = getDistinctTypes(extensions.flatMap { it.requires.asSequence() }, commands, types)
+    val extensionTypes = getDistinctTypes(registry.extensions.asSequence().flatMap { it.requires.asSequence() }, commands, types)
         .toMutableSet()
     extensionTypes.removeAll(featureTypes)
 
@@ -673,7 +700,6 @@ private fun seeAlsoIsEmpty(seeAlso: String?): Boolean {
     return seeAlso == null || seeAlso.isEmpty() || seeAlso.contains("No cross-references are available")
 }
 
-private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
 private fun generateExtension(
     root: Path,
     types: Map<String, Type>,
@@ -782,21 +808,21 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
         // Merge multiple dependencies (in different <require>) for the same command
         val dependencies = HashMap<String, String>()
         extension.requires.forEach { require ->
-            val dependency = require.extension ?: require.feature.let {
-                if (it == null) {
-                    null
-                } else {
-                    val (major, minor) = VK_VERSION_REGEX.find(it)!!.destructured
-                    "Vulkan$major$minor"
-                }
+            if (require.depends == null) {
+                return@forEach
             }
-            if (dependency != null && require.commands != null) {
+
+            if (require.commands != null) {
+                val parsed = parseDepends(require.depends)
                 require.commands.forEach { commandRef ->
-                    dependencies.merge(commandRef.name, dependency) { current, dependency ->
-                        when {
-                            current.startsWith("ext.contains") -> """$current || ext.contains("$dependency")"""
-                            else                               -> """ext.contains("$current") || ext.contains("$dependency")"""
-                        }
+                    dependencies.merge(
+                        commandRef.name,
+                        parsed
+                    ) { current, dependency ->
+                        if (current.contains(' '))
+                            """$current || ext.contains("$dependency")"""
+                        else
+                            """ext.contains("$current") || ext.contains("$dependency")"""
                     }
                 }
             }
@@ -890,7 +916,7 @@ private fun PrintWriter.printCommands(
 
         dependencies?.get(commandRef).let {
             if (it != null) {
-                print(if (it.startsWith("ext.contains"))
+                print(if (it.contains('.'))
                     "DependsOn(\"\"\"$it\"\"\").."
                 else
                     "DependsOn(\"$it\").."

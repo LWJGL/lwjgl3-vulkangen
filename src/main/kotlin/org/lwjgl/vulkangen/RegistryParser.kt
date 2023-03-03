@@ -19,57 +19,64 @@ internal class Tag(
     val contact: String
 )
 
-internal abstract class Type(val name: String)
+internal abstract class Type(val api: String?, val name: String)
 
-internal object TypeIgnored : Type("<IGNORED>")
+internal object TypeIgnored : Type(null, "<IGNORED>")
 
 internal class TypeSystem(
     val requires: String,
+    api: String?,
     name: String
-) : Type(name)
+) : Type(api, name)
 
 internal class TypeBase(
     val type: String,
+    api: String?,
     name: String
-) : Type(name)
+) : Type(api, name)
 
-internal class TypePlatform(name: String) : Type(name)
+internal class TypePlatform(api: String?, name: String) : Type(api, name)
 
 internal class TypeBitmask(
     val requires: String?,
     val typedef: String,
+    api: String?,
     name: String
-) : Type(name)
+) : Type(api, name)
 
 internal class TypeHandle(
     val parent: String?,
     val type: String,
+    api: String?,
     name: String
-) : Type(name)
+) : Type(api, name)
 
-internal class TypeEnum(name: String) : Type(name)
+internal class TypeEnum(api: String?, name: String) : Type(api, name)
 
 internal interface Function {
     val proto: Field
-    val params: List<Field>
+    val params: MutableList<Field>
 }
 
 internal class TypeFuncpointer(
+    api: String?,
     override val proto: Field,
-    override val params: List<Field>
-) : Type(proto.name), Function
+    override val params: MutableList<Field>
+) : Type(api, proto.name), Function // TODO
 
 internal class TypeStruct(
     val type: String, // struct or union
+    api: String?,
     name: String,
     val returnedonly: Boolean,
     val structextends: List<String>?,
-    val members: List<Field>,
+    val members: MutableList<Field>,
     val alias: String?,
     val parentstruct: String?
-) : Type(name)
+) : Type(api, name)
 
 internal class Enum(
+    val api: String?,
     val name: String,
     val alias: String?,
     val value: String?,
@@ -88,7 +95,7 @@ internal class Enums(
     val type: String?,
     val bitwidth: Int?,
     val comment: String?,
-    val enums: List<Enum>?,
+    val enums: MutableList<Enum>?,
     val unused: Unused?
 )
 
@@ -105,6 +112,7 @@ internal class Field(
         it?.splitToSequence(",") ?: emptySequence()
     }
 
+    val api: String? get() = attribs["api"]
     val optional: String? get() = attribs["optional"]
     val values: String? get() = attribs["values"]
     val externsync: String? get() = attribs["externsync"]
@@ -115,10 +123,11 @@ internal class Field(
 internal class Validity
 
 internal class ImplicitExternSyncParams(
-    val params: List<Field>
+    val params: MutableList<Field>
 )
 
 internal class Command(
+    val api: String?,
     val name: String?,
     val alias: String?,
     val successcodes: String?,
@@ -127,7 +136,7 @@ internal class Command(
     val renderpass: String?,
     val cmdbufferlevel: String?,
     override val proto: Field,
-    override val params: List<Field>,
+    override val params: MutableList<Field>,
     val validity: Validity?,
     val implicitexternsyncparams: ImplicitExternSyncParams?
 ) : Function
@@ -137,9 +146,16 @@ internal class TypeRef(val name: String)
 internal data class CommandRef(val name: String)
 
 internal class Require(
+    val api: String?,
     val comment: String?,
-    val feature: String?,
-    val extension: String?,
+    val depends: String?,
+    val types: MutableList<TypeRef>?,
+    val enums: MutableList<Enum>?,
+    val commands: MutableList<CommandRef>?
+)
+
+internal class Remove(
+    val comment: String?,
     val types: List<TypeRef>?,
     val enums: List<Enum>?,
     val commands: List<CommandRef>?
@@ -149,20 +165,21 @@ internal class Feature(
     val api: String,
     val name: String,
     val number: String,
-    val requires: List<Require>
+    val requires: MutableList<Require>,
+    val remove: Remove?
 )
 
 internal class Extension(
     val name: String,
     val number: Int,
     val type: String,
+    val depends: String?,
     val supported: String,
-    val requiresCore: String?,
     val platform: String?,
     val promotedto: String?,
     val deprecatedby: String?,
     val obsoletedby: String?,
-    val requires: List<Require>
+    val requires: MutableList<Require>
 )
 
 internal class Enable(
@@ -214,16 +231,16 @@ internal class Format(
 )
 
 internal class Registry(
-    val platforms: List<Platform>,
-    val tags: List<Tag>,
-    val types: List<Type>,
-    val enums: List<Enums>,
-    val commands: List<Command>,
-    val features: List<Feature>,
-    val extensions: List<Extension>,
-    val spirvextensions: List<SPIRVExtension>,
-    val spirvcapabilities: List<SPIRVCapability>,
-    val formats: List<Format>
+    val platforms: MutableList<Platform>,
+    val tags: MutableList<Tag>,
+    val types: MutableList<Type>,
+    val enums: MutableList<Enums>,
+    val commands: MutableList<Command>,
+    val features: MutableList<Feature>,
+    val extensions: MutableList<Extension>,
+    val spirvextensions: MutableList<SPIRVExtension>,
+    val spirvcapabilities: MutableList<SPIRVCapability>,
+    val formats: MutableList<Format>
 )
 
 private val INDIRECTION_REGEX = Regex("""([*]+)(?:\s+const\s*([*]+))?""")
@@ -240,6 +257,35 @@ private fun String.indirection(prefix: String) = this.length
     .asSequence()
     .map { "p" }
     .joinToString(".", prefix = prefix)
+
+private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
+private fun parseDependExpression(name: String, wrap: Boolean) = (VK_VERSION_REGEX
+    .matchEntire(name)
+    ?.let {
+        val (major, minor) = it.destructured
+        return "Vulkan$major$minor"
+    } ?: name).let {
+        if (wrap) "ext.contains(\"$it\")" else it
+    }
+
+internal fun parseDepends(depends: String): String {
+    val dependencies = depends.split(',')
+    return dependencies
+        .asSequence()
+        .map { dependency ->
+            if (dependency.startsWith('(')) {
+                "(${parseDepends(dependency.substring(1, dependency.length - 1))})"
+            } else if (dependency.contains('+')) {
+                dependency
+                    .splitToSequence('+')
+                    .map { parseDependExpression(it, true) }
+                    .joinToString(" && ", prefix = "(", postfix = ")")
+            } else {
+                parseDependExpression(dependency, dependencies.size != 1)
+            }
+        }
+        .joinToString(" || ")
+}
 
 internal class FieldConverter : Converter {
     override fun marshal(source: Any, writer: HierarchicalStreamWriter, context: MarshallingContext) {
@@ -330,13 +376,14 @@ internal class TypeConverter : Converter {
     override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any? {
         val category = reader.getAttribute("category")
         if (category == null) {
+            val api = reader.getAttribute("api")
             val name = reader.getAttribute("name")
             val requires = reader.getAttribute("requires")
             return if (name != null && requires != null) {
                 if ("vk_platform" == requires)
-                    TypePlatform(name)
+                    TypePlatform(api, name)
                 else
-                    TypeSystem(requires, name)
+                    TypeSystem(requires, api, name)
             } else
                 TypeIgnored
         }
@@ -346,17 +393,19 @@ internal class TypeConverter : Converter {
                 if (reader.getAttribute("name") != null) {
                     TypeIgnored
                 } else {
+                    val api = reader.getAttribute("api")
                     reader.moveDown()
                     val name = reader.value
                     reader.moveUp()
                     if (name.startsWith("VK_")) {
                         TypeIgnored
                     } else {
-                        TypePlatform(name)
+                        TypePlatform(api, name)
                     }
                 }
             }
             "basetype"    -> {
+                val api = reader.getAttribute("api")
                 reader.moveDown()
                 val type = if (reader.nodeName == "type") {
                     try {
@@ -372,11 +421,12 @@ internal class TypeConverter : Converter {
                 val name = reader.value
                 reader.moveUp()
 
-                TypeBase(type, name)
+                TypeBase(type, api, name)
             }
             "bitmask"     -> {
                 val requires = reader.getAttribute("requires")
 
+                val api = reader.getAttribute("api")
                 var name = reader.getAttribute("name")
                 val t = if (name == null) {
                     reader.moveDown()
@@ -387,10 +437,10 @@ internal class TypeConverter : Converter {
                     name = reader.value
                     reader.moveUp()
 
-                    TypeBitmask(requires, typedef, name)
+                    TypeBitmask(requires, typedef, api, name)
                 } else {
                     val ref = context.registryMap.bitmasks[reader.getAttribute("alias")]!!
-                    TypeBitmask(ref.requires, ref.typedef, name)
+                    TypeBitmask(ref.requires, ref.typedef, api, name)
                 }
                 context.registryMap.bitmasks[name] = t
                 t
@@ -398,6 +448,7 @@ internal class TypeConverter : Converter {
             "handle"      -> {
                 val parent = reader.getAttribute("parent")
 
+                val api = reader.getAttribute("api")
                 var name = reader.getAttribute("name")
                 val t = if (name == null) {
                     reader.moveDown()
@@ -408,18 +459,19 @@ internal class TypeConverter : Converter {
                     name = reader.value
                     reader.moveUp()
 
-                    TypeHandle(parent, type, name)
+                    TypeHandle(parent, type, api, name)
                 } else {
                     val ref = context.registryMap.handles[reader.getAttribute("alias")]!!
-                    TypeHandle(ref.parent, ref.type, name)
+                    TypeHandle(ref.parent, ref.type, api, name)
                 }
                 context.registryMap.handles[name] = t
                 t
             }
             "enum"        -> {
-                TypeEnum(reader.getAttribute("alias") ?: reader.getAttribute("name"))
+                TypeEnum(reader.getAttribute("api"), reader.getAttribute("alias") ?: reader.getAttribute("name"))
             }
             "funcpointer" -> {
+                val api = reader.getAttribute("api")
                 val proto = reader.let {
                     val (modifier, type, indirection) = FUNC_POINTER_RETURN_TYPE_REGEX.find(it.value)!!.destructured
                     it.moveDown()
@@ -430,7 +482,7 @@ internal class TypeConverter : Converter {
                 }
 
                 if (proto.name == "PFN_vkVoidFunction")
-                    TypePlatform("PFN_vkVoidFunction")
+                    TypePlatform(api, "PFN_vkVoidFunction")
                 else {
                     val params = ArrayList<Field>()
                     while (reader.hasMoreChildren()) {
@@ -446,12 +498,13 @@ internal class TypeConverter : Converter {
                         params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, null, HashMap()))
                     }
 
-                    TypeFuncpointer(proto, params)
+                    TypeFuncpointer(api, proto, params)
                 }
             }
             "union",
             "struct"      -> {
                 val alias = reader.getAttribute("alias")
+                val api = reader.getAttribute("api")
                 val name = reader.getAttribute("name")
                 val parentstruct = reader.getAttribute("parentstruct")
 
@@ -467,10 +520,10 @@ internal class TypeConverter : Converter {
                         reader.moveUp()
                     }
 
-                    TypeStruct(category, name, returnedonly, structextends, members, null, parentstruct)
+                    TypeStruct(category, api, name, returnedonly, structextends, members, null, parentstruct)
                 } else {
                     val ref = context.registryMap.structs[alias]!!
-                    TypeStruct(ref.type, name, ref.returnedonly, ref.structextends, ref.members, alias, parentstruct)
+                    TypeStruct(ref.type, api, name, ref.returnedonly, ref.structextends, ref.members, alias, parentstruct)
                 }
                 context.registryMap.structs[name] = t
                 t
@@ -518,6 +571,8 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     Enum::class.java.let {
         xs.addImplicitCollection(Enums::class.java, "enums", "enum", it)
         xs.addImplicitCollection(Require::class.java, "enums", "enum", it)
+        xs.addImplicitCollection(Remove::class.java, "enums", "enum", it)
+        xs.useAttributeFor(it, "api")
         xs.useAttributeFor(it, "name")
         xs.useAttributeFor(it, "alias")
         xs.useAttributeFor(it, "value")
@@ -531,6 +586,7 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
 
     Command::class.java.let {
         xs.alias("command", it)
+        xs.useAttributeFor(it, "api")
         xs.useAttributeFor(it, "name")
         xs.useAttributeFor(it, "alias")
         xs.useAttributeFor(it, "successcodes")
@@ -550,6 +606,10 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     xs.alias("validity", Validity::class.java)
     xs.addImplicitCollection(ImplicitExternSyncParams::class.java, "params", "param", Field::class.java)
 
+    Remove::class.java.let {
+        xs.useAttributeFor(it, "comment")
+    }
+
     Feature::class.java.let {
         xs.addImplicitCollection(Registry::class.java, "features", "feature", it)
         xs.useAttributeFor(it, "api")
@@ -560,18 +620,20 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     Require::class.java.let {
         xs.addImplicitCollection(Feature::class.java, "requires", "require", it)
         xs.addImplicitCollection(Extension::class.java, "requires", "require", it)
+        xs.useAttributeFor(it, "api")
         xs.useAttributeFor(it, "comment")
-        xs.useAttributeFor(it, "feature")
-        xs.useAttributeFor(it, "extension")
+        xs.useAttributeFor(it, "depends")
     }
 
     TypeRef::class.java.let {
         xs.addImplicitCollection(Require::class.java, "types", "type", it)
+        xs.addImplicitCollection(Remove::class.java, "types", "type", it)
         xs.useAttributeFor(it, "name")
     }
 
     CommandRef::class.java.let {
         xs.addImplicitCollection(Require::class.java, "commands", "command", it)
+        xs.addImplicitCollection(Remove::class.java, "commands", "command", it)
         xs.useAttributeFor(it, "name")
     }
 
@@ -580,8 +642,8 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.useAttributeFor(it, "name")
         xs.useAttributeFor(it, "number")
         xs.useAttributeFor(it, "type")
+        xs.useAttributeFor(it, "depends")
         xs.useAttributeFor(it, "supported")
-        xs.useAttributeFor(it, "requiresCore")
         xs.useAttributeFor(it, "platform")
         xs.useAttributeFor(it, "promotedto")
         xs.useAttributeFor(it, "deprecatedby")

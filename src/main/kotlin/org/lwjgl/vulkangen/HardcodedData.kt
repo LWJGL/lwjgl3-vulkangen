@@ -20,16 +20,16 @@ internal val VERSION_HISTORY = mapOf(
 )
 
 internal val DISABLED_EXTENSIONS = setOf(
-    "VK_ANDROID_external_memory_android_hardware_buffer",
-    "VK_EXT_directfb_surface",
+    //"VK_ANDROID_external_memory_android_hardware_buffer",
+    //"VK_EXT_directfb_surface",
     "VK_FUCHSIA_buffer_collection",
     "VK_FUCHSIA_imagepipe_surface",
     "VK_FUCHSIA_external_memory",
     "VK_FUCHSIA_external_semaphore",
     "VK_GGP_frame_token",
     "VK_GGP_stream_descriptor_surface",
-    "VK_KHR_android_surface",
-    "VK_KHR_xcb_surface",
+    //"VK_KHR_android_surface",
+    //"VK_KHR_xcb_surface",
     "VK_MVK_ios_surface",
     "VK_NN_vi_surface",
     "VK_QNX_screen_surface",
