@@ -38,7 +38,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
 
     asciidoctor
         .rubyExtensionRegistry()
-        .loadClass(Files.newInputStream(root.resolve("config").resolve("tilde_open_block.rb")))
+        .loadClass(Files.newInputStream(root.resolve("config").resolve("open_listing_block.rb")))
 
     // Register a preprocessor to replace attribute assignments that do not work.
     // --------------------------------------------------------------------------
