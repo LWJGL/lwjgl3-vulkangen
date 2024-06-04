@@ -51,7 +51,7 @@ internal class TypeHandle(
     name: String
 ) : Type(api, name)
 
-internal class TypeEnum(api: String?, name: String) : Type(api, name)
+internal class TypeEnum(api: String?, name: String, val alias: String?) : Type(api, name)
 
 internal interface Function {
     val proto: Field
@@ -190,46 +190,6 @@ internal class Enable(
     val requires: String?
 )
 
-internal class SPIRVExtension(
-    val name: String,
-    val enables: List<Enable>
-)
-
-internal class SPIRVCapability(
-    val name: String,
-    val enables: List<Enable>
-)
-
-internal class Component(
-    val name: String,
-    val bits: String,
-    val numericFormat: String
-)
-
-internal class SPIRVImageFormat(
-    val name: String
-)
-
-internal class Plane(
-    val index: Int,
-    val widthDivisor: Int,
-    val heightDivisor: Int,
-    val compatible: String
-)
-
-internal class Format(
-    val name: String,
-    val class_: String,
-    val blockSize: Int,
-    val texelsPerBlock: Int,
-    val blockExtent: String?,
-    val compressed: String?,
-    val packed: Int?,
-    val components: List<Component>,
-    val planes: List<Plane>,
-    val spirvimageformat: SPIRVImageFormat?
-)
-
 internal class Registry(
     val platforms: MutableList<Platform>,
     val tags: MutableList<Tag>,
@@ -237,10 +197,7 @@ internal class Registry(
     val enums: MutableList<Enums>,
     val commands: MutableList<Command>,
     val features: MutableList<Feature>,
-    val extensions: MutableList<Extension>,
-    val spirvextensions: MutableList<SPIRVExtension>,
-    val spirvcapabilities: MutableList<SPIRVCapability>,
-    val formats: MutableList<Format>
+    val extensions: MutableList<Extension>
 )
 
 private val INDIRECTION_REGEX = Regex("""([*]+)(?:\s+const\s*([*]+))?""")
@@ -263,7 +220,7 @@ private fun parseDependExpression(name: String, wrap: Boolean) = (VK_VERSION_REG
     .matchEntire(name)
     ?.let {
         val (major, minor) = it.destructured
-        return "Vulkan$major$minor"
+        "Vulkan$major$minor"
     } ?: name).let {
         if (wrap) "ext.contains(\"$it\")" else it
     }
@@ -373,7 +330,7 @@ internal class TypeConverter : Converter {
         TODO()
     }
 
-    override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any? {
+    override fun unmarshal(reader: HierarchicalStreamReader, context: UnmarshallingContext): Any {
         val category = reader.getAttribute("category")
         if (category == null) {
             val api = reader.getAttribute("api")
@@ -468,7 +425,7 @@ internal class TypeConverter : Converter {
                 t
             }
             "enum"        -> {
-                TypeEnum(reader.getAttribute("api"), reader.getAttribute("alias") ?: reader.getAttribute("name"))
+                TypeEnum(reader.getAttribute("api"), reader.getAttribute("name"), reader.getAttribute("alias"))
             }
             "funcpointer" -> {
                 val api = reader.getAttribute("api")
@@ -481,8 +438,8 @@ internal class TypeConverter : Converter {
                     Field(modifier, type, indirection.indirection, name, null, null, HashMap())
                 }
 
-                if (proto.name == "PFN_vkVoidFunction")
-                    TypePlatform(api, "PFN_vkVoidFunction")
+                if (OPAQUE_PFN_TYPES.contains(proto.name))
+                    TypePlatform(api, proto.name)
                 else {
                     val params = ArrayList<Field>()
                     while (reader.hasMoreChildren()) {
@@ -539,6 +496,7 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     xs.allowTypesByWildcard(arrayOf("org.lwjgl.vulkangen.*"))
 
     xs.alias("registry", Registry::class.java)
+    xs.ignoreUnknownElements()
 
     Platform::class.java.let {
         xs.alias("platform", it)
@@ -651,57 +609,11 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     }
 
     Enable::class.java.let {
-        xs.addImplicitCollection(SPIRVExtension::class.java, "enables", "enable", it)
-        xs.addImplicitCollection(SPIRVCapability::class.java, "enables", "enable", it)
         xs.useAttributeFor(it, "version")
         xs.useAttributeFor(it, "extension")
         xs.useAttributeFor(it, "struct")
         xs.useAttributeFor(it, "feature")
         xs.useAttributeFor(it, "requires")
-    }
-
-    SPIRVExtension::class.java.let {
-        xs.alias("spirvextension", it)
-        xs.useAttributeFor(it, "name")
-    }
-
-    SPIRVCapability::class.java.let {
-        xs.alias("spirvcapability", it)
-        xs.useAttributeFor(it, "name")
-    }
-
-    Component::class.java.let {
-        xs.addImplicitCollection(Format::class.java, "components", "component", it)
-        xs.alias("component", it)
-        xs.useAttributeFor(it, "name")
-        xs.useAttributeFor(it, "bits")
-        xs.useAttributeFor(it, "numericFormat")
-    }
-
-    SPIRVImageFormat::class.java.let {
-        xs.alias("spirvimageformat", it)
-        xs.useAttributeFor(it, "name")
-    }
-
-    Plane::class.java.let {
-        xs.addImplicitCollection(Format::class.java, "planes", "plane", it)
-        xs.alias("plane", it)
-        xs.useAttributeFor(it, "index")
-        xs.useAttributeFor(it, "widthDivisor")
-        xs.useAttributeFor(it, "heightDivisor")
-        xs.useAttributeFor(it, "compatible")
-    }
-
-    Format::class.java.let {
-        xs.alias("format", it)
-        xs.useAttributeFor(it, "name")
-        xs.useAttributeFor(it, "class_")
-        xs.aliasAttribute("class_", "class")
-        xs.useAttributeFor(it, "blockSize")
-        xs.useAttributeFor(it, "texelsPerBlock")
-        xs.useAttributeFor(it, "blockExtent")
-        xs.useAttributeFor(it, "compressed")
-        xs.useAttributeFor(it, "packed")
     }
 
     xs

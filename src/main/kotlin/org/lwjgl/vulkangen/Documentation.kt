@@ -98,7 +98,7 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
             .build()
     )
 
-    for (i in 2..4) {
+    for (i in 2..extensions.blocks.lastIndex) {
         buildExtensionDocumentation(extensions.blocks[i].blocks, extensionIDs)
     }
 
@@ -122,17 +122,26 @@ internal fun convert(root: Path, structs: Map<String, TypeStruct>) {
         when (it.id) {
             "protos",
             "funcpointers" -> {
-                for (node in it.blocks)
-                    addFunction(node)
+                for (node in it.blocks) {
+                    if (node.title != null) {
+                        addFunction(node)
+                    }
+                }
             }
             "structs"      -> {
-                for (node in it.blocks)
-                    addStruct(node)
+                for (node in it.blocks) {
+                    if (node.title != null) {
+                        addStruct(node)
+                    }
+                }
             }
             "enums",
             "flags"        -> {
-                for (node in it.blocks)
-                    addEnum(node)
+                for (node in it.blocks) {
+                    if (node.title != null) {
+                        addEnum(node)
+                    }
+                }
             }
         }
     }
@@ -146,24 +155,24 @@ private fun buildExtensionDocumentation(
 ) {
     var i = findFirstExtensionBlock(blocks, 0, extensionIDs)
     while (i < blocks.size) {
-        val firstBlock = blocks[i++]
-        val from = i
+        val extensionBlock = blocks[i++]
+        val extensionBlocks = extensionBlock.blocks
 
         // Up to start of next extension
         i = findFirstExtensionBlock(blocks, i, extensionIDs)
 
         // Concat blocks
-        EXTENSION_DOC[firstBlock.id.substring(3)] =
+        EXTENSION_DOC[extensionBlock.id.substring(3)] =
             // Re-order sections for readability: description first, metadata last
             (
                 // appendices/<extension>.txt: skip "Other Extension Metadata" and drop "Description" header
-                blocks[from + 1].blocks.asSequence() +
+                extensionBlocks[2].blocks.asSequence() +
                 // appendices/<extension>.txt: all sections after "Description"
-                blocks.listIterator(from + 2).asSequence().take(i - (from + 2)) +
+                extensionBlocks.listIterator(3).asSequence().take(extensionBlocks.size - 3) +
                 // meta/<extension>.txt
-                firstBlock +
+                extensionBlocks[0] + // extensionBlocks[0]
                 // appendices/<extension>.txt: "Other Extension Metadata"
-                blocks[from]
+                extensionBlocks[1]
             )
                 .filter { it !is Section || !(it.title.startsWith("New") || it.title == "Issues" || it.title.startsWith("Version")) }
                 .map { nodeToJavaDoc(it) }
@@ -188,12 +197,18 @@ private fun addFunction(node: StructuralNode) {
         .substringBefore('(')
     //System.err.println(function)
     try {
-        FUNCTION_DOC[function] = FunctionDoc(
+        FUNCTION_DOC[function] = if (node.blocks.size == 7) FunctionDoc(
             getShortDescription(node.blocks[0]),
             containerToJavaDoc(node.blocks[1]),
             containerToJavaDoc(node.blocks[3]),
             seeAlsoToJavaDoc(node.blocks[4]),
             nodeToParamJavaDoc(node.blocks[2])
+        ) else FunctionDoc(
+            getShortDescription(node.blocks[0]),
+            containerToJavaDoc(node.blocks[1]),
+            containerToJavaDoc(node.blocks[2]),
+            seeAlsoToJavaDoc(node.blocks[3]),
+            HashMap()
         )
     } catch (e: Exception) {
         System.err.println("Failed while parsing: $function")
@@ -201,7 +216,6 @@ private fun addFunction(node: StructuralNode) {
         throw RuntimeException(e)
     }
 }
-
 
 private fun addStruct(node: StructuralNode) {
     val struct = node.title.substringBefore('(')

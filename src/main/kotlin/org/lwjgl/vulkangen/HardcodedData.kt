@@ -33,9 +33,11 @@ internal val DISABLED_EXTENSIONS = setOf(
     "VK_MVK_ios_surface",
     "VK_NN_vi_surface",
     "VK_QNX_screen_surface",
+    "VK_QNX_external_memory_screen_buffer",
 )
 
 internal val EXTENSION_TOKEN_REPLACEMENTS = mapOf(
+    "av1" to "AV1",
     "gcn" to "GCN",
     "glsl" to "GLSL",
     "gpu" to "GPU",
@@ -47,6 +49,8 @@ internal val IMPORTS = mapOf(
     "QuartzCore.h" to Import("core.macos.*", null),
     "Metal.h" to Import("core.macos.*", null),
     "IOSurface.h" to Import("core.macos.*", null),
+    "vk_video/vulkan_video_codec_av1std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_av1std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
@@ -65,8 +69,15 @@ internal val SYSTEM_STRUCTS = mapOf<String, TypeStruct>(
 
 internal val SYSTEM_OPAQUE = setOf(
     "Display",
+    "IDirectFB",
     "wl_display",
-    "wl_surface"
+    "wl_surface",
+    "xcb_connection_t"
+)
+
+internal val OPAQUE_PFN_TYPES = setOf(
+    "PFN_vkVoidFunction",
+    "PFN_vkGetInstanceProcAddrLUNARG"
 )
 
 internal val MACROS = setOf(
@@ -166,6 +177,7 @@ private val SECTION_XREFS = mapOf(
     "memory-device-hostaccess" to "Host Access to Device Memory Objects",
     "memory-protected-access-rules" to "Protected Memory Access Rules",
     "primsrast" to "Rasterization",
+    "primsrast-depthbias-computation" to "Depth Bias",
     "primsrast-fragment-shading-rate-attachment" to "Attachment Fragment Shading Rate",
     "primsrast-fragment-shading-rate-pipeline" to "Pipeline Fragment Shading Rate",
     "primsrast-fragment-shading-rate-primitive" to "Primitive Fragment Shading Rate",
@@ -179,7 +191,8 @@ private val SECTION_XREFS = mapOf(
     "synchronization-events" to "Events",
     "synchronization-queue-transfers" to "Queue Family Ownership Transfer",
     "tessellation" to "Tessellation",
-    "textures-chroma-reconstruction" to "Chroma Reconstruction"
+    "textures-chroma-reconstruction" to "Chroma Reconstruction",
+    "textures-operation-validation" to "Instruction/Sampler/Image validation"
 )
 private val SECTION_XREFS_USED = HashSet<String>()
 internal fun getSectionXREF(section: String): String {

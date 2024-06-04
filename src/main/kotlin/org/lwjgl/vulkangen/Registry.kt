@@ -349,7 +349,7 @@ else {
             indirection.isNotEmpty() &&
             check.isEmpty() &&
             !isString &&
-            !(type == "opaque_p" || type == "opaque_const_p" || nativeType is TypeSystem || nativeType is TypeStruct) &&
+            !(type == "opaque_p" || type == "opaque_const_p" || nativeType is TypeSystem || (nativeType is TypeBase && !nativeType.name.startsWith("Vk")) || nativeType is TypeStruct) &&
             params.none { param.len.contains(it.name) }
         ) "Unsafe.." else ""
         val paramType = if ("false,true" == param.optional && (isString || nativeType is TypeStruct)) "Input.." else ""
@@ -542,7 +542,7 @@ ${templateTypes.asSequence()
                         } else {
                             ""
                         }
-                        
+
                         val expression = member.values.let {
                             if (it != null) {
                                 if (it.contains(',')) {

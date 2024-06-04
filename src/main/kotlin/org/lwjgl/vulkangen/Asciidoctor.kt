@@ -21,11 +21,16 @@ internal data class AsciidoctorParser(
 )
 
 internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): AsciidoctorParser {
-    // extensions.adoc does not include attribs.adoc
+    // extensions.adoc does not include attribs.adoc & specattribs.adoc
     // we always pass these as document attribs
     val commonAttribs = """^:([^:]+):"""
         .toRegex(RegexOption.MULTILINE)
-        .findAll(String(Files.readAllBytes(root.resolve("config").resolve("attribs.adoc")), StandardCharsets.UTF_8))
+        .findAll(
+            """
+            ${String(Files.readAllBytes(root.resolve("config").resolve("attribs.adoc")), StandardCharsets.UTF_8)}
+            ${String(Files.readAllBytes(root.resolve("gen").resolve("specattribs.adoc")), StandardCharsets.UTF_8)}
+            """.trimIndent()
+        )
         .map { it.groups[1]!!.value }
         .toHashSet()
 
@@ -60,24 +65,36 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
             )
             private val KNOWN_ATTRIBS = setOf(
                 "accessMaskName",
+                "bufferrowlength",
+                "bufferimageheight",
+                "callableShaderBindingTableAddress",
+                "callableShaderBindingTableStride",
+                "cmdstruct",
+                "feature",
+                "hitShaderBindingTableAddress",
+                "hitShaderBindingTableStride",
+                "imageextent",
+                "imageoffset",
                 "imageopts",
                 "imageparam",
+                "imagesubresource",
                 "maxBlockSize",
                 "maxinstancecheck",
                 "maxTotalSize",
-                "refpage",
-                "stageMaskName",
-                "cmdstruct",
-                "feature",
+                "missShaderBindingTableAddress",
+                "missShaderBindingTableStride",
+                "objectcount",
+                "objectnamecamelcase",
+                "objectnameplural",
+                "pipelineType",
+                "prefixCondition",
                 "rayGenShaderBindingTableAddress",
                 "rayGenShaderBindingTableSize",
                 "rayGenShaderBindingTableStride",
-                "missShaderBindingTableAddress",
-                "missShaderBindingTableStride",
-                "hitShaderBindingTableAddress",
-                "hitShaderBindingTableStride",
-                "callableShaderBindingTableAddress",
-                "callableShaderBindingTableStride",
+                "refpage",
+                "regionsparam",
+                "requiredfeature",
+                "stageMaskName",
             )
 
             private val LINKS = """link:\+\+(.+?)\+\+""".toRegex()
@@ -112,7 +129,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                         }
                     }
                     lines[i] = LINKS.replace(lines[i]) { m ->
-                        "link:++${m.groups[1]!!.value.encodeURI()}++"
+                        "link:++${m.groups[1]!!.value.encodeURI().replace("#", "\\#")}++"
                     }
                     i++
                 }
@@ -151,8 +168,8 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
         .inlineMacroQuoted("apiext", """apiext:(\w+)""") { "{@link ${it.substring(3).template} $it}" }
         .inlineMacroQuoted("tlink", """tlink:(\w+)""") {
             if (it.startsWith("PFN_vk")) {
-                if (it == "PFN_vkVoidFunction")
-                    "{@code PFN_vkVoidFunction}"
+                if (OPAQUE_PFN_TYPES.contains(it))
+                    "{@code $it}"
                 else
                     "##Vk${it.substring(6)}"
             } else {
@@ -276,7 +293,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                         if (EXTENSION_LINK_PATTERN.matches(refid)) {
                             "{@link ${refid.substring(3).template} $refid}"
                         } else {
-                            """<a target="_blank" href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
+                            """<a href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
                         }
                     }
                 }
@@ -302,14 +319,14 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                                 }
                             } else if (hasUnnamedXREF(match)) {
                                 // hack for vkAllocationFunction_return_rules
-                                """<a target="_blank" href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$match">${node.text}</a>"""
+                                """<a href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$match">${node.text}</a>"""
                             } else {
                                 "${node.text} ({@code $match})"
                             }
                         }
                     } else {
                         val href = node.target.replace("#", "\\#")
-                        """<a target="_blank" href="$href">${node.text
+                        """<a href="$href">${node.text
                             .run {
                                 if (startsWith("https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#"))
                                     getSectionXREF(substring("https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#".length))
