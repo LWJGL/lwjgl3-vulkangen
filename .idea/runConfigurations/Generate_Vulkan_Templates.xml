@@ -12,6 +12,7 @@
           <option name="goals">
             <list>
               <option value="exec:exec@generate" />
+              <option value="-X" />
             </list>
           </option>
           <option name="multimoduleDir" />
@@ -27,6 +28,8 @@
         </MavenRunnerParameters>
       </option>
     </MavenSettings>
-    <method v="2" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
   </configuration>
 </component>
