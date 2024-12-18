@@ -64,16 +64,43 @@ internal class TypeFuncpointer(
     override val params: MutableList<Field>
 ) : Type(api, proto.name), Function // TODO
 
-internal class TypeStruct(
-    val type: String, // struct or union
+internal abstract class TypeStruct(
     api: String?,
     name: String,
-    val returnedonly: Boolean,
-    val structextends: List<String>?,
-    val members: MutableList<Field>,
-    val alias: String?,
-    val parentstruct: String?
-) : Type(api, name)
+): Type(api, name) {
+    abstract val type: String // struct or union
+    abstract val returnedonly: Boolean
+    abstract val structextends: List<String>?
+    abstract val members: MutableList<Field>
+    abstract val alias: String?
+    abstract val parentstruct: String?
+}
+
+private class TypeStructBase(
+    api: String?,
+    name: String,
+    override val type: String, // struct or union
+    override val returnedonly: Boolean,
+    override val structextends: List<String>?,
+    override val members: MutableList<Field>,
+    override val alias: String?,
+    override val parentstruct: String?
+) : TypeStruct(api, name)
+
+private class TypeStructAlias(
+    api: String?,
+    name: String,
+    override val alias: String,
+    reference: Lazy<TypeStruct>
+) : TypeStruct(api, name) {
+    private val ref: TypeStruct by reference
+
+    override val type: String get() = ref.type
+    override val returnedonly: Boolean get() = ref.returnedonly
+    override val structextends: List<String>? get() = ref.structextends
+    override val members: MutableList<Field> get() = ref.members
+    override val parentstruct: String? get() = ref.parentstruct
+}
 
 internal class Enum(
     val api: String?,
@@ -336,13 +363,11 @@ internal class TypeConverter : Converter {
             val api = reader.getAttribute("api")
             val name = reader.getAttribute("name")
             val requires = reader.getAttribute("requires")
-            return if (name != null && requires != null) {
-                if ("vk_platform" == requires)
-                    TypePlatform(api, name)
-                else
-                    TypeSystem(requires, api, name)
-            } else
-                TypeIgnored
+            return if (requires == null || "vk_platform" == requires) {
+                TypePlatform(api, name)
+            } else {
+                TypeSystem(requires, api, name)
+            }
         }
 
         return when (category) {
@@ -477,14 +502,9 @@ internal class TypeConverter : Converter {
                         reader.moveUp()
                     }
 
-                    TypeStruct(category, api, name, returnedonly, structextends, members, null, parentstruct)
+                    TypeStructBase(api, name, category, returnedonly, structextends, members, null, parentstruct)
                 } else {
-                    val ref = context.registryMap.structs[alias]
-                    if (ref != null) {
-                        return TypeStruct(ref.type, api, name, ref.returnedonly, ref.structextends, ref.members, alias, parentstruct)
-                    } else {
-                        throw IllegalStateException("Struct reference not found: $alias for struct $name")
-                    }
+                    TypeStructAlias(api, name, alias, lazy { context.registryMap.structs[alias] ?: throw IllegalStateException("Struct reference not found: $alias for struct $name") })
                 }
                 context.registryMap.structs[name] = t
                 t

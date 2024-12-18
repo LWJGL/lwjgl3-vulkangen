@@ -29,13 +29,14 @@ internal class LWJGLWriter(out: Writer) : PrintWriter(out) {
 
 private class EnumRegistry(enumsList: List<Enums>) {
     val enums = enumsList.associateBy { it.name }
+    val enumTypes = HashMap<String, Enums>()
     val enumMap = enums.values.asSequence()
         .flatMap { it.enums?.asSequence() ?: emptySequence() }
         .associateByTo(HashMap()) { it.name }
     val enumImportMap = HashMap<String, String>()
 
     init {
-        configAPIConstantImports(enumImportMap)
+        enums.forEach { _, v -> v.enums?.forEach { enumTypes[it.name] = v } }
     }
 }
 
@@ -133,13 +134,6 @@ fun main(args: Array<String>) {
             )
         }
 
-    try {
-        convert(VULKAN_DOCS_ROOT, structs)
-    } catch (e: Exception) {
-        e.printStackTrace()
-        exitProcess(-1)
-    }
-
     // TODO: This must be fixed post Vulkan 1.0. We currently have no other way to identify types used in core only.
 
     registry.features.forEach { feature ->
@@ -183,8 +177,9 @@ fun main(args: Array<String>) {
     // base struct name -> list of structs extending it
     val structExtends = HashMap<String, MutableList<String>>()
     structs.forEach { (child, childStruct) ->
-        if (childStruct.structextends != null && structsVisible.contains(child)) {
-            childStruct.structextends.forEach { parent ->
+        val structextends = childStruct.structextends
+        if (structextends != null && structsVisible.contains(child)) {
+            structextends.forEach { parent ->
                 structExtends
                     .getOrPut(parent) { ArrayList() }
                     .add(child)
@@ -195,9 +190,6 @@ fun main(args: Array<String>) {
 
     generateTypes(root, "VKTypes", types, structs, structExtends, enumRegistry, featureTypes)
     generateTypes(root, "ExtensionTypes", types, structs, structExtends, enumRegistry, extensionTypes)
-
-    printUnusedSectionXREFs()
-    printUnusedLatexEquations()
 
     exitProcess(0)
 }
@@ -283,7 +275,6 @@ private fun getCheck(param: Field, indirection: String, structs: Map<String, Typ
 
 private fun getParams(
     function: Function,
-    functionDoc: FunctionDoc?,
     types: Map<String, Type>,
     structs: Map<String, TypeStruct>,
     forceIN: Boolean = false,
@@ -354,7 +345,7 @@ else {
         ) "Unsafe.." else ""
         val paramType = if ("false,true" == param.optional && (isString || nativeType is TypeStruct)) "Input.." else ""
 
-        "$autoSize$check$unsafe$nullable$paramType$type(\"${param.name}\", \"${functionDoc?.parameters?.get(param.name) ?: ""}\")"
+        "$autoSize$check$unsafe$nullable$paramType$type(\"${param.name}\")"
     }.joinToString(",\n$indent", prefix = ",\n\n$indent")
 }
 
@@ -447,25 +438,14 @@ ${templateTypes.asSequence()
                         }
                     }
 
-                val functionDoc = FUNCTION_DOC[fp.name]
                 """${structTypes}val ${fp.name} = Module.VULKAN.callback {
     ${getReturnType(fp.proto)}(
-        "${fp.name.substring(4).let { "${it[0].uppercase()}${it.substring(1)}" }}",
-        "${functionDoc?.shortDescription ?: ""}"${getParams(fp, FUNCTION_DOC[fp.proto.name], types, structs, forceIN = true, indent = "$t$t")},
+        "${fp.name.substring(4).let { "${it[0].uppercase()}${it.substring(1)}" }}"${getParams(fp, types, structs, forceIN = true, indent = "$t$t")},
 
         nativeType = "${fp.name}"
-    ) {
-        ${getJavaImports(types, sequenceOf(fp.proto) + fp.params.asSequence(), enumRegistry)}${if (functionDoc == null) "" else """documentation =
-        $QUOTES3
-        ${functionDoc.shortDescription}
-
-        ${functionDoc.cSpecification}
-
-        ${functionDoc.description}${if (seeAlsoIsEmpty(functionDoc.seeAlso)) "" else """
-
-        ${functionDoc.seeAlso}"""}
-        $QUOTES3"""}
-    }
+    )${getJavaImports(types, sequenceOf(fp.proto) + fp.params.asSequence(), enumRegistry).let { if (it.isEmpty()) " {}" else """ {
+        $it
+    }"""}}
 }"""
             }
             .let {
@@ -509,28 +489,13 @@ ${templateTypes.asSequence()
                         }
                     }
                 }
-                val structDoc = STRUCT_DOC[struct.name]
 
                 """${aliasForwardDecl ?: ""}${
                 if (struct.members.any { it.type == struct.name }) "val _${struct.name} = ${struct.type}(Module.VULKAN, \"${struct.name}\")\n" else ""
                 }val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
                 if (struct.returnedonly) ", mutable = false" else ""
                 }${alias ?: ""}${parentStruct ?: ""}) {
-    ${getJavaImports(types, struct.members.asSequence(), enumRegistry)}${if (structDoc == null) {
-                    if (struct.alias == null) "" else """documentation = "See ##${struct.alias}."
-
-    """
-                } else
-                    """documentation =
-        $QUOTES3
-        ${structDoc.shortDescription}${if (structDoc.description.isEmpty()) "" else """
-
-        ${structDoc.description}"""}${if (seeAlsoIsEmpty(structDoc.seeAlso)) "" else """
-
-        ${structDoc.seeAlso}"""}
-        $QUOTES3
-
-    """}${struct.members.asSequence()
+    ${getJavaImports(types, struct.members.asSequence(), enumRegistry)}${struct.members.asSequence()
                     .map { member ->
                         val pointerSetters = if (member.name == "pNext" && member.type == "void" && member.indirection == ".p") {
                             val pNextTypes = structExtends[struct.name]
@@ -585,7 +550,7 @@ ${templateTypes.asSequence()
                             if (member.type == struct.name) "_$it" else it
                         }
 
-                        "$pointerSetters$expression$autoSize$nullable$type(\"${member.name}\", \"${structDoc?.members?.get(member.name) ?: ""}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
+                        "$pointerSetters$expression$autoSize$nullable$type(\"${member.name}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
                         if (member.array != null) "[${member.array}]" else ""
                         }${
                         if (struct.returnedonly && ((member.name == "sType" && member.type == "VkStructureType") || (member.name == "pNext" && member.type == "void" && member.indirection == ".p"))) ".mutable()" else ""
@@ -610,7 +575,6 @@ private fun generateFeature(
     val file = root.resolve("templates/$template.kt")
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
-        val distinctTypes = getDistinctTypes(feature.requires.asSequence(), commands, types)
         val imports = getDistinctTypes(feature.requires.asSequence(), commands, types, commandsOnly = true).asSequence()
             .filterIsInstance<TypeSystem>()
             .mapNotNull { IMPORTS[it.requires] }
@@ -637,52 +601,36 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
             .mapNotNull { it.javaPackage }
             .sorted()
             .joinToString("") { "javaImport(\"$it\")\n$t" }
-    }documentation =
-        $QUOTES3
-        The core Vulkan ${feature.number} functionality.
-        $QUOTES3
-""")
+    }""")
+
         feature.requires.asSequence()
             .mapNotNull { it.enums }
-            .forEach { enums ->
-                enums.asSequence()
-                    .filter { it.extends != null && (it.value == null || !it.value.startsWith("VK_")) }
-                    .groupBy { it.extends!! }
-                    .forEach { (enumName, enumList) ->
-                        val extends = enumList.firstOrNull { it.extends != null }?.extends
-                        val typeLong = enumRegistry.enums[enumName]?.bitwidth == 64
-                        val enumDoc = ENUM_DOC[enumName]
-                        writer.println("""
-    EnumConstant(
-        ${when {
-                            extends != null -> "\"Extends {@code $enumName}.\""
-                            enumDoc == null -> "\"$enumName\""
-                            else            -> """"$QUOTES3
-        ${enumDoc.shortDescription}${
-                            if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-                            if (seeAlsoIsEmpty(enumDoc.seeAlso)) "" else "\n\n$t$t${enumDoc.seeAlso}"}
-        $QUOTES3"""
-                        }},
+            .plus(
+                getDistinctTypes(feature.requires.asSequence(), commands, types)
+                    .filterEnums(enumRegistry.enums, enumsSeen)
+                    .onEach { enumsSeen += it }
+                    .mapNotNull { it.enums }
+            )
+            .flatten()
+            .groupBy { enumRegistry.enumTypes[it.name]?.name ?: it.extends!! }
+            .forEach { enumName, enumList ->
+                if (enumName == "API Constants") {
+                    enumList.forEach { enumRegistry.enumImportMap[it.name] = template }
+                    return@forEach
+                }
 
+                val typeLong = enumRegistry.enums[enumName]?.bitwidth == 64
+                writer.println("""
+    EnumConstant${if (typeLong) "Long" else ""}(
         ${enumList.asSequence()
-                            .map {
-                                enumRegistry.enumImportMap[it.name] = template
-                                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry, typeLong)}"
-                            }
-                            .joinToString(",\n$t$t")}
-    )""")
-                    }
+            .sortedByValue(0, enumRegistry, typeLong)
+            .map {
+                enumRegistry.enumImportMap[it.name] = template
+                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry, typeLong)}"
             }
-
-        val featureEnums = distinctTypes
-            .filterEnums(enumRegistry.enums)
-            .toMutableList()
-
-        featureEnums.removeAll(enumsSeen)
-        if (featureEnums.isNotEmpty()) {
-            enumsSeen.addAll(featureEnums)
-            writer.printEnums(template, featureEnums, 0, enumRegistry)
-        }
+            .joinToString(",\n$t$t")}
+    )""")
+            }
 
         feature.requires.asSequence()
             .forEach {
@@ -694,10 +642,6 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
 
         writer.print("\n}")
     }
-}
-
-private fun seeAlsoIsEmpty(seeAlso: String?): Boolean {
-    return seeAlso == null || seeAlso.isEmpty() || seeAlso.contains("No cross-references are available")
 }
 
 private fun generateExtension(
@@ -714,7 +658,6 @@ private fun generateExtension(
     val file = root.resolve("templates/$name.kt")
 
     LWJGLWriter(OutputStreamWriter(Files.newOutputStream(file), Charsets.UTF_8)).use { writer ->
-        val distinctTypes = getDistinctTypes(extension.requires.asSequence(), commands, types)
         val imports = getDistinctTypes(extension.requires.asSequence(), commands, types, commandsOnly = true).asSequence()
             .filterIsInstance<TypeSystem>()
             .mapNotNull { IMPORTS[it.requires] }
@@ -731,79 +674,54 @@ ${imports.asSequence()
     .joinToString("") { "import $it\n" }
 }import vulkan.*
 
-val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}", postfix = "${name.substringBefore('_')}") {
-    ${
+val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}", postfix = "${name.substringBefore('_')}") {${
         imports.asSequence()
             .mapNotNull { it.javaPackage }
             .sorted()
-            .joinToString("") { "javaImport(\"$it\")\n$t" }
-    }documentation =
-        $QUOTES3
-        ${EXTENSION_DOC[name] ?: "The ${S}templateName extension."}
-        $QUOTES3
-""")
+            .joinToString("") { "\n${t}javaImport(\"$it\")" }
+    }""")
 
         extension.requires.asSequence()
             .mapNotNull { it.enums }
-            .forEach { enums ->
-                enums.asSequence()
-                    .filter { it.value == null || !it.value.startsWith("VK_") }
-                    .groupBy { it.extends ?: it.name }
-                    .forEach nextEnumList@{ (enumName, enumList) ->
-                        if (enumList.size == 1) {
-                            val enum = enumList.first()
-                            if (enum.name.endsWith("_EXTENSION_NAME")) {
-                                writer.println("""
+            .plus(
+                getDistinctTypes(extension.requires.asSequence(), commands, types)
+                    .filterEnums(enumRegistry.enums, enumsSeen)
+                    .onEach { enumsSeen += it }
+                    .mapNotNull { it.enums }
+            )
+            .flatten()
+            .groupBy { enumRegistry.enumTypes[it.name]?.name ?: it.extends ?: it.name }
+            .forEach nextEnumList@ { (enumName, enumList) ->
+                val values = enumList.distinctBy { it.name }
+                if (values.size == 1) {
+                    val enum = values.first()
+                    if (enum.name.endsWith("_EXTENSION_NAME")) {
+                        writer.println("""
     StringConstant(
-        "The extension name.",
-
         "${enum.name.substring(3)}"${enum.alias.let { if (it == null) "..${enum.value}" else ".expr(\"$it\")" }}
     )""")
-                                return@nextEnumList
-                            } else if (enum.name.endsWith("_SPEC_VERSION")) {
-                                writer.println("""
+                        return@nextEnumList
+                    } else if (enum.name.endsWith("_SPEC_VERSION")) {
+                        writer.println("""
     IntConstant(
-        "The extension specification version.",
-
         "${enum.name.substring(3)}".."${enum.alias ?: enum.value}"
     )""")
-                                return@nextEnumList
-                            }
-                        }
-
-                        val extends = enumList.firstOrNull { it.extends != null }?.extends
-                        val typeLong = enumRegistry.enums[enumName]?.bitwidth == 64
-                        val enumDoc = ENUM_DOC[enumName]
-                        writer.println("""
-    EnumConstant${if (typeLong) "Long" else ""}(
-        ${when {
-                            extends != null -> "\"Extends {@code $enumName}.\""
-                            enumDoc == null -> "\"$enumName\""
-                            else -> """"$QUOTES3
-        ${enumDoc.shortDescription}${
-                        if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-                        if (seeAlsoIsEmpty(enumDoc.seeAlso)) "" else "\n\n$t$t${enumDoc.seeAlso}"}
-        $QUOTES3"""}},
-
-        ${enumList.asSequence()
-                            .map {
-                                enumRegistry.enumImportMap[it.name] = template
-                                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry, typeLong)}"
-                            }
-                            .joinToString(",\n$t$t")}
-    )""")
+                        return@nextEnumList
                     }
+                }
+
+                val typeLong = enumRegistry.enums[enumName]?.bitwidth == 64
+                writer.println("""
+    EnumConstant${if (typeLong) "Long" else ""}(
+        ${values.asSequence()
+            .sortedByValue(extension.number, enumRegistry, typeLong)
+            .map {
+                enumRegistry.enumImportMap[it.name] = template
+                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry, typeLong)}"
             }
-
-        val extensionEnums = distinctTypes
-            .filterEnums(enumRegistry.enums)
-            .toMutableList()
-
-        extensionEnums.removeAll(enumsSeen)
-        if (extensionEnums.isNotEmpty()) {
-            enumsSeen.addAll(extensionEnums)
-            writer.printEnums(template, extensionEnums, extension.number, enumRegistry)
-        }
+            .joinToString(",\n$t$t")}
+    )""")
+            }
 
         // Merge multiple dependencies (in different <require>) for the same command
         val dependencies = HashMap<String, String>()
@@ -842,6 +760,74 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
     }
 }
 
+private fun Sequence<Enum>.sortedByValue(extensionNumber: Int, enumRegistry: EnumRegistry, typeLong: Boolean) =
+    if (typeLong) {
+        this.sortedWith { a, b ->
+            val va = a.getEnumValueLong(a.extnumber ?: extensionNumber, enumRegistry)
+            val vb = b.getEnumValueLong(b.extnumber ?: extensionNumber, enumRegistry)
+
+            val pa = 0L <= va.toLong()
+            val pb = 0L <= vb.toLong()
+            if (pa xor pb) {
+                if (pa) -1 else 1
+            } else if (pa) {
+                va.compareTo(vb)
+            } else {
+                vb.compareTo(va)
+            }
+        }
+    } else {
+        this.sortedWith { a, b ->
+            try {
+                val va = a.getEnumValueInt(a.extnumber ?: extensionNumber, enumRegistry)
+                val vb = b.getEnumValueInt(b.extnumber ?: extensionNumber, enumRegistry)
+
+                val pa = 0 <= va.toInt()
+                val pb = 0 <= vb.toInt()
+                if (pa xor pb) {
+                    if (pa) -1 else 1
+                } else if (pa) {
+                    va.compareTo(vb)
+                } else {
+                    vb.compareTo(va)
+                }
+            } catch (_: Exception) {
+                a.getEnumValue(a.extnumber ?: extensionNumber, enumRegistry, false)
+                    .compareTo(b.getEnumValue(b.extnumber ?: extensionNumber, enumRegistry, false))
+            }
+        }
+    }
+
+private fun Enum.getEnumValueLong(extensionNumber: Int, enumRegistry: EnumRegistry): ULong = when {
+    value != null  -> value.replace("U", "").let {
+        if (it.startsWith("0x")) {
+            it.substring(2).toULong(16)
+        } else if (it.startsWith("-")) {
+            it.toLong().toULong()
+        } else {
+            it.toULong()
+        }
+    }
+    offset != null -> throw UnsupportedOperationException()
+    bitpos != null -> 1UL shl bitpos.toInt()
+    else           -> enumRegistry.enumMap.getValue(alias ?: name).getEnumValueLong(extensionNumber, enumRegistry)
+}
+
+private fun Enum.getEnumValueInt(extensionNumber: Int, enumRegistry: EnumRegistry): UInt = when {
+    value != null  -> value.replace("U", "").let {
+        if (it.startsWith("0x")) {
+            it.substring(2).toUInt(16)
+        } else if (it.startsWith("-")) {
+            it.toInt().toUInt()
+        } else {
+            it.toUInt()
+        }
+    }
+    offset != null -> offsetAsEnum(extnumber ?: extensionNumber, offset, dir).toUInt()
+    bitpos != null -> 1U shl bitpos.toInt()
+    else           -> enumRegistry.enumMap.getValue(alias ?: name).getEnumValueInt(extensionNumber, enumRegistry)
+}
+
 private fun Enum.getEnumValue(extensionNumber: Int, enumRegistry: EnumRegistry, typeLong: Boolean): String = when {
     value != null  -> ".\"${value.replace("U", "")}${if (typeLong) "L" else ""}\""
     offset != null -> {
@@ -862,38 +848,16 @@ private fun offsetAsEnum(extensionNumber: Int, offset: String, dir: String?) =
 
 private fun bitposAsHex(bitpos: String) = "0x${java.lang.Long.toHexString(1L shl bitpos.toInt()).padStart(8, '0')}"
 
-private fun Set<Type>.filterEnums(enums: Map<String, Enums>) = this.asSequence()
-    .filter { it is TypeEnum || it is TypeBitmask }
+private fun Set<Type>.filterEnums(enums: Map<String, Enums>, enumsSeen: MutableSet<Enums>) = this.asSequence()
     .flatMap {
         if (it is TypeBitmask && it.requires != null) {
             sequenceOf(it.name, it.requires)
         } else
             sequenceOf(it.name)
     }
-    .distinct()
     .mapNotNull { enums[it] }
-
-private fun PrintWriter.printEnums(className: String, enums: List<Enums>, extensionNumber: Int, enumRegistry: EnumRegistry) {
-    enums.asSequence()
-        .filter { block -> block.enums != null }
-        .forEach { block ->
-            val typeLong = block.bitwidth == 64
-            val enumDoc = ENUM_DOC[block.name]
-            println("""
-    EnumConstant${if (typeLong) "Long" else ""}(
-        ${if (enumDoc == null) "\"${block.name}\"" else """$QUOTES3${"""
-        ${enumDoc.shortDescription}${
-            if (enumDoc.description.isEmpty()) "" else "\n\n$t$t${enumDoc.description}"}${
-            if (seeAlsoIsEmpty(enumDoc.seeAlso)) "" else "\n\n$t$t${enumDoc.seeAlso}"}
-        """.splitLargeLiteral()}$QUOTES3"""},
-
-        ${block.enums!!.joinToString(",\n$t$t") {
-                enumRegistry.enumImportMap[it.name] = className
-                "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extensionNumber, enumRegistry, typeLong)}"
-            }}
-    )""")
-        }
-}
+    .filter { !enumsSeen.contains(it) }
+    .distinct()
 
 private fun PrintWriter.printCommands(
     commandRefs: Sequence<String>,
@@ -924,24 +888,9 @@ private fun PrintWriter.printCommands(
             }
         }
 
-        val functionDoc = FUNCTION_DOC[name]
         println("""${getReturnType(cmd.proto)}(
-        "$name",
-        ${if (functionDoc == null) {
-            if (cmd.alias != null) "\"See #${cmd.alias.substring(2)}().\"" else "\"\""
-        } else
-            """$QUOTES3
-        ${functionDoc.shortDescription}
-
-        ${functionDoc.cSpecification}
-
-        ${functionDoc.description}${if (seeAlsoIsEmpty(functionDoc.seeAlso)) "" else """
-
-        ${functionDoc.seeAlso}"""}
-        $QUOTES3"""
-        }${getParams(
+        "$name"${getParams(
             cmd,
-            functionDoc ?: cmd.alias.let { if (it != null) FUNCTION_DOC[it.substring(2)] else null },
             types, 
             structs,
             // workaround: const missing from VK_EXT_debug_marker struct params

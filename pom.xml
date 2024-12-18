@@ -13,7 +13,7 @@
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-		<kotlin.version>2.0.0</kotlin.version>
+		<kotlin.version>2.1.0</kotlin.version>
 
 		<main.class>org.lwjgl.vulkangen.RegistryKt</main.class>
 		<path.vulkan-docs>../../CLONES/KHRONOS/Vulkan-Docs</path.vulkan-docs>
@@ -23,17 +23,12 @@
 		<dependency>
 			<groupId>com.thoughtworks.xstream</groupId>
 			<artifactId>xstream</artifactId>
-			<version>1.4.20</version>
+			<version>1.4.21</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogce</groupId>
 			<artifactId>xpp3</artifactId>
 			<version>1.1.6</version>
-		</dependency>
-		<dependency>
-			<groupId>org.asciidoctor</groupId>
-			<artifactId>asciidoctorj</artifactId>
-			<version>2.5.13</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
@@ -58,13 +53,13 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>versions-maven-plugin</artifactId>
-				<version>2.17.0</version>
+				<version>2.18.0</version>
 				<configuration>
 				<ruleSet>
 					<ignoreVersions>
 						<ignoreVersion>
 							<type>regex</type>
-							<version>(?i).+[\.\-](alpha|beta|M)\d*</version>
+							<version>(?i).+[\.\-](alpha|beta|M|RC)-?\d*</version>
 						</ignoreVersion>
 					</ignoreVersions>
 				</ruleSet>
@@ -141,7 +136,7 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.5.0</version>
 				<executions>
 					<execution>
 						<id>generate</id>
