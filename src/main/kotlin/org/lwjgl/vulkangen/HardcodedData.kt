@@ -16,7 +16,8 @@ internal const val HEADER = """/*
 internal val VERSION_HISTORY = mapOf(
     "1.1" to "10",
     "1.2" to "11",
-    "1.3" to "12"
+    "1.3" to "12",
+    "1.4" to "13"
 )
 
 internal val DISABLED_EXTENSIONS = setOf(
@@ -51,6 +52,7 @@ internal val IMPORTS = mapOf(
     "IOSurface.h" to Import("core.macos.*", null),
     "vk_video/vulkan_video_codec_av1std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_av1std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_av1std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h264std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
@@ -121,6 +123,7 @@ internal fun configAPIConstantImports(enumClassMap: MutableMap<String, String>) 
     enumClassMap["VK_MAX_DRIVER_INFO_SIZE_KHR"] = "KHRDriverProperties"
     enumClassMap["VK_SHADER_UNUSED_KHR"] = "KHRRayTracingPipeline"
     enumClassMap["VK_SHADER_UNUSED_NV"] = "NVRayTracing"
+    enumClassMap["VK_MAX_GLOBAL_PRIORITY_SIZE"] = "VK14"
     enumClassMap["VK_MAX_GLOBAL_PRIORITY_SIZE_EXT"] = "EXTGlobalPriorityQuery"
 }
 
@@ -176,6 +179,7 @@ private val SECTION_XREFS = mapOf(
     "img-tessellation-topology-ll" to "Domain parameterization for tessellation primitive modes (lower-left origin)",
     "memory-device-hostaccess" to "Host Access to Device Memory Objects",
     "memory-protected-access-rules" to "Protected Memory Access Rules",
+    "pipelines-binaries" to "Pipeline Binaries",
     "primsrast" to "Rasterization",
     "primsrast-depthbias-computation" to "Depth Bias",
     "primsrast-fragment-shading-rate-attachment" to "Attachment Fragment Shading Rate",
@@ -188,6 +192,7 @@ private val SECTION_XREFS = mapOf(
     "samplers-maxAnisotropy" to "samplers-maxAnisotropy",
     "samplers-mipLodBias" to "samplers-mipLodBias",
     "shaders-vertex" to "Vertex Shaders",
+    "spirvenv-image-dimensions" to "Compatibility Between SPIR-V Image Dimensions and Vulkan ImageView Types",
     "synchronization-events" to "Events",
     "synchronization-queue-transfers" to "Queue Family Ownership Transfer",
     "tessellation" to "Tessellation",
@@ -242,6 +247,7 @@ p<sub>0</sub>(A<sub>s</sub>, A<sub>d</sub>) = max(A<sub>s</sub> + A<sub>d</sub> 
 p<sub>1</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>s</sub>, 1 &minus; A<sub>d</sub>) \\
 p<sub>2</sub>(A<sub>s</sub>, A<sub>d</sub>) = min(A<sub>d</sub>, 1 &minus; A<sub>s</sub>) \\"""),
     """\lceil{\mathit{rasterizationSamples} \over 32}\rceil""" to "{@code ceil(rasterizationSamples / 32)}",
+    """\lceil{\mathit{samples} \over 32}\rceil""" to "{@code ceil(samples / 32)}",
     """\textrm{codeSize} \over 4""" to "{@code codeSize / 4}",
     """\frac{k}{2^m - 1}""" to "<code>k / (2<sup>m</sup> - 1)</code>",
 

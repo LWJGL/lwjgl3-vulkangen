@@ -162,6 +162,7 @@ private fun buildExtensionDocumentation(
         i = findFirstExtensionBlock(blocks, i, extensionIDs)
 
         // Concat blocks
+        //System.err.println("[LWJGL] Processing documentation for extension: ${extensionBlock.id}")
         EXTENSION_DOC[extensionBlock.id.substring(3)] =
             // Re-order sections for readability: description first, metadata last
             (
@@ -296,17 +297,24 @@ private fun containerToJavaDoc(node: StructuralNode, indent: String = ""): Strin
         .map { nodeToJavaDoc(it, indent) }
         .filter { it.isNotEmpty() }
         .joinToString("\n\n$t$t$indent").let { block ->
-        if (node.title == null || node.title.isEmpty() || block.isEmpty() || block.startsWith("<h5>"))
-            block
-        else
-            "<h5>${node.title.patch()}</h5>\n$t$t${block}".let {
-                if (node.style == "NOTE") {
-                    """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
+            if (node.title == null || node.title.isEmpty() || block.isEmpty() || block.startsWith("<h5>"))
+                block.let {
+                    if (node.style == "NOTE") {
+                        """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;"><h5>Note</h5>
+        $indent$it
         $indent</div>"""
-                } else
-                    it
-            }
-    }
+                    } else
+                        it
+                }
+            else
+                "<h5>${node.title.patch()}</h5>\n$t$t${block}".let {
+                    if (node.style == "NOTE") {
+                        """<div style="margin-left: 26px; border-left: 1px solid gray; padding-left: 14px;">$it
+        $indent</div>"""
+                    } else
+                        it
+                }
+        }
 
 private fun nodeToJavaDoc(it: StructuralNode, indent: String = ""): String =
     if (it is Section) {

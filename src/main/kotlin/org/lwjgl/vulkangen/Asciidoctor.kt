@@ -8,6 +8,8 @@ import org.intellij.lang.annotations.*
 import java.net.*
 import java.nio.charset.*
 import java.nio.file.*
+import java.util.logging.Level
+import java.util.logging.Logger
 import kotlin.io.path.*
 
 private val NUMERIC_PATTERN = """^\d+$""".toRegex()
@@ -35,6 +37,8 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
         .toHashSet()
 
     val asciidoctor = Asciidoctor.Factory.create()
+
+    Logger.getLogger("asciidoctor").level = Level.WARNING
 
     // Register the LWJGL generator template converter.
     asciidoctor
@@ -70,6 +74,10 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 "callableShaderBindingTableAddress",
                 "callableShaderBindingTableStride",
                 "cmdstruct",
+                "combinedobjectcount",
+                "combinedobjectnamecamelcase",
+                "combinedobjectnameplural",
+                "combinedparentobject",
                 "feature",
                 "hitShaderBindingTableAddress",
                 "hitShaderBindingTableStride",
@@ -86,6 +94,7 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 "objectcount",
                 "objectnamecamelcase",
                 "objectnameplural",
+                "objectnamestruct",
                 "pipelineType",
                 "prefixCondition",
                 "rayGenShaderBindingTableAddress",
@@ -94,7 +103,12 @@ internal fun createAsciidoctor(root: Path, structs: Map<String, TypeStruct>): As
                 "refpage",
                 "regionsparam",
                 "requiredfeature",
+                "sectitle",
                 "stageMaskName",
+                "supportedOperations",
+                "supportedStages",
+                "quadOperationsInAllStages",
+                "uniqifier"
             )
 
             private val LINKS = """link:\+\+(.+?)\+\+""".toRegex()
@@ -293,7 +307,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                         if (EXTENSION_LINK_PATTERN.matches(refid)) {
                             "{@link ${refid.substring(3).template} $refid}"
                         } else {
-                            """<a href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
+                            """<a href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html\#$refid">${if (node.text != null) node.text else getSectionXREF(refid)}</a>"""
                         }
                     }
                 }
@@ -319,7 +333,7 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                                 }
                             } else if (hasUnnamedXREF(match)) {
                                 // hack for vkAllocationFunction_return_rules
-                                """<a href="https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html\#$match">${node.text}</a>"""
+                                """<a href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html\#$match">${node.text}</a>"""
                             } else {
                                 "${node.text} ({@code $match})"
                             }
@@ -328,8 +342,8 @@ internal class LWJGLConverter(backend: String, opts: Map<String, Any>) : StringC
                         val href = node.target.replace("#", "\\#")
                         """<a href="$href">${node.text
                             .run {
-                                if (startsWith("https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#"))
-                                    getSectionXREF(substring("https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#".length))
+                                if (startsWith("https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#"))
+                                    getSectionXREF(substring("https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#".length))
                                 else if (this == node.target)
                                     href
                                 else

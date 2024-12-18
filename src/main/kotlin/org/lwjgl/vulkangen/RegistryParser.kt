@@ -166,7 +166,7 @@ internal class Feature(
     val name: String,
     val number: String,
     val requires: MutableList<Require>,
-    val remove: Remove?
+    val removes: MutableList<Remove>
 )
 
 internal class Extension(
@@ -479,8 +479,12 @@ internal class TypeConverter : Converter {
 
                     TypeStruct(category, api, name, returnedonly, structextends, members, null, parentstruct)
                 } else {
-                    val ref = context.registryMap.structs[alias]!!
-                    TypeStruct(ref.type, api, name, ref.returnedonly, ref.structextends, ref.members, alias, parentstruct)
+                    val ref = context.registryMap.structs[alias]
+                    if (ref != null) {
+                        return TypeStruct(ref.type, api, name, ref.returnedonly, ref.structextends, ref.members, alias, parentstruct)
+                    } else {
+                        throw IllegalStateException("Struct reference not found: $alias for struct $name")
+                    }
                 }
                 context.registryMap.structs[name] = t
                 t
@@ -565,6 +569,7 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
     xs.addImplicitCollection(ImplicitExternSyncParams::class.java, "params", "param", Field::class.java)
 
     Remove::class.java.let {
+        xs.addImplicitCollection(Feature::class.java, "removes", "remove", it)
         xs.useAttributeFor(it, "comment")
     }
 
