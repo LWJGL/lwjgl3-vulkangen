@@ -313,7 +313,9 @@ internal class FieldConverter : Converter {
                             reader.moveUp()
                             check(!reader.hasMoreChildren() && reader.value == "]")
                         }
-                        it.endsWith(']')         -> array = it.substring(1, it.length - 1)
+                        it.endsWith(']')         -> array = it.substring(1, it.length - 1).let {
+                            if (it.startsWith("VK_")) "\"$it\"" else it
+                        }
                         else                     -> throw IllegalStateException()
                     }
                 else               -> throw IllegalStateException(it)
