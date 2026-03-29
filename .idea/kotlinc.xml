@@ -7,6 +7,7 @@
     <option name="additionalArguments" value="-version -progressive" />
   </component>
   <component name="KotlinJpsPluginSettings">
-    <option name="version" value="2.1.0" />
+    <option name="externalSystemId" value="Maven" />
+    <option name="version" value="2.3.20" />
   </component>
 </project>
