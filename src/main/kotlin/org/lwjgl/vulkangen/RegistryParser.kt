@@ -192,8 +192,9 @@ internal class Feature(
     val api: String,
     val name: String,
     val number: String,
+    val comment: String?,
     val requires: MutableList<Require>,
-    val removes: MutableList<Remove>
+    val removes: MutableList<Remove>?
 )
 
 internal class Extension(
@@ -348,11 +349,7 @@ private val UnmarshallingContext.registryMap: RegistryMap
 
 internal class TypeConverter : Converter {
     companion object {
-        private val FIELD_CONVERTED = FieldConverter()
-
-        private val FUNC_POINTER_RETURN_TYPE_REGEX = Regex("""typedef\s+(?:(const|enum|struct)\s+)?(\w+)\s*([*]*)\s*[(]""")
-        private val FUNC_POINTER_PARAM_MOD_REGEX = Regex("""[(,]\s*(\w+)?""")
-        private val FUNC_POINTER_PARAM_NAME_REGEX = Regex("""\s*([*]*)\s*(\w+)\s*[,)]""")
+        private val FIELD_CONVERTER = FieldConverter()
     }
 
     override fun marshal(source: Any, writer: HierarchicalStreamWriter, context: MarshallingContext) {
@@ -456,30 +453,19 @@ internal class TypeConverter : Converter {
             }
             "funcpointer" -> {
                 val api = reader.getAttribute("api")
-                val proto = reader.let {
-                    val (modifier, type, indirection) = FUNC_POINTER_RETURN_TYPE_REGEX.find(it.value)!!.destructured
-                    it.moveDown()
-                    val name = it.value
-                    it.moveUp()
 
-                    Field(modifier, type, indirection.indirection, name, null, null, HashMap())
-                }
+                reader.moveDown()
+                val proto = FIELD_CONVERTER.unmarshal(reader, context) as Field
+                reader.moveUp()
 
                 if (OPAQUE_PFN_TYPES.contains(proto.name))
                     TypePlatform(api, proto.name)
                 else {
                     val params = ArrayList<Field>()
                     while (reader.hasMoreChildren()) {
-                        val (modifier) = FUNC_POINTER_PARAM_MOD_REGEX.find(reader.value)!!.destructured
-
-                        val type = StringBuilder()
                         reader.moveDown()
-                        type.append(reader.value)
+                        params.add(FIELD_CONVERTER.unmarshal(reader, context) as Field)
                         reader.moveUp()
-
-                        val (indirection, paramName) = FUNC_POINTER_PARAM_NAME_REGEX.find(reader.value)!!.destructured
-
-                        params.add(Field(modifier, type.toString(), indirection.indirection, paramName, null, null, HashMap()))
                     }
 
                     TypeFuncpointer(api, proto, params)
@@ -500,7 +486,7 @@ internal class TypeConverter : Converter {
                     while (reader.hasMoreChildren()) {
                         reader.moveDown()
                         if (reader.nodeName == "member")
-                            members.add(FIELD_CONVERTED.unmarshal(reader, context) as Field)
+                            members.add(FIELD_CONVERTER.unmarshal(reader, context) as Field)
                         reader.moveUp()
                     }
 
@@ -600,6 +586,7 @@ internal fun parse(registry: Path) = XStream(Xpp3Driver()).let { xs ->
         xs.useAttributeFor(it, "api")
         xs.useAttributeFor(it, "name")
         xs.useAttributeFor(it, "number")
+        xs.useAttributeFor(it, "comment")
     }
 
     Require::class.java.let {

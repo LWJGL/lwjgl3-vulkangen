@@ -35,6 +35,9 @@ internal val DISABLED_EXTENSIONS = setOf(
     "VK_NN_vi_surface",
     "VK_QNX_screen_surface",
     "VK_QNX_external_memory_screen_buffer",
+    "VK_OHOS_external_memory",
+    "VK_OHOS_native_buffer",
+    "VK_OHOS_surface",
 )
 
 internal val EXTENSION_TOKEN_REPLACEMENTS = mapOf(
@@ -42,7 +45,8 @@ internal val EXTENSION_TOKEN_REPLACEMENTS = mapOf(
     "gcn" to "GCN",
     "glsl" to "GLSL",
     "gpu" to "GPU",
-    "pvrtc" to "PVRTC"
+    "pvrtc" to "PVRTC",
+    "vp9" to "VP9",
 )
 
 internal val IMPORTS = mapOf(
@@ -59,6 +63,9 @@ internal val IMPORTS = mapOf(
     "vk_video/vulkan_video_codec_h265std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h265std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "vk_video/vulkan_video_codec_h265std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_vp9std.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_vp9std_decode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
+    "vk_video/vulkan_video_codec_vp9std_encode.h" to Import(null, "org.lwjgl.vulkan.video.*"),
     "wayland-client.h" to Import("core.linux.*", "org.lwjgl.system.linux.*"),
     "windows.h" to Import("core.windows.*", "org.lwjgl.system.windows.*"),
     "X11/Xlib.h" to Import("core.linux.*", "org.lwjgl.system.linux.*"),
@@ -72,9 +79,10 @@ internal val SYSTEM_STRUCTS = mapOf<String, TypeStruct>(
 internal val SYSTEM_OPAQUE = setOf(
     "Display",
     "IDirectFB",
+    "ubm_device",
     "wl_display",
     "wl_surface",
-    "xcb_connection_t"
+    "xcb_connection_t",
 )
 
 internal val OPAQUE_PFN_TYPES = setOf(

@@ -36,7 +36,7 @@ private class EnumRegistry(enumsList: List<Enums>) {
     val enumImportMap = HashMap<String, String>()
 
     init {
-        enums.forEach { _, v -> v.enums?.forEach { enumTypes[it.name] = v } }
+        enums.forEach { (_, v) -> v.enums?.forEach { enumTypes[it.name] = v } }
     }
 }
 
@@ -153,6 +153,28 @@ fun main(args: Array<String>) {
 
     // see VkQueueFamilyGlobalPriorityPropertiesEXT in Custom.kt
     val enumsSeen = HashSet<Enums>()
+
+    val mergedFeatures = registry.features
+        .groupBy { it.number }
+        .map { (number, features) ->
+            Feature(
+                "vulkan", "VK_VERSION_${number[0]}_${number[2]}",
+                number,
+                null,
+                features
+                    .flatMap { it.requires }
+                    .toMutableList(),
+                features
+                    .flatMap { it.removes ?: emptyList() }
+                    .ifEmpty { null }
+                    ?.toMutableList()
+            )
+        }
+        .toMutableList()
+
+    registry.features.clear()
+    registry.features.addAll(mergedFeatures)
+
     registry.features.forEach { feature ->
         generateFeature(root, types, enumRegistry, structs, commands, feature, enumsSeen)
     }
@@ -592,16 +614,16 @@ ${imports.asSequence()
 }import vulkan.*
 
 val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK", binding = VK_BINDING_INSTANCE) {
-    ${
-        VERSION_HISTORY[feature.number].let {
-            if (it == null) "" else "extends = VK$it\n$t"
-        }
-    }${
-        imports.asSequence()
-            .mapNotNull { it.javaPackage }
-            .sorted()
-            .joinToString("") { "javaImport(\"$it\")\n$t" }
-    }""")
+${
+    VERSION_HISTORY[feature.number].let {
+        if (it == null) "" else "${t}extends = VK$it\n"
+    }
+}${
+    imports.asSequence()
+        .mapNotNull { it.javaPackage }
+        .sorted()
+        .joinToString("") { "${t}javaImport(\"$it\")\n" }
+}""")
 
         feature.requires.asSequence()
             .mapNotNull { it.enums }
@@ -613,7 +635,7 @@ val $template = "$template".nativeClass(Module.VULKAN, "$template", prefix = "VK
             )
             .flatten()
             .groupBy { enumRegistry.enumTypes[it.name]?.name ?: it.extends!! }
-            .forEach { enumName, enumList ->
+            .forEach { (enumName, enumList) ->
                 if (enumName == "API Constants") {
                     enumList.forEach { enumRegistry.enumImportMap[it.name] = template }
                     return@forEach

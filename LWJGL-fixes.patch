@@ -1,0 +1,68 @@
+From a89459dff2b8554f19c7547dd845bb1654852cda Mon Sep 17 00:00:00 2001
+From: Ioannis Tsakpinis <iotsakp@gmail.com>
+Date: Sun, 2 Mar 2025 14:15:56 +0200
+Subject: [PATCH] LWJGL fixes
+
+---
+ xml/vk.xml | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/xml/vk.xml b/xml/vk.xml
+index 83f74f6c..dfca6a81 100755
+--- a/xml/vk.xml
++++ b/xml/vk.xml
+@@ -10598,10 +10598,10 @@ typedef void* <name>MTLSharedEvent_id</name>;
+             <member><type>uint32_t</type>                            <name>MGranularity</name></member>
+             <member><type>uint32_t</type>                            <name>NGranularity</name></member>
+             <member><type>uint32_t</type>                            <name>KGranularity</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>AType</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>BType</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>CType</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>ResultType</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>AType</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>BType</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>CType</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>ResultType</name></member>
+             <member><type>VkBool32</type>                            <name>saturatingAccumulation</name></member>
+             <member><type>VkScopeKHR</type>                          <name>scope</name></member>
+             <member><type>uint32_t</type>                            <name>workgroupInvocations</name></member>
+@@ -10646,11 +10646,11 @@ typedef void* <name>MTLSharedEvent_id</name>;
+         <type category="struct" name="VkCooperativeVectorPropertiesNV">
+             <member values="VK_STRUCTURE_TYPE_COOPERATIVE_VECTOR_PROPERTIES_NV"><type>VkStructureType</type> <name>sType</name></member>
+             <member optional="true"><type>void</type>*               <name>pNext</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>inputType</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>inputInterpretation</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>matrixInterpretation</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>biasInterpretation</name></member>
+-            <member><type>VkComponentTypeKHR</type>                  <name>resultType</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>inputType</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>inputInterpretation</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>matrixInterpretation</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>biasInterpretation</name></member>
++            <member><type>VkComponentTypeNV</type>                  <name>resultType</name></member>
+             <member><type>VkBool32</type>                            <name>transpose</name></member>
+         </type>
+         <type category="struct" name="VkPhysicalDeviceCooperativeVectorPropertiesNV" returnedonly="true" structextends="VkPhysicalDeviceProperties2" requiredlimittype="true">
+@@ -10668,8 +10668,8 @@ typedef void* <name>MTLSharedEvent_id</name>;
+             <member><type>VkDeviceOrHostAddressConstKHR</type>                       <name>srcData</name></member>
+             <member optional="false,true"><type>size_t</type>*                       <name>pDstSize</name></member>
+             <member><type>VkDeviceOrHostAddressKHR</type>                            <name>dstData</name></member>
+-            <member><type>VkComponentTypeKHR</type>                                  <name>srcComponentType</name></member>
+-            <member><type>VkComponentTypeKHR</type>                                  <name>dstComponentType</name></member>
++            <member><type>VkComponentTypeNV</type>                                  <name>srcComponentType</name></member>
++            <member><type>VkComponentTypeNV</type>                                  <name>dstComponentType</name></member>
+             <member><type>uint32_t</type>                                            <name>numRows</name></member>
+             <member><type>uint32_t</type>                                            <name>numColumns</name></member>
+             <member><type>VkCooperativeVectorMatrixLayoutNV</type>                   <name>srcLayout</name></member>
+@@ -28337,7 +28337,7 @@ endif::VK_KHR_internally_synchronized_queues[]
+                 <type name="VkCooperativeVectorPropertiesNV"/>
+                 <type name="VkConvertCooperativeVectorMatrixInfoNV"/>
+                 <type name="VkCooperativeVectorMatrixLayoutNV"/>
+-                <type name="VkComponentTypeKHR"/>
++                <type name="VkComponentTypeNV"/>
+                 <type name="VkDeviceOrHostAddressKHR"/>
+                 <type name="VkDeviceOrHostAddressConstKHR"/>
+                 <command name="vkGetPhysicalDeviceCooperativeVectorPropertiesNV"/>
+-- 
+2.52.0.windows.1
+
