@@ -3,9 +3,6 @@ package org.lwjgl.vulkangen
 // Character sequence used for alignment
 internal const val t = "    "
 
-internal const val S = "\$"
-internal const val QUOTES3 = "\"\"\""
-
 internal const val HEADER = """/*
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license

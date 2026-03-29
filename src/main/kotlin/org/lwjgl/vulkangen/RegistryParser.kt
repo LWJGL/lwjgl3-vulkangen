@@ -233,15 +233,13 @@ private val INDIRECTION_REGEX = Regex("""([*]+)(?:\s+const\s*([*]+))?""")
 private val String.indirection: String get() = if (this.isEmpty())
     this
 else {
-    val (p, const_p) = INDIRECTION_REGEX.matchEntire(this)!!.destructured
-    "${p.indirection(".")}${if (const_p.isEmpty()) "" else const_p.indirection(".const.")}"
+    val (p, pConst) = INDIRECTION_REGEX.matchEntire(this)!!.destructured
+    "${p.indirection(".")}${if (pConst.isEmpty()) "" else pConst.indirection(".const.")}"
 }
 
 private fun String.indirection(prefix: String) = this.length
     .downTo(1)
-    .asSequence()
-    .map { "p" }
-    .joinToString(".", prefix = prefix)
+    .joinToString(".", prefix = prefix) { "p" }
 
 private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
 private fun parseDependExpression(name: String, wrap: Boolean) = (VK_VERSION_REGEX
@@ -255,21 +253,19 @@ private fun parseDependExpression(name: String, wrap: Boolean) = (VK_VERSION_REG
 
 internal fun parseDepends(depends: String): String {
     val dependencies = depends.split(',')
-    return dependencies
-        .asSequence()
-        .map { dependency ->
-            if (dependency.startsWith('(')) {
-                "(${parseDepends(dependency.substring(1, dependency.length - 1))})"
-            } else if (dependency.contains('+')) {
-                dependency
-                    .splitToSequence('+')
-                    .map { parseDependExpression(it, true) }
-                    .joinToString(" && ", prefix = "(", postfix = ")")
-            } else {
-                parseDependExpression(dependency, dependencies.size != 1)
-            }
+    return dependencies.joinToString(" || ") { dependency ->
+        if (dependency.startsWith('(')) {
+            "(${parseDepends(dependency.substring(1, dependency.length - 1))})"
+        } else if (dependency.contains('+')) {
+            dependency
+                .splitToSequence('+')
+                .joinToString(" && ", prefix = "(", postfix = ")") {
+                    parseDependExpression(it, true)
+                }
+        } else {
+            parseDependExpression(dependency, dependencies.size != 1)
         }
-        .joinToString(" || ")
+    }
 }
 
 internal class FieldConverter : Converter {
@@ -314,8 +310,8 @@ internal class FieldConverter : Converter {
                             reader.moveUp()
                             check(!reader.hasMoreChildren() && reader.value == "]")
                         }
-                        it.endsWith(']')         -> array = it.substring(1, it.length - 1).let {
-                            if (it.startsWith("VK_")) "\"$it\"" else it
+                        it.endsWith(']')         -> array = it.substring(1, it.length - 1).let { token ->
+                            if (token.startsWith("VK_")) "\"$token\"" else token
                         }
                         else                     -> throw IllegalStateException()
                     }

@@ -13,13 +13,7 @@ internal lateinit var VULKAN_DOCS_ROOT: Path
 val String.template
     get() = this
         .splitToSequence('_')
-        .map { token ->
-            if (EXTENSION_TOKEN_REPLACEMENTS.containsKey(token))
-                EXTENSION_TOKEN_REPLACEMENTS[token]
-            else
-                "${token[0].uppercaseChar()}${token.substring(1)}"
-        }
-        .joinToString("")
+        .joinToString("") { EXTENSION_TOKEN_REPLACEMENTS[it] ?: "${it[0].uppercaseChar()}${it.substring(1)}" }
 
 internal data class Import(val templatePackage: String?, val javaPackage: String?)
 
@@ -307,11 +301,10 @@ else {
     val returns = function.proto
     val params = function.params
 
-    params.asSequence().map { param ->
+    params.joinToString(",\n$indent", prefix = ",\n\n$indent") { param ->
         val autoSize = params.asSequence()
             .filter { it.len.contains(param.name) }
-            .map { "\"${it.name}\"" }
-            .joinToString(", ")
+            .joinToString(", ") { "\"${it.name}\"" }
             .let {
                 if (it.isEmpty())
                     ""
@@ -331,9 +324,9 @@ else {
 
         val nativeType = types.getValue(param.type)
         val forceINParam = forceIN
-                           || (nativeType is TypeSystem && SYSTEM_OPAQUE.contains(nativeType.name))
-                           /* TODO: validate this */
-                           || param.externsync != null
+            || (nativeType is TypeSystem && SYSTEM_OPAQUE.contains(nativeType.name))
+            /* TODO: validate this */
+            || param.externsync != null
         val check = getCheck(param, indirection, structs, forceINParam)
 
         val nullable = if ((indirection.isNotEmpty() || nativeType is TypeFuncpointer/* || (nativeType is TypeHandle && nativeType.type == "VK_DEFINE_HANDLE")*//* || nativeType is TypePlatform*/) && (
@@ -358,7 +351,7 @@ else {
                 "_$it" // struct forward declaration
             }
         }
-       val unsafe = if (
+        val unsafe = if (
             indirection.isNotEmpty() &&
             check.isEmpty() &&
             !isString &&
@@ -368,7 +361,7 @@ else {
         val paramType = if ("false,true" == param.optional && (isString || nativeType is TypeStruct)) "Input.." else ""
 
         "$autoSize$check$unsafe$nullable$paramType$type(\"${param.name}\")"
-    }.joinToString(",\n$indent", prefix = ",\n\n$indent")
+    }
 }
 
 private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>, enumRegistry: EnumRegistry) = fields
@@ -384,8 +377,7 @@ private fun getJavaImports(types: Map<String, Type>, fields: Sequence<Field>, en
         }
     }
     .distinct()
-    .map { "javaImport(\"$it\")" }
-    .joinToString("\n$t")
+    .joinToString("\n$t") { "javaImport(\"$it\")" }
     .let { if (it.isEmpty()) "" else "$it\n$t" }
 
 private fun generateTypes(
@@ -517,12 +509,12 @@ ${templateTypes.asSequence()
                 }val ${struct.name} = ${struct.type}(Module.VULKAN, "${struct.name}"${
                 if (struct.returnedonly) ", mutable = false" else ""
                 }${alias ?: ""}${parentStruct ?: ""}) {
-    ${getJavaImports(types, struct.members.asSequence(), enumRegistry)}${struct.members.asSequence()
-                    .map { member ->
+    ${getJavaImports(types, struct.members.asSequence(), enumRegistry)}${
+                    struct.members.joinToString("\n$t") { member ->
                         val pointerSetters = if (member.name == "pNext" && member.type == "void" && member.indirection == ".p") {
                             val pNextTypes = structExtends[struct.name]
                             if (pNextTypes != null) {
-                                "PointerSetter(\n$t$t${pNextTypes.joinToString { "\"$it\"" } },\n$t${t}prepend = true\n$t).."
+                                "PointerSetter(\n$t$t${pNextTypes.joinToString { "\"$it\"" }},\n$t${t}prepend = true\n$t).."
                             } else {
                                 ""
                             }
@@ -547,21 +539,19 @@ ${templateTypes.asSequence()
                                 if (members.isEmpty())
                                     ""
                                 else {
-                                    val references = members.asSequence()
-                                        .map { "\"${it.name}\"" }
-                                        .joinToString(", ")
+                                    val references = members.joinToString(", ") { "\"${it.name}\"" }
 
                                     if (member.optional != null || members.all { it.optional != null } || members.any { it.noautovalidity != null })
                                         "AutoSize($references, optional = true).."
                                     //else if (members.count { it.noautovalidity != null } > 1)
-                                        //"AutoSize($references, atLeastOne = true).."
+                                    //"AutoSize($references, atLeastOne = true).."
                                     else
                                         "AutoSize($references).."
                                 }
                             }
 
                         val nullable = if (
-                            (member.optional != null || (member.noautovalidity != null /*&& member.len.any()*/)) && 
+                            (member.optional != null || (member.noautovalidity != null /*&& member.len.any()*/)) &&
                             (member.indirection.isNotEmpty() || types.getValue(member.type).let { it is TypeFuncpointer || (it is TypeHandle && it.type == "VK_DEFINE_HANDLE") })
                         ) "nullable.." else ""
 
@@ -573,12 +563,12 @@ ${templateTypes.asSequence()
                         }
 
                         "$pointerSetters$expression$autoSize$nullable$type(\"${member.name}\"${if (member.bits == null) "" else ", bits = ${member.bits}"})${
-                        if (member.array != null) "[${member.array}]" else ""
+                            if (member.array != null) "[${member.array}]" else ""
                         }${
-                        if (struct.returnedonly && ((member.name == "sType" && member.type == "VkStructureType") || (member.name == "pNext" && member.type == "void" && member.indirection == ".p"))) ".mutable()" else ""
+                            if (struct.returnedonly && ((member.name == "sType" && member.type == "VkStructureType") || (member.name == "pNext" && member.type == "void" && member.indirection == ".p"))) ".mutable()" else ""
                         }"
                     }
-                    .joinToString("\n$t")}
+                }
 }"""
             }}""")
     }
@@ -646,11 +636,11 @@ ${
     EnumConstant${if (typeLong) "Long" else ""}(
         ${enumList.asSequence()
             .sortedByValue(0, enumRegistry, typeLong)
-            .map {
+            .joinToString(",\n$t$t") {
                 enumRegistry.enumImportMap[it.name] = template
                 "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: 0, enumRegistry, typeLong)}"
             }
-            .joinToString(",\n$t$t")}
+        }
     )""")
             }
 
@@ -737,11 +727,11 @@ val $name = "${name.template}".nativeClassVK("$name", type = "${extension.type}"
     EnumConstant${if (typeLong) "Long" else ""}(
         ${values.asSequence()
             .sortedByValue(extension.number, enumRegistry, typeLong)
-            .map {
+            .joinToString(",\n$t$t") {
                 enumRegistry.enumImportMap[it.name] = template
                 "\"${it.name.substring(3)}\".${it.getEnumValue(it.extnumber ?: extension.number, enumRegistry, typeLong)}"
             }
-            .joinToString(",\n$t$t")}
+        }
     )""")
             }
 
