@@ -241,33 +241,6 @@ private fun String.indirection(prefix: String) = this.length
     .downTo(1)
     .joinToString(".", prefix = prefix) { "p" }
 
-private val VK_VERSION_REGEX = "VK_VERSION_(\\d+)_(\\d+)".toRegex()
-private fun parseDependExpression(name: String, wrap: Boolean) = (VK_VERSION_REGEX
-    .matchEntire(name)
-    ?.let {
-        val (major, minor) = it.destructured
-        "Vulkan$major$minor"
-    } ?: name).let {
-        if (wrap) "ext.contains(\"$it\")" else it
-    }
-
-internal fun parseDepends(depends: String): String {
-    val dependencies = depends.split(',')
-    return dependencies.joinToString(" || ") { dependency ->
-        if (dependency.startsWith('(')) {
-            "(${parseDepends(dependency.substring(1, dependency.length - 1))})"
-        } else if (dependency.contains('+')) {
-            dependency
-                .splitToSequence('+')
-                .joinToString(" && ", prefix = "(", postfix = ")") {
-                    parseDependExpression(it, true)
-                }
-        } else {
-            parseDependExpression(dependency, dependencies.size != 1)
-        }
-    }
-}
-
 internal class FieldConverter : Converter {
     override fun marshal(source: Any, writer: HierarchicalStreamWriter, context: MarshallingContext) {
         TODO()
